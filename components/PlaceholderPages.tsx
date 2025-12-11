@@ -52,6 +52,7 @@ import {
 import { RECENT_LEADS, UPCOMING_BOOKINGS } from '../constants';
 import CreateBookingModal from './CreateBookingModal';
 import { Booking, BookingStatus, LeadStatus, Lead } from '../types';
+import { useLanguage } from '../context/ThemeContext';
 
 // --- Inbox Page ---
 const INBOX_THREADS = [
@@ -926,6 +927,7 @@ export const SettingsPage = () => {
       whatsappAlerts: false
    });
    const [isLoading, setIsLoading] = useState(false);
+   const { language, setLanguage } = useLanguage();
 
    const handleSave = () => {
       setIsLoading(true);
@@ -1009,6 +1011,42 @@ export const SettingsPage = () => {
                         </div>
                      </div>
                   </div>
+               </div>
+
+               {/* Language & Region */}
+               <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
+                   <div className="p-6 border-b border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50">
+                       <div className="flex items-center gap-3">
+                          <div className="p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg text-blue-600 dark:text-blue-400">
+                             <Globe className="w-5 h-5" />
+                          </div>
+                          <div>
+                             <h3 className="text-lg font-bold text-gray-900 dark:text-white">Language & Region</h3>
+                             <p className="text-sm text-gray-500 dark:text-gray-400">Manage your language preferences.</p>
+                          </div>
+                       </div>
+                    </div>
+                    <div className="p-6">
+                        <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Interface Language</label>
+                        <div className="flex gap-3">
+                            <button 
+                              onClick={() => setLanguage('en')}
+                              className={`flex-1 py-3 px-4 rounded-xl border flex items-center justify-center gap-2 transition-all ${language === 'en' ? 'bg-indigo-50 border-indigo-200 text-indigo-700 dark:bg-indigo-900/20 dark:border-indigo-800 dark:text-indigo-300 ring-1 ring-indigo-500/20' : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-700'}`}
+                            >
+                                <span className="text-lg">🇺🇸</span>
+                                <span className="font-medium">English</span>
+                                {language === 'en' && <Check className="w-4 h-4 ml-1" />}
+                            </button>
+                            <button 
+                              onClick={() => setLanguage('ru')}
+                              className={`flex-1 py-3 px-4 rounded-xl border flex items-center justify-center gap-2 transition-all ${language === 'ru' ? 'bg-indigo-50 border-indigo-200 text-indigo-700 dark:bg-indigo-900/20 dark:border-indigo-800 dark:text-indigo-300 ring-1 ring-indigo-500/20' : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-700'}`}
+                            >
+                                <span className="text-lg">🇷🇺</span>
+                                <span className="font-medium">Русский</span>
+                                {language === 'ru' && <Check className="w-4 h-4 ml-1" />}
+                            </button>
+                        </div>
+                    </div>
                </div>
 
                {/* Branding */}
