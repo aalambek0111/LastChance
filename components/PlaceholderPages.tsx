@@ -1558,21 +1558,246 @@ const TourEditForm = ({ tour, onSave }: { tour: typeof INITIAL_TOURS[0], onSave:
 
 // --- Reports Page ---
 export const ReportsPage = () => {
+   const [timeRange, setTimeRange] = useState<'7d' | '30d' | '12m'>('30d');
+
+   // Mock Data for Charts
+   const monthlyData = [
+      { label: 'Jan', leads: 45, bookings: 30 },
+      { label: 'Feb', leads: 52, bookings: 35 },
+      { label: 'Mar', leads: 48, bookings: 32 },
+      { label: 'Apr', leads: 61, bookings: 45 },
+      { label: 'May', leads: 55, bookings: 38 },
+      { label: 'Jun', leads: 67, bookings: 48 },
+      { label: 'Jul', leads: 72, bookings: 55 },
+      { label: 'Aug', leads: 69, bookings: 51 },
+      { label: 'Sep', leads: 63, bookings: 46 },
+      { label: 'Oct', leads: 58, bookings: 40 },
+      { label: 'Nov', leads: 50, bookings: 35 },
+      { label: 'Dec', leads: 47, bookings: 31 },
+   ];
+
+   const maxVal = Math.max(...monthlyData.map(d => d.leads));
+
+   const sourceData = [
+      { name: 'Website', value: 45, color: 'bg-indigo-500', count: 482 },
+      { name: 'Partners', value: 25, color: 'bg-blue-400', count: 268 },
+      { name: 'Social', value: 20, color: 'bg-pink-400', count: 214 },
+      { name: 'Walk-in', value: 10, color: 'bg-gray-300', count: 107 },
+   ];
+
+   const topTours = [
+      { name: 'Sunset City Bike Tour', bookings: 142, revenue: 12070, trend: '+12%' },
+      { name: 'Food & Wine Tasting', bookings: 89, revenue: 10680, trend: '+8%' },
+      { name: 'Historical Walk', bookings: 56, revenue: 2520, trend: '-3%' },
+      { name: 'Private Boat Charter', bookings: 12, revenue: 8400, trend: '+22%' },
+   ];
+
    return (
-      <div className="p-6 lg:p-8">
-         <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-8">Reports</h2>
-         
-         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm min-h-[300px] flex flex-col items-center justify-center text-gray-400">
-               <BarChart3 className="w-12 h-12 mb-3 opacity-50" />
-               <p className="font-medium">Revenue Analytics</p>
-               <span className="text-xs mt-1">Coming in v2.0</span>
+      <div className="p-6 lg:p-8 max-w-7xl mx-auto space-y-8">
+         {/* Header */}
+         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+               <h2 className="text-3xl font-bold text-gray-900 dark:text-white">Reports</h2>
+               <p className="text-gray-500 dark:text-gray-400 mt-1">Performance analytics and business insights.</p>
             </div>
-            
-            <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm min-h-[300px] flex flex-col items-center justify-center text-gray-400">
-               <PieChart className="w-12 h-12 mb-3 opacity-50" />
-               <p className="font-medium">Lead Sources</p>
-               <span className="text-xs mt-1">Coming in v2.0</span>
+            <div className="flex p-1 bg-gray-100 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+               {(['7d', '30d', '12m'] as const).map((range) => (
+                  <button
+                     key={range}
+                     onClick={() => setTimeRange(range)}
+                     className={`px-4 py-1.5 text-xs font-medium rounded-md transition-all ${
+                        timeRange === range
+                           ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow-sm'
+                           : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+                     }`}
+                  >
+                     {range === '7d' ? 'Last 7 days' : range === '30d' ? 'Last 30 days' : 'Last 12 months'}
+                  </button>
+               ))}
+            </div>
+         </div>
+
+         {/* KPI Cards */}
+         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
+               <div className="flex justify-between items-start mb-4">
+                  <div className="p-2 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-lg">
+                     <Users className="w-5 h-5" />
+                  </div>
+                  <span className="flex items-center text-xs font-semibold text-green-600 bg-green-50 dark:bg-green-900/20 px-2 py-1 rounded-full">
+                     +12%
+                  </span>
+               </div>
+               <div className="text-2xl font-bold text-gray-900 dark:text-white">1,248</div>
+               <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">Total Leads</div>
+            </div>
+
+            <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
+               <div className="flex justify-between items-start mb-4">
+                  <div className="p-2 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 rounded-lg">
+                     <Calendar className="w-5 h-5" />
+                  </div>
+                  <span className="flex items-center text-xs font-semibold text-green-600 bg-green-50 dark:bg-green-900/20 px-2 py-1 rounded-full">
+                     +5%
+                  </span>
+               </div>
+               <div className="text-2xl font-bold text-gray-900 dark:text-white">384</div>
+               <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">Bookings Confirmed</div>
+            </div>
+
+            <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
+               <div className="flex justify-between items-start mb-4">
+                  <div className="p-2 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 rounded-lg">
+                     <DollarSign className="w-5 h-5" />
+                  </div>
+                  <span className="flex items-center text-xs font-semibold text-green-600 bg-green-50 dark:bg-green-900/20 px-2 py-1 rounded-full">
+                     +8.2%
+                  </span>
+               </div>
+               <div className="text-2xl font-bold text-gray-900 dark:text-white">$42,590</div>
+               <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">Total Revenue</div>
+            </div>
+
+            <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
+               <div className="flex justify-between items-start mb-4">
+                  <div className="p-2 bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 rounded-lg">
+                     <TrendingUp className="w-5 h-5" />
+                  </div>
+                  <span className="flex items-center text-xs font-semibold text-red-600 bg-red-50 dark:bg-red-900/20 px-2 py-1 rounded-full">
+                     -2.1%
+                  </span>
+               </div>
+               <div className="text-2xl font-bold text-gray-900 dark:text-white">30.8%</div>
+               <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">Conversion Rate</div>
+            </div>
+         </div>
+
+         {/* Charts Section */}
+         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {/* Main Bar Chart */}
+            <div className="lg:col-span-2 bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
+               <div className="flex items-center justify-between mb-8">
+                  <h3 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                     <BarChart3 className="w-5 h-5 text-gray-400" /> Bookings Overview
+                  </h3>
+                  <div className="flex items-center gap-2 text-xs text-gray-500">
+                     <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-indigo-500"></div> Leads</span>
+                     <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-indigo-200 dark:bg-indigo-800"></div> Bookings</span>
+                  </div>
+               </div>
+               
+               {/* Custom CSS Chart */}
+               <div className="relative h-64 flex items-end justify-between gap-2 sm:gap-4">
+                  {monthlyData.map((data, idx) => {
+                     const heightPct = (data.leads / maxVal) * 100;
+                     const bookingHeightPct = (data.bookings / maxVal) * 100;
+                     return (
+                        <div key={idx} className="flex-1 flex flex-col justify-end items-center group h-full relative">
+                           {/* Tooltip */}
+                           <div className="absolute -top-12 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-[10px] py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10 pointer-events-none">
+                              {data.label}: {data.bookings} / {data.leads}
+                           </div>
+                           
+                           {/* Bars container */}
+                           <div className="w-full max-w-[24px] flex items-end relative h-full">
+                              {/* Leads Bar (Back) */}
+                              <div 
+                                 className="absolute bottom-0 w-full bg-indigo-100 dark:bg-gray-700 rounded-t-sm transition-all duration-500 group-hover:bg-indigo-200 dark:group-hover:bg-gray-600"
+                                 style={{ height: `${heightPct}%` }}
+                              ></div>
+                              {/* Bookings Bar (Front) */}
+                              <div 
+                                 className="absolute bottom-0 w-full bg-indigo-500 dark:bg-indigo-600 rounded-t-sm transition-all duration-500 group-hover:bg-indigo-600 dark:group-hover:bg-indigo-500 shadow-sm"
+                                 style={{ height: `${bookingHeightPct}%` }}
+                              ></div>
+                           </div>
+                           
+                           <span className="text-[10px] text-gray-400 mt-3 font-medium">{data.label}</span>
+                        </div>
+                     );
+                  })}
+               </div>
+            </div>
+
+            {/* Lead Sources */}
+            <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col">
+               <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-2">
+                  <PieChart className="w-5 h-5 text-gray-400" /> Lead Sources
+               </h3>
+               
+               <div className="flex-1 flex flex-col justify-center items-center mb-6">
+                  {/* CSS Conic Gradient Donut */}
+                  <div className="relative w-48 h-48 rounded-full flex items-center justify-center"
+                     style={{
+                        background: `conic-gradient(
+                           #6366f1 0% 45%, 
+                           #60a5fa 45% 70%, 
+                           #f472b6 70% 90%, 
+                           #d1d5db 90% 100%
+                        )`
+                     }}
+                  >
+                     <div className="w-36 h-36 bg-white dark:bg-gray-800 rounded-full flex flex-col items-center justify-center z-10">
+                        <span className="text-3xl font-bold text-gray-900 dark:text-white">1,071</span>
+                        <span className="text-xs text-gray-500 uppercase tracking-wide">Total Leads</span>
+                     </div>
+                  </div>
+               </div>
+
+               <div className="space-y-3">
+                  {sourceData.map((source) => (
+                     <div key={source.name} className="flex items-center justify-between text-sm">
+                        <div className="flex items-center gap-2">
+                           <div className={`w-3 h-3 rounded-full ${source.color}`}></div>
+                           <span className="text-gray-700 dark:text-gray-300">{source.name}</span>
+                        </div>
+                        <div className="flex items-center gap-3">
+                           <span className="font-medium text-gray-900 dark:text-white">{source.count}</span>
+                           <span className="text-xs text-gray-400 w-8 text-right">{source.value}%</span>
+                        </div>
+                     </div>
+                  ))}
+               </div>
+            </div>
+         </div>
+
+         {/* Bottom Table: Top Tours */}
+         <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
+            <div className="p-6 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center">
+               <h3 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                  <Star className="w-5 h-5 text-amber-400" /> Top Performing Tours
+               </h3>
+               <button className="text-sm text-indigo-600 hover:text-indigo-700 font-medium">View Full Report</button>
+            </div>
+            <div className="overflow-x-auto">
+               <table className="w-full text-left">
+                  <thead className="bg-gray-50/50 dark:bg-gray-900/50 text-xs uppercase text-gray-500 dark:text-gray-400 font-medium">
+                     <tr>
+                        <th className="px-6 py-4">Tour Name</th>
+                        <th className="px-6 py-4">Total Bookings</th>
+                        <th className="px-6 py-4">Revenue</th>
+                        <th className="px-6 py-4">Growth</th>
+                     </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+                     {topTours.map((tour, idx) => (
+                        <tr key={idx} className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
+                           <td className="px-6 py-4 font-medium text-gray-900 dark:text-white">{tour.name}</td>
+                           <td className="px-6 py-4 text-gray-600 dark:text-gray-300">{tour.bookings}</td>
+                           <td className="px-6 py-4 font-medium text-gray-900 dark:text-white">${tour.revenue.toLocaleString()}</td>
+                           <td className="px-6 py-4">
+                              <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                                 tour.trend.startsWith('+') 
+                                    ? 'bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-400'
+                                    : 'bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400'
+                              }`}>
+                                 {tour.trend}
+                              </span>
+                           </td>
+                        </tr>
+                     ))}
+                  </tbody>
+               </table>
             </div>
          </div>
       </div>
