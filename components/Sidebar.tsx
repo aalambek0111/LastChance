@@ -11,6 +11,7 @@ import {
   BarChart3,
   LifeBuoy
 } from 'lucide-react';
+import { useI18n } from '../context/ThemeContext';
 
 interface SidebarProps {
   activePage: string;
@@ -18,21 +19,23 @@ interface SidebarProps {
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ activePage, onNavigate }) => {
+  const { t } = useI18n();
+
   const mainNav = [
-    { name: 'Dashboard', icon: LayoutDashboard, id: 'dashboard' },
-    { name: 'Inbox', icon: Inbox, badge: 5, id: 'inbox' },
-    { name: 'Leads', icon: Users, id: 'leads' },
-    { name: 'Bookings', icon: CalendarCheck, id: 'bookings' },
+    { name: t('nav_dashboard'), icon: LayoutDashboard, id: 'dashboard' },
+    { name: t('nav_inbox'), icon: Inbox, badge: 5, id: 'inbox' },
+    { name: t('nav_leads'), icon: Users, id: 'leads' },
+    { name: t('nav_bookings'), icon: CalendarCheck, id: 'bookings' },
   ];
 
   const orgNav = [
-    { name: 'Tours', icon: Map, id: 'tours' },
-    { name: 'Reports', icon: BarChart3, id: 'reports' },
-    { name: 'Team', icon: Briefcase, id: 'team' },
+    { name: t('nav_tours'), icon: Map, id: 'tours' },
+    { name: t('nav_reports'), icon: BarChart3, id: 'reports' },
+    { name: t('nav_team'), icon: Briefcase, id: 'team' },
   ];
 
   const bottomNav = [
-    { name: 'Settings', icon: Settings, id: 'settings' },
+    { name: t('nav_settings'), icon: Settings, id: 'settings' },
     { name: 'Support', icon: LifeBuoy, id: 'support' },
   ];
 

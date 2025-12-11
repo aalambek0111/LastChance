@@ -52,7 +52,7 @@ import {
 import { RECENT_LEADS, UPCOMING_BOOKINGS } from '../constants';
 import CreateBookingModal from './CreateBookingModal';
 import { Booking, BookingStatus, LeadStatus, Lead } from '../types';
-import { useLanguage } from '../context/ThemeContext';
+import { useI18n } from '../context/ThemeContext';
 
 // --- Inbox Page ---
 const INBOX_THREADS = [
@@ -140,6 +140,7 @@ export const InboxPage: React.FC<InboxPageProps> = ({
   searchTerm = '', 
   initialLeadName 
 }) => {
+  const { t } = useI18n();
   const [selectedConversationId, setSelectedConversationId] = useState<number | null>(null);
   const [inputText, setInputText] = useState('');
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
@@ -177,7 +178,7 @@ export const InboxPage: React.FC<InboxPageProps> = ({
       <div className="flex-1 bg-white dark:bg-gray-800 md:rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 flex overflow-hidden">
         <div className={`${selectedConversationId ? 'hidden md:flex' : 'flex'} w-full md:w-80 lg:w-96 flex-col border-r border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800 z-0`}>
           <div className="p-4 border-b border-gray-100 dark:border-gray-700">
-            <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-3">Inbox</h2>
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-3">{t('page_inbox_title')}</h2>
             <div className="relative">
               <input 
                 type="text" 
@@ -363,20 +364,21 @@ interface LeadsPageProps {
   onOpenConversation?: (leadName: string) => void;
 }
 
-const KANBAN_COLUMNS: { id: LeadStatus; label: string; color: string }[] = [
-  { id: 'New', label: 'New', color: 'bg-blue-500' },
-  { id: 'Contacted', label: 'Contacted', color: 'bg-amber-500' },
-  { id: 'Qualified', label: 'Qualified', color: 'bg-emerald-500' },
-  { id: 'Booked', label: 'Booked', color: 'bg-purple-500' },
-  { id: 'Lost', label: 'Lost', color: 'bg-gray-500' },
-];
-
 export const LeadsPage: React.FC<LeadsPageProps> = ({ searchTerm = '', onOpenConversation }) => {
+  const { t } = useI18n();
   const [leads, setLeads] = useState<Lead[]>(RECENT_LEADS);
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'table' | 'kanban'>('table');
   const [draggedLeadId, setDraggedLeadId] = useState<string | null>(null);
   
+  const KANBAN_COLUMNS: { id: LeadStatus; label: string; color: string }[] = [
+    { id: 'New', label: t('leads_status_new'), color: 'bg-blue-500' },
+    { id: 'Contacted', label: t('leads_status_contacted'), color: 'bg-amber-500' },
+    { id: 'Qualified', label: t('leads_status_qualified'), color: 'bg-emerald-500' },
+    { id: 'Booked', label: t('leads_status_booked'), color: 'bg-purple-500' },
+    { id: 'Lost', label: t('leads_status_lost'), color: 'bg-gray-500' },
+  ];
+
   const filteredLeads = leads.filter(lead => 
     lead.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -433,7 +435,7 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ searchTerm = '', onOpenCon
       {/* Header Section */}
       <div className="flex-none p-6 lg:p-8">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-          <h2 className="text-3xl font-bold text-gray-900 dark:text-white">Leads</h2>
+          <h2 className="text-3xl font-bold text-gray-900 dark:text-white">{t('page_leads_title')}</h2>
           
           <div className="flex items-center gap-3">
             {/* View Switcher */}
@@ -760,6 +762,7 @@ export const BookingsPage: React.FC<BookingsPageProps> = ({
   searchTerm = '', 
   onUpdateBooking 
 }) => {
+  const { t } = useI18n();
   const [editingBooking, setEditingBooking] = useState<Booking | null>(null);
 
   const filteredBookings = bookings.filter(b => 
@@ -770,7 +773,7 @@ export const BookingsPage: React.FC<BookingsPageProps> = ({
   return (
     <div className="p-6 lg:p-8 h-full flex flex-col">
       <div className="flex justify-between items-center mb-6">
-        <h2 className="text-3xl font-bold text-gray-900 dark:text-white">Bookings</h2>
+        <h2 className="text-3xl font-bold text-gray-900 dark:text-white">{t('page_bookings_title')}</h2>
         <div className="flex gap-3">
           <button className="px-4 py-2 border border-gray-200 dark:border-gray-700 rounded-lg text-sm font-medium bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200">
              Export
@@ -880,10 +883,11 @@ const TEAM_MEMBERS = [
 ];
 
 export const TeamPage = () => {
+  const { t } = useI18n();
   return (
     <div className="p-6 lg:p-8">
       <div className="flex justify-between items-center mb-8">
-         <h2 className="text-3xl font-bold text-gray-900 dark:text-white">Team</h2>
+         <h2 className="text-3xl font-bold text-gray-900 dark:text-white">{t('page_team_title')}</h2>
          <button className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium">Invite Member</button>
       </div>
 
@@ -927,7 +931,7 @@ export const SettingsPage = () => {
       whatsappAlerts: false
    });
    const [isLoading, setIsLoading] = useState(false);
-   const { language, setLanguage } = useLanguage();
+   const { language, setLanguage, t } = useI18n();
 
    const handleSave = () => {
       setIsLoading(true);
@@ -940,7 +944,7 @@ export const SettingsPage = () => {
             <div className="max-w-4xl mx-auto p-6 lg:p-8 space-y-8 pb-24">
                {/* Header */}
                <div>
-                  <h2 className="text-3xl font-bold text-gray-900 dark:text-white">Settings</h2>
+                  <h2 className="text-3xl font-bold text-gray-900 dark:text-white">{t('page_settings_title')}</h2>
                   <p className="text-gray-500 dark:text-gray-400 mt-1">Manage your organization preferences and configurations.</p>
                </div>
                
@@ -1241,6 +1245,7 @@ const INITIAL_TOURS = [
 ];
 
 export const ToursPage: React.FC<ToursPageProps> = ({ searchTerm = '' }) => {
+   const { t } = useI18n();
    const [tours, setTours] = useState(INITIAL_TOURS);
    const [selectedTour, setSelectedTour] = useState<typeof INITIAL_TOURS[0] | null>(null);
    const [activeActionMenuId, setActiveActionMenuId] = useState<number | null>(null);
@@ -1303,7 +1308,7 @@ export const ToursPage: React.FC<ToursPageProps> = ({ searchTerm = '' }) => {
 
          <div className="p-6 lg:p-8 h-full flex flex-col">
             <div className="flex justify-between items-center mb-6">
-               <h2 className="text-3xl font-bold text-gray-900 dark:text-white">Tours</h2>
+               <h2 className="text-3xl font-bold text-gray-900 dark:text-white">{t('page_tours_title')}</h2>
                <button className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors shadow-sm shadow-indigo-200 dark:shadow-none">
                   Create Tour
                </button>
@@ -1596,6 +1601,7 @@ const TourEditForm = ({ tour, onSave }: { tour: typeof INITIAL_TOURS[0], onSave:
 
 // --- Reports Page ---
 export const ReportsPage = () => {
+   const { t } = useI18n();
    const [timeRange, setTimeRange] = useState<'7d' | '30d' | '12m'>('30d');
 
    // Mock Data for Charts
@@ -1635,7 +1641,7 @@ export const ReportsPage = () => {
          {/* Header */}
          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-               <h2 className="text-3xl font-bold text-gray-900 dark:text-white">Reports</h2>
+               <h2 className="text-3xl font-bold text-gray-900 dark:text-white">{t('page_reports_title')}</h2>
                <p className="text-gray-500 dark:text-gray-400 mt-1">Performance analytics and business insights.</p>
             </div>
             <div className="flex p-1 bg-gray-100 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
