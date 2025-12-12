@@ -104,10 +104,31 @@ const getKpiIcon = (label: string) => {
 interface DashboardProps {
   bookings?: Booking[];
   searchTerm?: string;
+  onNavigate?: (page: string) => void;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ bookings = UPCOMING_BOOKINGS, searchTerm = '' }) => {
+const Dashboard: React.FC<DashboardProps> = ({ 
+  bookings = UPCOMING_BOOKINGS, 
+  searchTerm = '',
+  onNavigate 
+}) => {
   const [isLeadModalOpen, setIsLeadModalOpen] = useState(false);
+  const [activeFilter, setActiveFilter] = useState<'All' | 'New' | 'Priority'>('All');
+  const [activeBookingFilter, setActiveBookingFilter] = useState<'All' | 'Confirmed' | 'Pending'>('All');
+
+  // Filter Logic (Leads)
+  const filteredLeads = RECENT_LEADS.filter((lead) => {
+    if (activeFilter === 'All') return true;
+    if (activeFilter === 'New') return lead.status === 'New';
+    if (activeFilter === 'Priority') return lead.status === 'Qualified'; // Assuming 'Qualified' implies Priority
+    return true;
+  });
+
+  // Filter Logic (Bookings)
+  const filteredBookings = bookings.filter((booking) => {
+    if (activeBookingFilter === 'All') return true;
+    return booking.status === activeBookingFilter;
+  });
 
   return (
     <div className="min-h-screen pb-10">
@@ -123,7 +144,10 @@ const Dashboard: React.FC<DashboardProps> = ({ bookings = UPCOMING_BOOKINGS, sea
             <p className="text-gray-500 dark:text-gray-400 mt-1">Good morning, Alex. Here's what's happening today.</p>
           </div>
           <div className="flex items-center gap-3">
-            <button className="px-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition shadow-sm">
+            <button 
+              onClick={() => onNavigate && onNavigate('reports')}
+              className="px-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition shadow-sm"
+            >
               View Report
             </button>
             <button 
@@ -179,14 +203,24 @@ const Dashboard: React.FC<DashboardProps> = ({ bookings = UPCOMING_BOOKINGS, sea
             <div className="p-5 border-b border-gray-100 dark:border-gray-700 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div className="flex items-center gap-2">
                 <h2 className="text-lg font-bold text-gray-900 dark:text-white">Leads to follow up</h2>
-                <span className="bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 text-xs px-2 py-0.5 rounded-full font-medium">{RECENT_LEADS.length}</span>
+                <span className="bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 text-xs px-2 py-0.5 rounded-full font-medium">{filteredLeads.length}</span>
               </div>
               
               {/* Tabs */}
               <div className="flex items-center p-1 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-                <button className="px-3 py-1 text-xs font-medium bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow-sm rounded-md transition-all">All</button>
-                <button className="px-3 py-1 text-xs font-medium text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-all">New</button>
-                <button className="px-3 py-1 text-xs font-medium text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-all">Priority</button>
+                {(['All', 'New', 'Priority'] as const).map((filter) => (
+                  <button
+                    key={filter}
+                    onClick={() => setActiveFilter(filter)}
+                    className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${
+                      activeFilter === filter
+                        ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow-sm'
+                        : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+                    }`}
+                  >
+                    {filter}
+                  </button>
+                ))}
               </div>
             </div>
 
@@ -202,7 +236,7 @@ const Dashboard: React.FC<DashboardProps> = ({ bookings = UPCOMING_BOOKINGS, sea
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50 dark:divide-gray-700/50">
-                  {RECENT_LEADS.map((lead) => (
+                  {filteredLeads.map((lead) => (
                     <tr key={lead.id} className="group hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors cursor-pointer">
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
@@ -229,11 +263,21 @@ const Dashboard: React.FC<DashboardProps> = ({ bookings = UPCOMING_BOOKINGS, sea
                       </td>
                     </tr>
                   ))}
+                  {filteredLeads.length === 0 && (
+                    <tr>
+                      <td colSpan={4} className="px-6 py-8 text-center text-gray-500 dark:text-gray-400 text-sm">
+                        No leads found for this filter.
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
             <div className="p-4 border-t border-gray-100 dark:border-gray-700">
-              <button className="w-full py-2 flex items-center justify-center gap-2 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded-lg transition-colors border border-dashed border-gray-200 dark:border-gray-700">
+              <button 
+                onClick={() => onNavigate && onNavigate('leads')}
+                className="w-full py-2 flex items-center justify-center gap-2 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded-lg transition-colors border border-dashed border-gray-200 dark:border-gray-700"
+              >
                  View all leads
               </button>
             </div>
@@ -246,13 +290,20 @@ const Dashboard: React.FC<DashboardProps> = ({ bookings = UPCOMING_BOOKINGS, sea
                 <h2 className="text-lg font-bold text-gray-900 dark:text-white">Upcoming Bookings</h2>
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Next 7 days schedule</p>
               </div>
-              <div className="flex gap-2">
-                 <button className="p-2 text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
-                   <Filter className="w-4 h-4" />
-                 </button>
-                 <button className="p-2 text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
-                   <MoreVertical className="w-4 h-4" />
-                 </button>
+              <div className="flex items-center p-1 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                {(['All', 'Confirmed', 'Pending'] as const).map((filter) => (
+                  <button
+                    key={filter}
+                    onClick={() => setActiveBookingFilter(filter)}
+                    className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${
+                      activeBookingFilter === filter
+                        ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow-sm'
+                        : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+                    }`}
+                  >
+                    {filter}
+                  </button>
+                ))}
               </div>
             </div>
             
@@ -267,7 +318,7 @@ const Dashboard: React.FC<DashboardProps> = ({ bookings = UPCOMING_BOOKINGS, sea
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50 dark:divide-gray-700/50">
-                  {bookings.map((booking) => (
+                  {filteredBookings.map((booking) => (
                     <tr key={booking.id} className="group hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors cursor-pointer">
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
@@ -298,6 +349,13 @@ const Dashboard: React.FC<DashboardProps> = ({ bookings = UPCOMING_BOOKINGS, sea
                       </td>
                     </tr>
                   ))}
+                  {filteredBookings.length === 0 && (
+                    <tr>
+                      <td colSpan={5} className="px-6 py-8 text-center text-gray-500 dark:text-gray-400 text-sm">
+                        No bookings found for this filter.
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>

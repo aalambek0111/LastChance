@@ -51,6 +51,7 @@ import {
 } from 'lucide-react';
 import { RECENT_LEADS, UPCOMING_BOOKINGS } from '../constants';
 import CreateBookingModal from './CreateBookingModal';
+import AddLeadModal from './AddLeadModal';
 import { Booking, BookingStatus, LeadStatus, Lead } from '../types';
 import { useI18n } from '../context/ThemeContext';
 
@@ -370,6 +371,7 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ searchTerm = '', onOpenCon
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'table' | 'kanban'>('table');
   const [draggedLeadId, setDraggedLeadId] = useState<string | null>(null);
+  const [isAddLeadModalOpen, setIsAddLeadModalOpen] = useState(false);
   
   const KANBAN_COLUMNS: { id: LeadStatus; label: string; color: string }[] = [
     { id: 'New', label: t('leads_status_new'), color: 'bg-blue-500' },
@@ -464,7 +466,10 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ searchTerm = '', onOpenCon
               </button>
             </div>
 
-            <button className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors shadow-sm whitespace-nowrap">
+            <button 
+              onClick={() => setIsAddLeadModalOpen(true)}
+              className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors shadow-sm whitespace-nowrap"
+            >
               Add Lead
             </button>
           </div>
@@ -587,6 +592,11 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ searchTerm = '', onOpenCon
           </div>
         )}
       </div>
+
+      <AddLeadModal 
+        isOpen={isAddLeadModalOpen} 
+        onClose={() => setIsAddLeadModalOpen(false)} 
+      />
     </div>
   );
 };

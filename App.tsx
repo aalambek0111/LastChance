@@ -107,7 +107,11 @@ function App() {
 
           <div className="flex-1 overflow-hidden flex flex-col">
             {activePage === 'dashboard' && (
-              <Dashboard bookings={bookings} searchTerm={searchTerm} />
+              <Dashboard 
+                bookings={bookings} 
+                searchTerm={searchTerm} 
+                onNavigate={setActivePage}
+              />
             )}
             {activePage === 'inbox' && (
               <InboxPage 
