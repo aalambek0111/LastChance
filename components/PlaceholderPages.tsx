@@ -145,10 +145,16 @@ export const InboxPage: React.FC<InboxPageProps> = ({
   const [selectedConversationId, setSelectedConversationId] = useState<number | null>(null);
   const [inputText, setInputText] = useState('');
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
+  const [localSearchTerm, setLocalSearchTerm] = useState(searchTerm);
+
+  // Sync global search term to local state if needed
+  useEffect(() => {
+    setLocalSearchTerm(searchTerm);
+  }, [searchTerm]);
 
   const filteredThreads = INBOX_THREADS.filter(thread => 
-    thread.sender.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    thread.preview.toLowerCase().includes(searchTerm.toLowerCase())
+    thread.sender.toLowerCase().includes(localSearchTerm.toLowerCase()) || 
+    thread.preview.toLowerCase().includes(localSearchTerm.toLowerCase())
   );
 
   useEffect(() => {
@@ -184,9 +190,9 @@ export const InboxPage: React.FC<InboxPageProps> = ({
               <input 
                 type="text" 
                 placeholder="Search messages..." 
-                value={searchTerm}
-                readOnly
-                className="w-full pl-9 pr-4 py-2 bg-gray-50 dark:bg-gray-700/50 border border-gray-100 dark:border-gray-600 rounded-lg text-sm focus:outline-none cursor-default opacity-60"
+                value={localSearchTerm}
+                onChange={(e) => setLocalSearchTerm(e.target.value)}
+                className="w-full pl-9 pr-4 py-2 bg-gray-50 dark:bg-gray-700/50 border border-gray-100 dark:border-gray-600 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
               />
               <Search className="w-4 h-4 text-gray-400 absolute left-3 top-2.5" />
             </div>
@@ -220,7 +226,7 @@ export const InboxPage: React.FC<InboxPageProps> = ({
               </div>
             ))}
             {filteredThreads.length === 0 && (
-              <div className="p-8 text-center text-gray-500 text-sm">No messages found matching "{searchTerm}".</div>
+              <div className="p-8 text-center text-gray-500 text-sm">No messages found matching "{localSearchTerm}".</div>
             )}
           </div>
         </div>
