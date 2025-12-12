@@ -49,7 +49,7 @@ import {
   Settings,
   Lock
 } from 'lucide-react';
-import { RECENT_LEADS, UPCOMING_BOOKINGS } from '../constants';
+import { RECENT_LEADS, UPCOMING_BOOKINGS, TOURS } from '../constants';
 import CreateBookingModal from './CreateBookingModal';
 import AddLeadModal from './AddLeadModal';
 import { Booking, BookingStatus, LeadStatus, Lead } from '../types';
@@ -142,36 +142,89 @@ export const InboxPage: React.FC<InboxPageProps> = ({
   initialLeadName 
 }) => {
   const { t } = useI18n();
+  // Lift threads to state to allow updates (e.g. sending messages)
+  const [threads, setThreads] = useState(INBOX_THREADS);
   const [selectedConversationId, setSelectedConversationId] = useState<number | null>(null);
   const [inputText, setInputText] = useState('');
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
   const [localSearchTerm, setLocalSearchTerm] = useState(searchTerm);
+  
+  // File input ref for attachment
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Sync global search term to local state if needed
   useEffect(() => {
     setLocalSearchTerm(searchTerm);
   }, [searchTerm]);
 
-  const filteredThreads = INBOX_THREADS.filter(thread => 
+  const filteredThreads = threads.filter(thread => 
     thread.sender.toLowerCase().includes(localSearchTerm.toLowerCase()) || 
     thread.preview.toLowerCase().includes(localSearchTerm.toLowerCase())
   );
 
   useEffect(() => {
     if (initialLeadName) {
-      const thread = INBOX_THREADS.find(t => t.sender.toLowerCase() === initialLeadName.toLowerCase());
+      const thread = threads.find(t => t.sender.toLowerCase() === initialLeadName.toLowerCase());
       if (thread) {
         setSelectedConversationId(thread.id);
       }
     }
-  }, [initialLeadName]);
+  }, [initialLeadName, threads]);
 
-  const selectedThread = INBOX_THREADS.find(t => t.id === selectedConversationId);
+  const selectedThread = threads.find(t => t.id === selectedConversationId);
 
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!inputText.trim()) return;
+    if (!inputText.trim() || !selectedConversationId) return;
+    
+    const newMessage = { 
+      id: `m${Date.now()}`, 
+      text: inputText, 
+      sender: 'me', 
+      time: 'Just now' 
+    };
+
+    setThreads(prevThreads => prevThreads.map(thread => {
+      if (thread.id === selectedConversationId) {
+        return {
+          ...thread,
+          messages: [...thread.messages, newMessage]
+        };
+      }
+      return thread;
+    }));
+
     setInputText('');
+  };
+
+  const handleAttachClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file && selectedConversationId) {
+       const newMessage = { 
+         id: `m${Date.now()}`, 
+         text: `📎 Attachment: ${file.name}`, 
+         sender: 'me', 
+         time: 'Just now' 
+       };
+
+       setThreads(prevThreads => prevThreads.map(thread => {
+         if (thread.id === selectedConversationId) {
+           return {
+             ...thread,
+             messages: [...thread.messages, newMessage]
+           };
+         }
+         return thread;
+       }));
+       
+       if (showToast) showToast(`File "${file.name}" attached successfully`);
+    }
+    // Reset the input so the same file can be selected again if needed
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   const handleBookingCreated = (booking: Booking) => {
@@ -320,13 +373,30 @@ export const InboxPage: React.FC<InboxPageProps> = ({
               </div>
 
               <form onSubmit={handleSendMessage} className="flex gap-2 items-end">
-                <button type="button" className="p-3 text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
+                {/* Hidden File Input */}
+                <input 
+                  type="file" 
+                  ref={fileInputRef} 
+                  className="hidden" 
+                  onChange={handleFileChange} 
+                />
+                <button 
+                  type="button" 
+                  onClick={handleAttachClick}
+                  className="p-3 text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                >
                   <Paperclip className="w-5 h-5" />
                 </button>
                 <div className="flex-1 bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 rounded-xl flex items-center px-4 py-2 focus-within:ring-2 focus-within:ring-indigo-500/20 focus-within:border-indigo-500 transition-all">
                   <textarea
                     value={inputText}
                     onChange={(e) => setInputText(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        handleSendMessage(e);
+                      }
+                    }}
                     placeholder="Type your message..."
                     className="w-full bg-transparent border-none focus:ring-0 text-sm resize-none max-h-32 text-gray-900 dark:text-white placeholder-gray-400"
                     rows={1}
@@ -1192,237 +1262,8 @@ export const SettingsPage = () => {
    );
 };
 
-// --- Tours Page ---
-interface ToursPageProps {
-   searchTerm?: string;
-}
-
-const INITIAL_TOURS = [
-   { 
-      id: 1, 
-      name: 'Sunset City Bike Tour', 
-      price: 85, 
-      duration: '3h', 
-      active: true, 
-      description: 'Experience the city at golden hour on our premium electric bikes. Perfect for photography enthusiasts and couples. We provide helmets, water, and a local guide who knows the best spots.', 
-      image: 'https://images.unsplash.com/photo-1620302066845-314b98c92872?auto=format&fit=crop&q=80&w=200',
-      tags: ['Bike', 'City', 'Sunset', 'Photography'],
-      maxPeople: 8,
-      difficulty: 'Easy',
-      location: 'Downtown Marina',
-      bookingsCount: 142,
-      revenue: 12070
-   },
-   { 
-      id: 2, 
-      name: 'Historical Walk', 
-      price: 45, 
-      duration: '2h', 
-      active: true, 
-      description: 'A guided walk through the old town visiting key historical landmarks. Learn about the rich history and culture of the city.',
-      image: 'https://images.unsplash.com/photo-1590274780650-664448557c9a?auto=format&fit=crop&q=80&w=200',
-      tags: ['History', 'Walking', 'Culture'],
-      maxPeople: 15,
-      difficulty: 'Easy',
-      location: 'Old Town Square',
-      bookingsCount: 89,
-      revenue: 4005
-   },
-   { 
-      id: 3, 
-      name: 'Food & Wine Tasting', 
-      price: 120, 
-      duration: '4h', 
-      active: true, 
-      description: 'Sample the finest local delicacies and wines in this gastronomic adventure. Includes visits to 3 award-winning restaurants.',
-      image: 'https://images.unsplash.com/photo-1559339352-11d035aa65de?auto=format&fit=crop&q=80&w=200',
-      tags: ['Food', 'Wine', 'Luxury'],
-      maxPeople: 6,
-      difficulty: 'Easy',
-      location: 'Vineyard District',
-      bookingsCount: 56,
-      revenue: 6720
-   },
-   { 
-      id: 4, 
-      name: 'Mountain Hike Level 2', 
-      price: 95, 
-      duration: '6h', 
-      active: false, 
-      description: 'Challenging hike with breathtaking views for experienced hikers. Proper hiking gear is required.',
-      image: 'https://images.unsplash.com/photo-1551632811-561732d1e306?auto=format&fit=crop&q=80&w=200',
-      tags: ['Hiking', 'Nature', 'Adventure'],
-      maxPeople: 10,
-      difficulty: 'Hard',
-      location: 'National Park',
-      bookingsCount: 32,
-      revenue: 3040
-   },
-];
-
-export const ToursPage: React.FC<ToursPageProps> = ({ searchTerm = '' }) => {
-   const { t } = useI18n();
-   const [tours, setTours] = useState(INITIAL_TOURS);
-   const [selectedTour, setSelectedTour] = useState<typeof INITIAL_TOURS[0] | null>(null);
-   const [activeActionMenuId, setActiveActionMenuId] = useState<number | null>(null);
-
-   const filteredTours = tours.filter(t => t.name.toLowerCase().includes(searchTerm.toLowerCase()));
-
-   const handleSaveTour = (updatedTour: typeof INITIAL_TOURS[0]) => {
-      setTours(prev => prev.map(t => t.id === updatedTour.id ? updatedTour : t));
-      setSelectedTour(null);
-   };
-
-   // Close action menu when clicking outside
-   useEffect(() => {
-      const handleClickOutside = () => setActiveActionMenuId(null);
-      if (activeActionMenuId) {
-         document.addEventListener('click', handleClickOutside);
-      }
-      return () => document.removeEventListener('click', handleClickOutside);
-   }, [activeActionMenuId]);
-
-   const handleActionClick = (e: React.MouseEvent, id: number) => {
-      e.stopPropagation();
-      setActiveActionMenuId(activeActionMenuId === id ? null : id);
-   };
-
-   return (
-      <div className="relative h-full flex flex-col">
-         {/* Backdrop */}
-         {selectedTour && (
-            <div 
-               className="fixed inset-0 z-[60] bg-gray-900/40 backdrop-blur-md transition-opacity duration-300"
-               onClick={() => setSelectedTour(null)}
-            />
-         )}
-
-         {/* Drawer */}
-         <div 
-            className={`fixed inset-y-0 right-0 z-[70] w-full max-w-lg bg-white dark:bg-gray-800 shadow-2xl transform transition-transform duration-300 ease-in-out border-l border-gray-200 dark:border-gray-700 ${
-               selectedTour ? 'translate-x-0' : 'translate-x-full'
-            }`}
-         >
-            {selectedTour && (
-               <div className="h-full flex flex-col bg-white dark:bg-gray-800 shadow-2xl">
-                  {/* Header */}
-                  <div className="flex items-center justify-between p-6 border-b border-gray-100 dark:border-gray-700 bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm z-10">
-                     <h2 className="text-lg font-bold text-gray-900 dark:text-white">Edit Tour Details</h2>
-                     <button 
-                        onClick={() => setSelectedTour(null)}
-                        className="p-2 text-gray-400 hover:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors"
-                     >
-                        <X className="w-5 h-5" />
-                     </button>
-                  </div>
-                  
-                  {/* Content */}
-                  <TourEditForm tour={selectedTour} onSave={handleSaveTour} />
-               </div>
-            )}
-         </div>
-
-         <div className="p-6 lg:p-8 h-full flex flex-col">
-            <div className="flex justify-between items-center mb-6">
-               <h2 className="text-3xl font-bold text-gray-900 dark:text-white">{t('page_tours_title')}</h2>
-               <button className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors shadow-sm shadow-indigo-200 dark:shadow-none">
-                  Create Tour
-               </button>
-            </div>
-
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-visible flex-1 flex flex-col">
-               <div className="flex-1 overflow-y-auto">
-               <table className="w-full text-left border-collapse">
-                  <thead className="bg-gray-50 dark:bg-gray-700/50 text-gray-500 dark:text-gray-400 font-medium text-xs uppercase tracking-wider sticky top-0 z-10 backdrop-blur-sm bg-gray-50/90 dark:bg-gray-800/90">
-                     <tr>
-                        <th className="px-6 py-4">Tour Name</th>
-                        <th className="px-6 py-4">Duration</th>
-                        <th className="px-6 py-4">Price</th>
-                        <th className="px-6 py-4">Status</th>
-                        <th className="px-6 py-4 text-right w-24">Actions</th>
-                     </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                     {filteredTours.map(tour => (
-                        <tr 
-                           key={tour.id} 
-                           onClick={() => setSelectedTour(tour)}
-                           className={`group hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors cursor-pointer ${selectedTour?.id === tour.id ? 'bg-indigo-50 dark:bg-indigo-900/10' : ''}`}
-                        >
-                           <td className="px-6 py-4">
-                              <div className="flex items-center gap-4">
-                                 {tour.image ? (
-                                    <img src={tour.image} alt={tour.name} className="w-12 h-12 rounded-lg object-cover shadow-sm ring-1 ring-gray-100 dark:ring-gray-700" />
-                                 ) : (
-                                    <div className="w-12 h-12 rounded-lg bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-gray-400 shrink-0">
-                                       <ImageIcon className="w-5 h-5" />
-                                    </div>
-                                 )}
-                                 <span className="font-semibold text-gray-900 dark:text-white text-sm">{tour.name}</span>
-                              </div>
-                           </td>
-                           <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">
-                              {tour.duration}
-                           </td>
-                           <td className="px-6 py-4 text-sm font-medium text-gray-900 dark:text-white">
-                              ${tour.price}
-                           </td>
-                           <td className="px-6 py-4">
-                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${
-                                 tour.active 
-                                    ? 'bg-green-50 text-green-700 border-green-100 dark:bg-green-900/20 dark:text-green-400 dark:border-green-900/30' 
-                                    : 'bg-gray-100 text-gray-600 border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700'
-                              }`}>
-                                 {tour.active ? 'Active' : 'Draft'}
-                              </span>
-                           </td>
-                           <td className="px-6 py-4 text-right relative">
-                              <button 
-                                 onClick={(e) => handleActionClick(e, tour.id)}
-                                 className="text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 p-2 rounded-lg transition-all hover:bg-gray-100 dark:hover:bg-gray-700"
-                              >
-                                 <MoreHorizontal className="w-5 h-5" />
-                              </button>
-
-                              {/* Action Menu */}
-                              {activeActionMenuId === tour.id && (
-                                 <div className="absolute right-8 top-12 z-20 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-100 dark:border-gray-700 overflow-hidden animate-in fade-in zoom-in-95 duration-100">
-                                    <button onClick={() => setSelectedTour(tour)} className="w-full text-left px-4 py-2.5 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-2">
-                                       <Pencil className="w-4 h-4" /> Edit
-                                    </button>
-                                    <button className="w-full text-left px-4 py-2.5 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-2">
-                                       <Copy className="w-4 h-4" /> Duplicate
-                                    </button>
-                                    <button className="w-full text-left px-4 py-2.5 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-2">
-                                       <Archive className="w-4 h-4" /> Archive
-                                    </button>
-                                    <div className="h-px bg-gray-100 dark:bg-gray-700 my-1"></div>
-                                    <button className="w-full text-left px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-2">
-                                       <Trash2 className="w-4 h-4" /> Delete
-                                    </button>
-                                 </div>
-                              )}
-                           </td>
-                        </tr>
-                     ))}
-                     {filteredTours.length === 0 && (
-                        <tr>
-                           <td colSpan={5} className="px-6 py-12 text-center text-gray-500 text-sm">
-                              No tours found matching "{searchTerm}".
-                           </td>
-                        </tr>
-                     )}
-                  </tbody>
-               </table>
-               </div>
-            </div>
-         </div>
-      </div>
-   );
-};
-
 // Helper Component for Tour Editing Form
-const TourEditForm = ({ tour, onSave }: { tour: typeof INITIAL_TOURS[0], onSave: (t: typeof INITIAL_TOURS[0]) => void }) => {
+const TourEditForm = ({ tour, onSave }: { tour: typeof TOURS[0], onSave: (t: typeof TOURS[0]) => void }) => {
    const [formData, setFormData] = useState(tour);
    const [newTag, setNewTag] = useState('');
 
@@ -1615,249 +1456,201 @@ const TourEditForm = ({ tour, onSave }: { tour: typeof INITIAL_TOURS[0], onSave:
    );
 };
 
-// --- Reports Page ---
-export const ReportsPage = () => {
-   const { t } = useI18n();
-   const [timeRange, setTimeRange] = useState<'7d' | '30d' | '12m'>('30d');
+// --- Tours Page ---
+interface ToursPageProps {
+  searchTerm?: string;
+}
 
-   // Mock Data for Charts
-   const monthlyData = [
-      { label: 'Jan', leads: 45, bookings: 30 },
-      { label: 'Feb', leads: 52, bookings: 35 },
-      { label: 'Mar', leads: 48, bookings: 32 },
-      { label: 'Apr', leads: 61, bookings: 45 },
-      { label: 'May', leads: 55, bookings: 38 },
-      { label: 'Jun', leads: 67, bookings: 48 },
-      { label: 'Jul', leads: 72, bookings: 55 },
-      { label: 'Aug', leads: 69, bookings: 51 },
-      { label: 'Sep', leads: 63, bookings: 46 },
-      { label: 'Oct', leads: 58, bookings: 40 },
-      { label: 'Nov', leads: 50, bookings: 35 },
-      { label: 'Dec', leads: 47, bookings: 31 },
-   ];
+export const ToursPage: React.FC<ToursPageProps> = ({ searchTerm = '' }) => {
+  const { t } = useI18n();
+  const [tours, setTours] = useState(TOURS);
+  const [selectedTour, setSelectedTour] = useState<typeof TOURS[0] | null>(null);
 
-   const maxVal = Math.max(...monthlyData.map(d => d.leads));
+  const filteredTours = tours.filter(tour => 
+    tour.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    tour.location.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
-   const sourceData = [
-      { name: 'Website', value: 45, color: 'bg-indigo-500', count: 482 },
-      { name: 'Partners', value: 25, color: 'bg-blue-400', count: 268 },
-      { name: 'Social', value: 20, color: 'bg-pink-400', count: 214 },
-      { name: 'Walk-in', value: 10, color: 'bg-gray-300', count: 107 },
-   ];
+  const handleUpdateTour = (updatedTour: typeof TOURS[0]) => {
+     setTours(prev => prev.map(t => t.id === updatedTour.id ? updatedTour : t));
+     setSelectedTour(null);
+  };
 
-   const topTours = [
-      { name: 'Sunset City Bike Tour', bookings: 142, revenue: 12070, trend: '+12%' },
-      { name: 'Food & Wine Tasting', bookings: 89, revenue: 10680, trend: '+8%' },
-      { name: 'Historical Walk', bookings: 56, revenue: 2520, trend: '-3%' },
-      { name: 'Private Boat Charter', bookings: 12, revenue: 8400, trend: '+22%' },
-   ];
-
-   return (
-      <div className="p-6 lg:p-8 max-w-7xl mx-auto space-y-8">
-         {/* Header */}
-         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
-               <h2 className="text-3xl font-bold text-gray-900 dark:text-white">{t('page_reports_title')}</h2>
-               <p className="text-gray-500 dark:text-gray-400 mt-1">Performance analytics and business insights.</p>
+  return (
+    <div className="flex h-full">
+      {/* Tour List */}
+      <div className={`${selectedTour ? 'hidden lg:block lg:w-1/3 border-r border-gray-200 dark:border-gray-700' : 'w-full'} overflow-y-auto bg-white dark:bg-gray-800`}>
+         <div className="p-6 sticky top-0 bg-white/95 dark:bg-gray-800/95 backdrop-blur z-10 border-b border-gray-100 dark:border-gray-700">
+            <div className="flex justify-between items-center mb-1">
+               <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{t('page_tours_title')}</h2>
+               <button className="p-2 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-900/30 transition-colors">
+                  <Plus className="w-5 h-5" />
+               </button>
             </div>
-            <div className="flex p-1 bg-gray-100 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
-               {(['7d', '30d', '12m'] as const).map((range) => (
-                  <button
-                     key={range}
-                     onClick={() => setTimeRange(range)}
-                     className={`px-4 py-1.5 text-xs font-medium rounded-md transition-all ${
-                        timeRange === range
-                           ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow-sm'
-                           : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
-                     }`}
-                  >
-                     {range === '7d' ? 'Last 7 days' : range === '30d' ? 'Last 30 days' : 'Last 12 months'}
-                  </button>
-               ))}
-            </div>
+            <p className="text-sm text-gray-500 dark:text-gray-400">{filteredTours.length} Active Tours</p>
          </div>
-
-         {/* KPI Cards */}
-         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
-               <div className="flex justify-between items-start mb-4">
-                  <div className="p-2 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-lg">
-                     <Users className="w-5 h-5" />
-                  </div>
-                  <span className="flex items-center text-xs font-semibold text-green-600 bg-green-50 dark:bg-green-900/20 px-2 py-1 rounded-full">
-                     +12%
-                  </span>
-               </div>
-               <div className="text-2xl font-bold text-gray-900 dark:text-white">1,248</div>
-               <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">Total Leads</div>
-            </div>
-
-            <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
-               <div className="flex justify-between items-start mb-4">
-                  <div className="p-2 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 rounded-lg">
-                     <Calendar className="w-5 h-5" />
-                  </div>
-                  <span className="flex items-center text-xs font-semibold text-green-600 bg-green-50 dark:bg-green-900/20 px-2 py-1 rounded-full">
-                     +5%
-                  </span>
-               </div>
-               <div className="text-2xl font-bold text-gray-900 dark:text-white">384</div>
-               <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">Bookings Confirmed</div>
-            </div>
-
-            <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
-               <div className="flex justify-between items-start mb-4">
-                  <div className="p-2 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 rounded-lg">
-                     <DollarSign className="w-5 h-5" />
-                  </div>
-                  <span className="flex items-center text-xs font-semibold text-green-600 bg-green-50 dark:bg-green-900/20 px-2 py-1 rounded-full">
-                     +8.2%
-                  </span>
-               </div>
-               <div className="text-2xl font-bold text-gray-900 dark:text-white">$42,590</div>
-               <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">Total Revenue</div>
-            </div>
-
-            <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
-               <div className="flex justify-between items-start mb-4">
-                  <div className="p-2 bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 rounded-lg">
-                     <TrendingUp className="w-5 h-5" />
-                  </div>
-                  <span className="flex items-center text-xs font-semibold text-red-600 bg-red-50 dark:bg-red-900/20 px-2 py-1 rounded-full">
-                     -2.1%
-                  </span>
-               </div>
-               <div className="text-2xl font-bold text-gray-900 dark:text-white">30.8%</div>
-               <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">Conversion Rate</div>
-            </div>
-         </div>
-
-         {/* Charts Section */}
-         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Main Bar Chart */}
-            <div className="lg:col-span-2 bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
-               <div className="flex items-center justify-between mb-8">
-                  <h3 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                     <BarChart3 className="w-5 h-5 text-gray-400" /> Bookings Overview
-                  </h3>
-                  <div className="flex items-center gap-2 text-xs text-gray-500">
-                     <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-indigo-500"></div> Leads</span>
-                     <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-indigo-200 dark:bg-indigo-800"></div> Bookings</span>
-                  </div>
-               </div>
-               
-               {/* Custom CSS Chart */}
-               <div className="relative h-64 flex items-end justify-between gap-2 sm:gap-4">
-                  {monthlyData.map((data, idx) => {
-                     const heightPct = (data.leads / maxVal) * 100;
-                     const bookingHeightPct = (data.bookings / maxVal) * 100;
-                     return (
-                        <div key={idx} className="flex-1 flex flex-col justify-end items-center group h-full relative">
-                           {/* Tooltip */}
-                           <div className="absolute -top-12 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-[10px] py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10 pointer-events-none">
-                              {data.label}: {data.bookings} / {data.leads}
+         <div className="divide-y divide-gray-100 dark:divide-gray-700">
+            {filteredTours.map(tour => (
+               <div 
+                  key={tour.id}
+                  onClick={() => setSelectedTour(tour)}
+                  className={`p-6 hover:bg-gray-50 dark:hover:bg-gray-700/30 cursor-pointer transition-colors group ${selectedTour?.id === tour.id ? 'bg-indigo-50 dark:bg-indigo-900/10' : ''}`}
+               >
+                  <div className="flex gap-4">
+                     <div className="w-20 h-20 rounded-lg bg-gray-200 dark:bg-gray-700 overflow-hidden shrink-0 relative">
+                        <img src={tour.image} alt={tour.name} className="w-full h-full object-cover" />
+                        {!tour.active && (
+                           <div className="absolute inset-0 bg-gray-900/50 flex items-center justify-center">
+                              <span className="text-[10px] font-bold text-white uppercase tracking-wider">Draft</span>
                            </div>
-                           
-                           {/* Bars container */}
-                           <div className="w-full max-w-[24px] flex items-end relative h-full">
-                              {/* Leads Bar (Back) */}
-                              <div 
-                                 className="absolute bottom-0 w-full bg-indigo-100 dark:bg-gray-700 rounded-t-sm transition-all duration-500 group-hover:bg-indigo-200 dark:group-hover:bg-gray-600"
-                                 style={{ height: `${heightPct}%` }}
-                              ></div>
-                              {/* Bookings Bar (Front) */}
-                              <div 
-                                 className="absolute bottom-0 w-full bg-indigo-500 dark:bg-indigo-600 rounded-t-sm transition-all duration-500 group-hover:bg-indigo-600 dark:group-hover:bg-indigo-500 shadow-sm"
-                                 style={{ height: `${bookingHeightPct}%` }}
-                              ></div>
-                           </div>
-                           
-                           <span className="text-[10px] text-gray-400 mt-3 font-medium">{data.label}</span>
+                        )}
+                     </div>
+                     <div className="flex-1 min-w-0">
+                        <div className="flex justify-between items-start mb-1">
+                           <h3 className="font-bold text-gray-900 dark:text-white truncate pr-2">{tour.name}</h3>
+                           <span className="text-sm font-semibold text-indigo-600 dark:text-indigo-400">${tour.price}</span>
                         </div>
-                     );
-                  })}
-               </div>
-            </div>
-
-            {/* Lead Sources */}
-            <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col">
-               <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-2">
-                  <PieChart className="w-5 h-5 text-gray-400" /> Lead Sources
-               </h3>
-               
-               <div className="flex-1 flex flex-col justify-center items-center mb-6">
-                  {/* CSS Conic Gradient Donut */}
-                  <div className="relative w-48 h-48 rounded-full flex items-center justify-center"
-                     style={{
-                        background: `conic-gradient(
-                           #6366f1 0% 45%, 
-                           #60a5fa 45% 70%, 
-                           #f472b6 70% 90%, 
-                           #d1d5db 90% 100%
-                        )`
-                     }}
-                  >
-                     <div className="w-36 h-36 bg-white dark:bg-gray-800 rounded-full flex flex-col items-center justify-center z-10">
-                        <span className="text-3xl font-bold text-gray-900 dark:text-white">1,071</span>
-                        <span className="text-xs text-gray-500 uppercase tracking-wide">Total Leads</span>
+                        <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400 mb-2">
+                           <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {tour.duration}</span>
+                           <span className="flex items-center gap-1"><Users className="w-3 h-3" /> Max {tour.maxPeople}</span>
+                        </div>
+                        <div className="flex flex-wrap gap-1">
+                           {tour.tags.slice(0, 3).map(tag => (
+                              <span key={tag} className="px-1.5 py-0.5 rounded text-[10px] bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">
+                                 {tag}
+                              </span>
+                           ))}
+                        </div>
+                     </div>
+                     <div className="self-center opacity-0 group-hover:opacity-100 transition-opacity">
+                        <ChevronRight className="w-5 h-5 text-gray-400" />
                      </div>
                   </div>
                </div>
+            ))}
+         </div>
+      </div>
 
-               <div className="space-y-3">
-                  {sourceData.map((source) => (
-                     <div key={source.name} className="flex items-center justify-between text-sm">
-                        <div className="flex items-center gap-2">
-                           <div className={`w-3 h-3 rounded-full ${source.color}`}></div>
-                           <span className="text-gray-700 dark:text-gray-300">{source.name}</span>
-                        </div>
-                        <div className="flex items-center gap-3">
-                           <span className="font-medium text-gray-900 dark:text-white">{source.count}</span>
-                           <span className="text-xs text-gray-400 w-8 text-right">{source.value}%</span>
+      {/* Edit Panel */}
+      {selectedTour ? (
+         <div className="flex-1 h-full overflow-hidden flex flex-col bg-white dark:bg-gray-800">
+            <TourEditForm tour={selectedTour} onSave={handleUpdateTour} />
+         </div>
+      ) : (
+         <div className="hidden lg:flex flex-1 items-center justify-center bg-gray-50 dark:bg-gray-900 text-center p-8">
+            <div>
+               <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4 text-gray-400">
+                  <MapIcon className="w-8 h-8" />
+               </div>
+               <h3 className="text-lg font-bold text-gray-900 dark:text-white">Select a tour</h3>
+               <p className="text-gray-500 dark:text-gray-400 mt-1">View analytics and edit tour details.</p>
+            </div>
+         </div>
+      )}
+    </div>
+  );
+};
+
+// --- Reports Page ---
+export const ReportsPage = () => {
+   const { t } = useI18n();
+   return (
+      <div className="p-6 lg:p-8 h-full overflow-y-auto">
+         <div className="flex items-center justify-between mb-8">
+            <h2 className="text-3xl font-bold text-gray-900 dark:text-white">{t('page_reports_title')}</h2>
+            <div className="flex gap-2">
+               <select className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-sm rounded-lg px-3 py-2 outline-none">
+                  <option>Last 7 Days</option>
+                  <option>Last 30 Days</option>
+                  <option>This Year</option>
+               </select>
+               <button className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors">
+                  Download PDF
+               </button>
+            </div>
+         </div>
+
+         {/* Stats Grid */}
+         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            {[
+               { label: 'Total Revenue', value: '$24,500', change: '+12%', up: true, icon: DollarSign },
+               { label: 'Bookings', value: '142', change: '+5%', up: true, icon: Calendar },
+               { label: 'Avg. Order Value', value: '$172', change: '-2%', up: false, icon: BarChart3 },
+               { label: 'Conversion Rate', value: '3.2%', change: '+0.4%', up: true, icon: TrendingUp },
+            ].map((stat, i) => (
+               <div key={i} className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
+                  <div className="flex justify-between items-start mb-4">
+                     <div className="p-2 bg-gray-50 dark:bg-gray-700/50 rounded-lg text-gray-500 dark:text-gray-400">
+                        <stat.icon className="w-5 h-5" />
+                     </div>
+                     <span className={`text-xs font-semibold px-2 py-1 rounded-full ${stat.up ? 'bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-400' : 'bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400'}`}>
+                        {stat.change}
+                     </span>
+                  </div>
+                  <h3 className="text-2xl font-bold text-gray-900 dark:text-white">{stat.value}</h3>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{stat.label}</p>
+               </div>
+            ))}
+         </div>
+
+         {/* Chart Placeholder */}
+         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2 bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
+               <div className="flex items-center justify-between mb-6">
+                  <h3 className="font-bold text-gray-900 dark:text-white">Revenue Overview</h3>
+                  <div className="flex gap-4 text-sm">
+                     <div className="flex items-center gap-2">
+                        <span className="w-3 h-3 rounded-full bg-indigo-500"></span>
+                        <span className="text-gray-500">Current Period</span>
+                     </div>
+                     <div className="flex items-center gap-2">
+                        <span className="w-3 h-3 rounded-full bg-gray-200 dark:bg-gray-700"></span>
+                        <span className="text-gray-500">Previous Period</span>
+                     </div>
+                  </div>
+               </div>
+               <div className="h-64 flex items-end justify-between gap-2 px-2">
+                  {[40, 65, 45, 80, 55, 70, 40, 60, 50, 75, 65, 85].map((h, i) => (
+                     <div key={i} className="w-full bg-gray-100 dark:bg-gray-700/50 rounded-t-sm relative group">
+                        <div 
+                           className="absolute bottom-0 left-0 right-0 bg-indigo-500/80 dark:bg-indigo-500 rounded-t-sm transition-all duration-500 group-hover:bg-indigo-600"
+                           style={{ height: `${h}%` }}
+                        ></div>
+                        <div className="opacity-0 group-hover:opacity-100 absolute -top-10 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-xs py-1 px-2 rounded pointer-events-none whitespace-nowrap z-10">
+                           ${h * 100}
                         </div>
                      </div>
                   ))}
                </div>
+               <div className="flex justify-between mt-4 text-xs text-gray-400 font-medium uppercase">
+                  <span>Jan</span><span>Feb</span><span>Mar</span><span>Apr</span><span>May</span><span>Jun</span>
+                  <span>Jul</span><span>Aug</span><span>Sep</span><span>Oct</span><span>Nov</span><span>Dec</span>
+               </div>
             </div>
-         </div>
 
-         {/* Bottom Table: Top Tours */}
-         <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
-            <div className="p-6 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center">
-               <h3 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                  <Star className="w-5 h-5 text-amber-400" /> Top Performing Tours
-               </h3>
-               <button className="text-sm text-indigo-600 hover:text-indigo-700 font-medium">View Full Report</button>
-            </div>
-            <div className="overflow-x-auto">
-               <table className="w-full text-left">
-                  <thead className="bg-gray-50/50 dark:bg-gray-900/50 text-xs uppercase text-gray-500 dark:text-gray-400 font-medium">
-                     <tr>
-                        <th className="px-6 py-4">Tour Name</th>
-                        <th className="px-6 py-4">Total Bookings</th>
-                        <th className="px-6 py-4">Revenue</th>
-                        <th className="px-6 py-4">Growth</th>
-                     </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-                     {topTours.map((tour, idx) => (
-                        <tr key={idx} className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
-                           <td className="px-6 py-4 font-medium text-gray-900 dark:text-white">{tour.name}</td>
-                           <td className="px-6 py-4 text-gray-600 dark:text-gray-300">{tour.bookings}</td>
-                           <td className="px-6 py-4 font-medium text-gray-900 dark:text-white">${tour.revenue.toLocaleString()}</td>
-                           <td className="px-6 py-4">
-                              <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
-                                 tour.trend.startsWith('+') 
-                                    ? 'bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-400'
-                                    : 'bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400'
-                              }`}>
-                                 {tour.trend}
-                              </span>
-                           </td>
-                        </tr>
-                     ))}
-                  </tbody>
-               </table>
+            <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
+               <h3 className="font-bold text-gray-900 dark:text-white mb-6">Top Performing Tours</h3>
+               <div className="space-y-6">
+                  {[
+                     { name: 'Sunset City Bike Tour', val: 85, color: 'bg-blue-500' },
+                     { name: 'Historical Walk', val: 62, color: 'bg-emerald-500' },
+                     { name: 'Food & Wine Tasting', val: 45, color: 'bg-amber-500' },
+                     { name: 'Mountain Hike', val: 30, color: 'bg-purple-500' },
+                  ].map((item, i) => (
+                     <div key={i}>
+                        <div className="flex justify-between text-sm mb-2">
+                           <span className="font-medium text-gray-700 dark:text-gray-300">{item.name}</span>
+                           <span className="font-bold text-gray-900 dark:text-white">{item.val}%</span>
+                        </div>
+                        <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-2">
+                           <div className={`h-2 rounded-full ${item.color}`} style={{ width: `${item.val}%` }}></div>
+                        </div>
+                     </div>
+                  ))}
+               </div>
+               <button className="w-full mt-8 py-2.5 text-sm font-medium text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-lg transition-colors border border-indigo-100 dark:border-indigo-900/30">
+                  View Full Report
+               </button>
             </div>
          </div>
       </div>

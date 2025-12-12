@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { X, User, Mail, Phone, Tag } from 'lucide-react';
+import { X, User, Mail, Phone, Tag, FileText } from 'lucide-react';
+import { LeadStatus } from '../types';
 
 interface AddLeadModalProps {
   isOpen: boolean;
@@ -11,7 +12,9 @@ const AddLeadModal: React.FC<AddLeadModalProps> = ({ isOpen, onClose }) => {
     name: '',
     email: '',
     phone: '',
-    source: 'Website'
+    channel: 'Website',
+    status: 'New' as LeadStatus,
+    notes: ''
   });
 
   if (!isOpen) return null;
@@ -19,12 +22,19 @@ const AddLeadModal: React.FC<AddLeadModalProps> = ({ isOpen, onClose }) => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     console.log('New Lead Submitted:', formData);
-    setFormData({ name: '', email: '', phone: '', source: 'Website' });
+    setFormData({ 
+        name: '', 
+        email: '', 
+        phone: '', 
+        channel: 'Website',
+        status: 'New',
+        notes: ''
+    });
     onClose();
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+    <div className="fixed inset-0 z-[70] overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
       {/* Background Overlay with Blur */}
       <div 
         className="fixed inset-0 bg-gray-900/50 backdrop-blur-sm transition-opacity" 
@@ -51,6 +61,7 @@ const AddLeadModal: React.FC<AddLeadModalProps> = ({ isOpen, onClose }) => {
           </div>
           
           <form id="add-lead-form" onSubmit={handleSubmit} className="px-6 py-6 space-y-5">
+            {/* Full Name */}
             <div>
               <label htmlFor="name" className="block text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide mb-1.5">
                 Full Name
@@ -71,9 +82,10 @@ const AddLeadModal: React.FC<AddLeadModalProps> = ({ isOpen, onClose }) => {
               </div>
             </div>
 
+            {/* Email Address */}
             <div>
               <label htmlFor="email" className="block text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide mb-1.5">
-                Email Address
+                Email Address <span className="text-gray-400 font-normal normal-case">(Optional)</span>
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -82,7 +94,6 @@ const AddLeadModal: React.FC<AddLeadModalProps> = ({ isOpen, onClose }) => {
                 <input
                   type="email"
                   id="email"
-                  required
                   className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white bg-white dark:bg-gray-700/50 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-shadow"
                   placeholder="sarah@example.com"
                   value={formData.email}
@@ -91,10 +102,11 @@ const AddLeadModal: React.FC<AddLeadModalProps> = ({ isOpen, onClose }) => {
               </div>
             </div>
 
+            {/* Phone & Channel */}
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label htmlFor="phone" className="block text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide mb-1.5">
-                  Phone
+                  Phone <span className="text-gray-400 font-normal normal-case">(Optional)</span>
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -112,25 +124,72 @@ const AddLeadModal: React.FC<AddLeadModalProps> = ({ isOpen, onClose }) => {
               </div>
 
               <div>
-                <label htmlFor="source" className="block text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide mb-1.5">
-                  Source
+                <label htmlFor="channel" className="block text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide mb-1.5">
+                  Channel
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                     <Tag className="h-4 w-4 text-gray-400" />
                   </div>
                   <select
-                    id="source"
+                    id="channel"
                     className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white bg-white dark:bg-gray-700/50 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-shadow appearance-none"
-                    value={formData.source}
-                    onChange={(e) => setFormData({...formData, source: e.target.value})}
+                    value={formData.channel}
+                    onChange={(e) => setFormData({...formData, channel: e.target.value})}
                   >
                     <option>Website</option>
                     <option>Referral</option>
                     <option>Social Media</option>
                     <option>Walk-in</option>
+                    <option>WhatsApp</option>
+                    <option>Email</option>
                   </select>
                 </div>
+              </div>
+            </div>
+
+            {/* Status */}
+            <div>
+                <label htmlFor="status" className="block text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide mb-1.5">
+                  Status
+                </label>
+                <div className="relative">
+                    <select
+                        id="status"
+                        className="block w-full px-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white bg-white dark:bg-gray-700/50 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-shadow appearance-none"
+                        value={formData.status}
+                        onChange={(e) => setFormData({...formData, status: e.target.value as LeadStatus})}
+                    >
+                        <option value="New">New</option>
+                        <option value="Contacted">Contacted</option>
+                        <option value="Qualified">Qualified</option>
+                        <option value="Booked">Booked</option>
+                        <option value="Lost">Lost</option>
+                    </select>
+                    {/* Custom Chevron Arrow */}
+                    <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
+                        <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+                    </div>
+                </div>
+            </div>
+
+            {/* Notes */}
+            <div>
+              <label htmlFor="notes" className="block text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide mb-1.5">
+                Notes <span className="text-gray-400 font-normal normal-case">(Optional)</span>
+              </label>
+              <div className="relative">
+                <div className="absolute left-3 top-3 pointer-events-none">
+                  <FileText className="h-4 w-4 text-gray-400" />
+                </div>
+                <textarea
+                  id="notes"
+                  rows={3}
+                  className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white bg-white dark:bg-gray-700/50 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-shadow resize-none"
+                  placeholder="Add any additional notes..."
+                  value={formData.notes}
+                  onChange={(e) => setFormData({...formData, notes: e.target.value})}
+                />
               </div>
             </div>
           </form>

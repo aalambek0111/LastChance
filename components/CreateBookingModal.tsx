@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import { X, Calendar, MapPin, Users, FileText, Flag } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { X, Calendar, MapPin, Users, FileText, Flag, User } from 'lucide-react';
 import { Booking } from '../types';
+import { TOURS, RECENT_LEADS } from '../constants';
 
 interface CreateBookingModalProps {
   isOpen: boolean;
@@ -10,6 +11,98 @@ interface CreateBookingModalProps {
   bookingToEdit?: Booking | null;
   onBookingUpdated?: (booking: Booking) => void;
 }
+
+// Helper Component for Searchable Dropdowns
+interface SearchableSelectProps {
+  label: string;
+  icon: React.ReactNode;
+  options: { id: string | number; label: string; subLabel?: string }[];
+  value: string;
+  onChange: (value: string) => void;
+  placeholder: string;
+}
+
+const SearchableSelect: React.FC<SearchableSelectProps> = ({ 
+  label, 
+  icon, 
+  options, 
+  value, 
+  onChange, 
+  placeholder 
+}) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState(value);
+  const wrapperRef = useRef<HTMLDivElement>(null);
+
+  // Sync internal search term with external value
+  useEffect(() => {
+    setSearchTerm(value);
+  }, [value]);
+
+  // Handle click outside to close and reset search term if no selection made
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+        setSearchTerm(value); // Revert to last valid selected value
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [wrapperRef, value]);
+
+  const filteredOptions = options.filter(opt => 
+    opt.label.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  return (
+    <div ref={wrapperRef} className="relative">
+      <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase mb-1.5">
+        {label}
+      </label>
+      <div className="relative">
+        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+           {icon}
+        </div>
+        <input 
+          type="text" 
+          className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white bg-white dark:bg-gray-700/50 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+          placeholder={placeholder}
+          value={searchTerm}
+          onChange={(e) => {
+            setSearchTerm(e.target.value);
+            setIsOpen(true);
+          }}
+          onFocus={() => setIsOpen(true)}
+        />
+        {isOpen && (
+          <div className="absolute z-20 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl max-h-60 overflow-y-auto">
+            {filteredOptions.length > 0 ? (
+              filteredOptions.map((opt) => (
+                <button
+                  key={opt.id}
+                  type="button"
+                  className="w-full text-left px-4 py-2.5 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors flex flex-col border-b border-gray-50 dark:border-gray-700 last:border-0"
+                  onClick={() => {
+                    onChange(opt.label);
+                    setIsOpen(false);
+                  }}
+                >
+                  <span className="font-medium">{opt.label}</span>
+                  {opt.subLabel && <span className="text-xs text-gray-500 dark:text-gray-400">{opt.subLabel}</span>}
+                </button>
+              ))
+            ) : (
+              <div className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400 text-center">
+                No matching results
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
 
 const CreateBookingModal: React.FC<CreateBookingModalProps> = ({ 
   isOpen, 
@@ -21,17 +114,31 @@ const CreateBookingModal: React.FC<CreateBookingModalProps> = ({
 }) => {
   const [formData, setFormData] = useState({
     tourName: '',
+    clientName: '',
     date: '',
     pax: 2,
     pickupLocation: '',
     notes: ''
   });
 
+  // Prepare data for search fields
+  const clientOptions = [
+    ...RECENT_LEADS.map(lead => ({ id: lead.id, label: lead.name, subLabel: `${lead.channel} • ${lead.status}` })),
+    { id: 'walk-in', label: 'Walk-in Client', subLabel: 'Direct Booking' }
+  ];
+
+  const tourOptions = TOURS.map(tour => ({ 
+    id: tour.id, 
+    label: tour.name, 
+    subLabel: `${tour.duration} • $${tour.price}` 
+  }));
+
   // Populate form when editing or reset when creating
   useEffect(() => {
     if (bookingToEdit) {
       setFormData({
         tourName: bookingToEdit.tourName,
+        clientName: bookingToEdit.clientName,
         date: bookingToEdit.date,
         pax: bookingToEdit.people,
         pickupLocation: bookingToEdit.pickupLocation || '',
@@ -40,13 +147,14 @@ const CreateBookingModal: React.FC<CreateBookingModalProps> = ({
     } else {
       setFormData({
         tourName: '',
+        clientName: leadName && leadName !== 'New Client' ? leadName : '',
         date: new Date().toISOString().split('T')[0],
         pax: 2,
         pickupLocation: '',
         notes: ''
       });
     }
-  }, [bookingToEdit, isOpen]);
+  }, [bookingToEdit, isOpen, leadName]);
 
   if (!isOpen) return null;
 
@@ -58,6 +166,7 @@ const CreateBookingModal: React.FC<CreateBookingModalProps> = ({
       const updatedBooking: Booking = {
         ...bookingToEdit,
         tourName: formData.tourName,
+        clientName: formData.clientName || 'Unknown Client',
         date: formData.date,
         people: formData.pax,
         pickupLocation: formData.pickupLocation,
@@ -70,7 +179,7 @@ const CreateBookingModal: React.FC<CreateBookingModalProps> = ({
         id: `B${Date.now()}`,
         tourName: formData.tourName,
         date: formData.date,
-        clientName: leadName || 'Unknown Client',
+        clientName: formData.clientName || 'Unknown Client',
         people: formData.pax,
         status: 'Pending',
         pickupLocation: formData.pickupLocation,
@@ -99,11 +208,9 @@ const CreateBookingModal: React.FC<CreateBookingModalProps> = ({
               <h3 className="text-lg font-bold text-gray-900 dark:text-white">
                 {bookingToEdit ? 'Edit Booking' : 'Create New Booking'}
               </h3>
-              {(leadName || bookingToEdit) && (
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  For {bookingToEdit ? bookingToEdit.clientName : leadName}
-                </p>
-              )}
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                Enter details below
+              </p>
             </div>
             <button 
               onClick={onClose} 
@@ -114,22 +221,26 @@ const CreateBookingModal: React.FC<CreateBookingModalProps> = ({
           </div>
 
           <form onSubmit={handleSubmit} className="p-6 space-y-4">
-            <div>
-              <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase mb-1.5">Tour Name</label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                   <Flag className="w-4 h-4 text-gray-400" />
-                </div>
-                <input 
-                  type="text" 
-                  required
-                  className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white bg-white dark:bg-gray-700/50 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                  placeholder="e.g. Sunset City Tour"
-                  value={formData.tourName}
-                  onChange={e => setFormData({...formData, tourName: e.target.value})}
-                />
-              </div>
-            </div>
+            
+            {/* Searchable Client Selection */}
+            <SearchableSelect 
+              label="Client"
+              icon={<User className="w-4 h-4 text-gray-400" />}
+              options={clientOptions}
+              value={formData.clientName}
+              onChange={(val) => setFormData({ ...formData, clientName: val })}
+              placeholder="Select a lead..."
+            />
+
+            {/* Searchable Tour Selection */}
+            <SearchableSelect 
+              label="Tour Name"
+              icon={<Flag className="w-4 h-4 text-gray-400" />}
+              options={tourOptions}
+              value={formData.tourName}
+              onChange={(val) => setFormData({ ...formData, tourName: val })}
+              placeholder="Select a tour..."
+            />
 
             <div className="grid grid-cols-2 gap-4">
               <div>
