@@ -47,7 +47,8 @@ import {
   ChevronRight,
   Building,
   Settings,
-  Lock
+  Lock,
+  Filter
 } from 'lucide-react';
 import { RECENT_LEADS, UPCOMING_BOOKINGS, TOURS } from '../constants';
 import CreateBookingModal from './CreateBookingModal';
@@ -850,18 +851,27 @@ export const BookingsPage: React.FC<BookingsPageProps> = ({
 }) => {
   const { t } = useI18n();
   const [editingBooking, setEditingBooking] = useState<Booking | null>(null);
+  const [statusFilter, setStatusFilter] = useState('All');
+  const [tourFilter, setTourFilter] = useState('All');
 
-  const filteredBookings = bookings.filter(b => 
-    b.clientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    b.tourName.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Get unique tour names for the filter dropdown
+  const uniqueTours = Array.from(new Set(bookings.map(b => b.tourName))).sort();
+
+  const filteredBookings = bookings.filter(b => {
+    const matchesSearch = b.clientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          b.tourName.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus = statusFilter === 'All' || b.status === statusFilter;
+    const matchesTour = tourFilter === 'All' || b.tourName === tourFilter;
+    
+    return matchesSearch && matchesStatus && matchesTour;
+  });
 
   return (
     <div className="p-6 lg:p-8 h-full flex flex-col">
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
         <h2 className="text-3xl font-bold text-gray-900 dark:text-white">{t('page_bookings_title')}</h2>
         <div className="flex gap-3">
-          <button className="px-4 py-2 border border-gray-200 dark:border-gray-700 rounded-lg text-sm font-medium bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200">
+          <button className="px-4 py-2 border border-gray-200 dark:border-gray-700 rounded-lg text-sm font-medium bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
              Export
           </button>
           <button 
@@ -878,6 +888,46 @@ export const BookingsPage: React.FC<BookingsPageProps> = ({
              Add Booking
           </button>
         </div>
+      </div>
+
+      {/* Filter Bar */}
+      <div className="flex flex-wrap items-center gap-3 mb-6 bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
+        <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400 mr-2">
+          <Filter className="w-4 h-4" />
+          <span className="text-sm font-medium">Filter by:</span>
+        </div>
+        
+        <select 
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+          className="bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-200 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2.5 outline-none"
+        >
+          <option value="All">All Status</option>
+          <option value="Confirmed">Confirmed</option>
+          <option value="Pending">Pending</option>
+          <option value="Cancelled">Cancelled</option>
+          <option value="Completed">Completed</option>
+        </select>
+
+        <select 
+          value={tourFilter}
+          onChange={(e) => setTourFilter(e.target.value)}
+          className="bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-200 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2.5 outline-none max-w-[200px]"
+        >
+          <option value="All">All Tours</option>
+          {uniqueTours.map(tour => (
+            <option key={tour} value={tour}>{tour}</option>
+          ))}
+        </select>
+        
+        {(statusFilter !== 'All' || tourFilter !== 'All') && (
+           <button 
+             onClick={() => { setStatusFilter('All'); setTourFilter('All'); }}
+             className="text-sm text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 ml-auto font-medium"
+           >
+             Clear Filters
+           </button>
+        )}
       </div>
 
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden flex-1 overflow-y-auto">
