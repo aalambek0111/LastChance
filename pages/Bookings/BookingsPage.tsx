@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Users, Filter, Pencil } from 'lucide-react';
+import { Users, Filter, Pencil, Download } from 'lucide-react';
 import { Booking } from '../../types';
 import { useI18n } from '../../context/ThemeContext';
 import CreateBookingModal from '../../components/modals/CreateBookingModal';
@@ -32,12 +32,49 @@ const BookingsPage: React.FC<BookingsPageProps> = ({
     return matchesSearch && matchesStatus && matchesTour;
   });
 
+  const handleExport = () => {
+    // 1. Define CSV Headers
+    const headers = ['ID', 'Tour Name', 'Client', 'Date', 'Guests', 'Status', 'Notes', 'Pickup Location'];
+    
+    // 2. Convert Data to CSV Rows
+    const csvContent = [
+      headers.join(','),
+      ...filteredBookings.map(booking => [
+        booking.id,
+        `"${booking.tourName.replace(/"/g, '""')}"`, // Escape quotes
+        `"${booking.clientName.replace(/"/g, '""')}"`,
+        booking.date,
+        booking.people,
+        booking.status,
+        `"${(booking.notes || '').replace(/"/g, '""')}"`,
+        `"${(booking.pickupLocation || '').replace(/"/g, '""')}"`
+      ].join(','))
+    ].join('\n');
+
+    // 3. Create Blob and Download
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    if (link.download !== undefined) {
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      link.setAttribute('download', `bookings_export_${new Date().toISOString().slice(0, 10)}.csv`);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+  };
+
   return (
     <div className="p-6 lg:p-8 h-full flex flex-col">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
         <h2 className="text-3xl font-bold text-gray-900 dark:text-white">{t('page_bookings_title')}</h2>
         <div className="flex gap-3">
-          <button className="px-4 py-2 border border-gray-200 dark:border-gray-700 rounded-lg text-sm font-medium bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+          <button 
+             onClick={handleExport}
+             className="px-4 py-2 border border-gray-200 dark:border-gray-700 rounded-lg text-sm font-medium bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors flex items-center gap-2"
+          >
+             <Download className="w-4 h-4" />
              Export
           </button>
           <button 

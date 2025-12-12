@@ -74,10 +74,34 @@ const SettingsPage: React.FC = () => {
                               onChange={(e) => setSettings({...settings, timezone: e.target.value})}
                               className="w-full pl-9 pr-3 py-2.5 bg-gray-50 dark:bg-gray-900/50 border border-gray-300 dark:border-gray-700 rounded-lg text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all outline-none appearance-none"
                            >
-                              <option>UTC-8 (PST)</option>
-                              <option>UTC-5 (EST)</option>
-                              <option>UTC+0 (GMT)</option>
-                              <option>UTC+1 (CET)</option>
+                              <option>UTC-12:00 (IDLW)</option>
+                              <option>UTC-11:00 (SST)</option>
+                              <option>UTC-10:00 (HST)</option>
+                              <option>UTC-09:00 (AKST)</option>
+                              <option>UTC-08:00 (PST)</option>
+                              <option>UTC-07:00 (MST)</option>
+                              <option>UTC-06:00 (CST)</option>
+                              <option>UTC-05:00 (EST)</option>
+                              <option>UTC-04:00 (AST)</option>
+                              <option>UTC-03:00 (BRT)</option>
+                              <option>UTC-02:00 (FNT)</option>
+                              <option>UTC-01:00 (CVT)</option>
+                              <option>UTC+00:00 (GMT)</option>
+                              <option>UTC+01:00 (CET)</option>
+                              <option>UTC+02:00 (EET)</option>
+                              <option>UTC+03:00 (MSK)</option>
+                              <option>UTC+03:30 (IRST)</option>
+                              <option>UTC+04:00 (GST)</option>
+                              <option>UTC+05:00 (PKT)</option>
+                              <option>UTC+05:30 (IST)</option>
+                              <option>UTC+06:00 (BST)</option>
+                              <option>UTC+07:00 (ICT)</option>
+                              <option>UTC+08:00 (CST)</option>
+                              <option>UTC+09:00 (JST)</option>
+                              <option>UTC+09:30 (ACST)</option>
+                              <option>UTC+10:00 (AEST)</option>
+                              <option>UTC+11:00 (SBT)</option>
+                              <option>UTC+12:00 (NZST)</option>
                            </select>
                         </div>
                      </div>
@@ -93,6 +117,15 @@ const SettingsPage: React.FC = () => {
                               <option>USD ($)</option>
                               <option>EUR (€)</option>
                               <option>GBP (£)</option>
+                              <option>JPY (¥)</option>
+                              <option>AUD (A$)</option>
+                              <option>CAD (C$)</option>
+                              <option>CHF (Fr)</option>
+                              <option>CNY (¥)</option>
+                              <option>INR (₹)</option>
+                              <option>RUB (₽)</option>
+                              <option>BRL (R$)</option>
+                              <option>ZAR (R)</option>
                            </select>
                         </div>
                      </div>

@@ -24,6 +24,7 @@ interface TourEditFormProps {
 const TourEditForm: React.FC<TourEditFormProps> = ({ tour, onSave, onDelete, onClose }) => {
    const [formData, setFormData] = useState(tour);
    const [newTag, setNewTag] = useState('');
+   const isNew = tour.id === 0;
 
    useEffect(() => {
       setFormData(tour);
@@ -44,7 +45,9 @@ const TourEditForm: React.FC<TourEditFormProps> = ({ tour, onSave, onDelete, onC
       <div className="flex flex-col h-full bg-white dark:bg-gray-800 relative">
          {/* Fixed Header */}
          <div className="flex-none px-6 py-5 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between bg-white dark:bg-gray-800 z-10">
-            <h3 className="text-lg font-bold text-gray-900 dark:text-white">Edit Tour Details</h3>
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+               {isNew ? 'Create New Tour' : 'Edit Tour Details'}
+            </h3>
             <button 
                onClick={onClose}
                className="p-2 -mr-2 text-gray-400 hover:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors focus:outline-none"
@@ -65,7 +68,7 @@ const TourEditForm: React.FC<TourEditFormProps> = ({ tour, onSave, onDelete, onC
                            value={formData.name}
                            onChange={e => setFormData({...formData, name: e.target.value})}
                            className="text-2xl font-bold text-gray-900 dark:text-white bg-transparent border-none p-0 focus:ring-0 w-full placeholder-gray-300 leading-tight"
-                           placeholder="Tour Name"
+                           placeholder="Enter tour name"
                         />
                      </div>
                      <div className="flex flex-col items-end pt-1">
@@ -90,21 +93,23 @@ const TourEditForm: React.FC<TourEditFormProps> = ({ tour, onSave, onDelete, onC
                   </div>
                </div>
 
-               {/* Stats Cards */}
-               <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-gray-50 dark:bg-gray-700/30 p-5 rounded-xl border border-gray-100 dark:border-gray-700">
-                     <div className="flex items-center gap-2 text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">
-                        <Activity className="w-3.5 h-3.5" /> Lifetime Bookings
+               {/* Stats Cards - Only show for existing tours */}
+               {!isNew && (
+                  <div className="grid grid-cols-2 gap-4">
+                     <div className="bg-gray-50 dark:bg-gray-700/30 p-5 rounded-xl border border-gray-100 dark:border-gray-700">
+                        <div className="flex items-center gap-2 text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">
+                           <Activity className="w-3.5 h-3.5" /> Lifetime Bookings
+                        </div>
+                        <div className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight">{formData.bookingsCount}</div>
                      </div>
-                     <div className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight">{formData.bookingsCount}</div>
-                  </div>
-                  <div className="bg-gray-50 dark:bg-gray-700/30 p-5 rounded-xl border border-gray-100 dark:border-gray-700">
-                     <div className="flex items-center gap-2 text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">
-                        <DollarSign className="w-3.5 h-3.5" /> Total Revenue
+                     <div className="bg-gray-50 dark:bg-gray-700/30 p-5 rounded-xl border border-gray-100 dark:border-gray-700">
+                        <div className="flex items-center gap-2 text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">
+                           <DollarSign className="w-3.5 h-3.5" /> Total Revenue
+                        </div>
+                        <div className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight">${formData.revenue?.toLocaleString()}</div>
                      </div>
-                     <div className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight">${formData.revenue?.toLocaleString()}</div>
                   </div>
-               </div>
+               )}
 
                {/* Tour Details Inputs */}
                <div className="space-y-5">
@@ -128,6 +133,7 @@ const TourEditForm: React.FC<TourEditFormProps> = ({ tour, onSave, onDelete, onC
                            value={formData.duration}
                            onChange={e => setFormData({...formData, duration: e.target.value})}
                            className="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 rounded-lg text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all"
+                           placeholder="e.g. 3h"
                         />
                      </div>
                      <div className="space-y-1.5">
@@ -223,15 +229,17 @@ const TourEditForm: React.FC<TourEditFormProps> = ({ tour, onSave, onDelete, onC
                onClick={() => onSave(formData)} 
                className="flex-1 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-semibold shadow-md transition-all active:scale-95 flex items-center justify-center gap-2"
             >
-               <Save className="w-4 h-4" />
-               Save Changes
+               {isNew ? <Plus className="w-4 h-4" /> : <Save className="w-4 h-4" />}
+               {isNew ? 'Create Tour' : 'Save Changes'}
             </button>
-            <button 
-               onClick={() => onDelete && onDelete(tour.id)}
-               className="px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl font-medium transition-colors flex items-center justify-center"
-            >
-               <Trash2 className="w-5 h-5" />
-            </button>
+            {!isNew && (
+               <button 
+                  onClick={() => onDelete && onDelete(tour.id)}
+                  className="px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl font-medium transition-colors flex items-center justify-center"
+               >
+                  <Trash2 className="w-5 h-5" />
+               </button>
+            )}
          </div>
       </div>
    );

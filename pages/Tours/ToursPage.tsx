@@ -8,6 +8,23 @@ interface ToursPageProps {
   searchTerm?: string;
 }
 
+// Default template for a new tour
+const EMPTY_TOUR = {
+   id: 0,
+   name: '',
+   price: 0,
+   duration: '',
+   active: false,
+   description: '',
+   image: 'https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?auto=format&fit=crop&q=80&w=600',
+   tags: [],
+   maxPeople: 12,
+   difficulty: 'Easy',
+   location: '',
+   bookingsCount: 0,
+   revenue: 0
+};
+
 const ToursPage: React.FC<ToursPageProps> = ({ searchTerm = '' }) => {
   const { t } = useI18n();
   const [tours, setTours] = useState(TOURS);
@@ -18,10 +35,19 @@ const ToursPage: React.FC<ToursPageProps> = ({ searchTerm = '' }) => {
     tour.location.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const handleUpdateTour = (updatedTour: typeof TOURS[0]) => {
-     setTours(prev => prev.map(t => t.id === updatedTour.id ? updatedTour : t));
-     // Optional: keep sidebar open or close it
-     // setSelectedTour(null); 
+  const handleSaveTour = (savedTour: typeof TOURS[0]) => {
+     if (savedTour.id === 0) {
+        // Create New Tour
+        const newTour = {
+           ...savedTour,
+           id: Date.now(), // Generate a temporary unique ID
+        };
+        setTours([newTour, ...tours]);
+     } else {
+        // Update Existing Tour
+        setTours(prev => prev.map(t => t.id === savedTour.id ? savedTour : t));
+     }
+     setSelectedTour(null);
   };
 
   const handleDeleteTour = (tourId: number) => {
@@ -38,7 +64,10 @@ const ToursPage: React.FC<ToursPageProps> = ({ searchTerm = '' }) => {
          {/* Page Header */}
          <div className="flex-none px-8 py-6 flex justify-between items-center">
             <h2 className="text-3xl font-bold text-gray-900 dark:text-white tracking-tight">{t('page_tours_title')}</h2>
-            <button className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-medium shadow-sm transition-colors flex items-center gap-2 active:scale-95">
+            <button 
+               onClick={() => setSelectedTour(EMPTY_TOUR)}
+               className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-medium shadow-sm transition-colors flex items-center gap-2 active:scale-95"
+            >
                <Plus className="w-4 h-4" /> Create Tour
             </button>
          </div>
@@ -111,7 +140,7 @@ const ToursPage: React.FC<ToursPageProps> = ({ searchTerm = '' }) => {
          <div className="absolute top-0 right-0 h-full w-[500px] bg-white dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700 shadow-2xl z-30 transform transition-transform duration-300 ease-in-out">
             <TourEditForm 
                tour={selectedTour} 
-               onSave={handleUpdateTour} 
+               onSave={handleSaveTour} 
                onDelete={handleDeleteTour}
                onClose={() => setSelectedTour(null)}
             />
