@@ -9,6 +9,7 @@ import TeamPage from './pages/Team/TeamPage';
 import SettingsPage from './pages/Settings/SettingsPage';
 import ToursPage from './pages/Tours/ToursPage';
 import ReportsPage from './pages/Reports/ReportsPage';
+import SupportPage from './pages/Support/SupportPage';
 import Toast from './components/Toast';
 import { ThemeProvider } from './context/ThemeContext';
 import { UPCOMING_BOOKINGS } from './data/mockData';
@@ -86,12 +87,7 @@ function App() {
             {activePage === 'settings' && <SettingsPage />}
             {activePage === 'tours' && <ToursPage searchTerm={searchTerm} />}
             {activePage === 'reports' && <ReportsPage />}
-            
-            {['support'].includes(activePage) && (
-              <div className="p-10 text-center">
-                <h2 className="text-xl text-gray-500 font-medium">This page is coming soon</h2>
-              </div>
-            )}
+            {activePage === 'support' && <SupportPage />}
           </div>
         </main>
         
