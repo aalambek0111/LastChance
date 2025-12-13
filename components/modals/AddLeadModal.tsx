@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { X, User, Mail, Phone, Tag, FileText } from 'lucide-react';
+import { X, User, Mail, Phone, Tag, FileText, UserPlus } from 'lucide-react';
 import { LeadStatus } from '../../types';
+import { MOCK_TEAM_MEMBERS } from '../../data/mockData';
 
 interface AddLeadModalProps {
   isOpen: boolean;
@@ -14,6 +15,7 @@ const AddLeadModal: React.FC<AddLeadModalProps> = ({ isOpen, onClose }) => {
     phone: '',
     channel: 'Website',
     status: 'New' as LeadStatus,
+    assignedTo: '',
     notes: ''
   });
 
@@ -28,6 +30,7 @@ const AddLeadModal: React.FC<AddLeadModalProps> = ({ isOpen, onClose }) => {
         phone: '', 
         channel: 'Website',
         status: 'New',
+        assignedTo: '',
         notes: ''
     });
     onClose();
@@ -148,27 +151,47 @@ const AddLeadModal: React.FC<AddLeadModalProps> = ({ isOpen, onClose }) => {
               </div>
             </div>
 
-            {/* Status */}
-            <div>
-                <label htmlFor="status" className="block text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide mb-1.5">
-                  Status
-                </label>
-                <div className="relative">
-                    <select
-                        id="status"
-                        className="block w-full px-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white bg-white dark:bg-gray-700/50 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-shadow appearance-none"
-                        value={formData.status}
-                        onChange={(e) => setFormData({...formData, status: e.target.value as LeadStatus})}
-                    >
-                        <option value="New">New</option>
-                        <option value="Contacted">Contacted</option>
-                        <option value="Qualified">Qualified</option>
-                        <option value="Booked">Booked</option>
-                        <option value="Lost">Lost</option>
-                    </select>
-                    {/* Custom Chevron Arrow */}
-                    <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
-                        <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+            {/* Status & Assigned To */}
+            <div className="grid grid-cols-2 gap-4">
+                <div>
+                    <label htmlFor="status" className="block text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide mb-1.5">
+                    Status
+                    </label>
+                    <div className="relative">
+                        <select
+                            id="status"
+                            className="block w-full px-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white bg-white dark:bg-gray-700/50 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-shadow appearance-none"
+                            value={formData.status}
+                            onChange={(e) => setFormData({...formData, status: e.target.value as LeadStatus})}
+                        >
+                            <option value="New">New</option>
+                            <option value="Contacted">Contacted</option>
+                            <option value="Qualified">Qualified</option>
+                            <option value="Booked">Booked</option>
+                            <option value="Lost">Lost</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div>
+                    <label htmlFor="assignedTo" className="block text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide mb-1.5">
+                    Assigned To
+                    </label>
+                    <div className="relative">
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <UserPlus className="h-4 w-4 text-gray-400" />
+                        </div>
+                        <select
+                            id="assignedTo"
+                            className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white bg-white dark:bg-gray-700/50 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-shadow appearance-none"
+                            value={formData.assignedTo}
+                            onChange={(e) => setFormData({...formData, assignedTo: e.target.value})}
+                        >
+                            <option value="">Unassigned</option>
+                            {MOCK_TEAM_MEMBERS.map(member => (
+                                <option key={member.id} value={member.name}>{member.name}</option>
+                            ))}
+                        </select>
                     </div>
                 </div>
             </div>

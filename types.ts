@@ -8,6 +8,7 @@ export interface Lead {
   lastMessageTime: string; // ISO string or relative time string
   status: LeadStatus;
   channel: Channel;
+  assignedTo?: string;
 }
 
 export interface Booking {

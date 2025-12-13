@@ -1,5 +1,13 @@
 import { Booking, KPIMetric, Lead } from '../types';
 
+// Team Members for assignment
+export const MOCK_TEAM_MEMBERS = [
+  { id: '1', name: 'Alex Walker' },
+  { id: '2', name: 'Sarah Miller' },
+  { id: '3', name: 'Mike Johnson' },
+  { id: '4', name: 'Emily Davis' },
+];
+
 // Mock KPI Data
 export const KPI_DATA: KPIMetric[] = [
   {
@@ -38,6 +46,7 @@ export const RECENT_LEADS: Lead[] = [
     lastMessageTime: '10 mins ago',
     status: 'New',
     channel: 'Website',
+    assignedTo: 'Alex Walker',
   },
   {
     id: 'L002',
@@ -45,6 +54,7 @@ export const RECENT_LEADS: Lead[] = [
     lastMessageTime: '45 mins ago',
     status: 'Contacted',
     channel: 'WhatsApp',
+    assignedTo: 'Sarah Miller',
   },
   {
     id: 'L003',
@@ -52,6 +62,7 @@ export const RECENT_LEADS: Lead[] = [
     lastMessageTime: '2 hours ago',
     status: 'New',
     channel: 'Email',
+    assignedTo: 'Alex Walker',
   },
   {
     id: 'L004',
@@ -59,6 +70,7 @@ export const RECENT_LEADS: Lead[] = [
     lastMessageTime: '5 hours ago',
     status: 'Qualified',
     channel: 'Referral',
+    assignedTo: 'Emily Davis',
   },
   {
     id: 'L005',
@@ -66,6 +78,7 @@ export const RECENT_LEADS: Lead[] = [
     lastMessageTime: '1 day ago',
     status: 'Contacted',
     channel: 'Website',
+    assignedTo: 'Unassigned',
   },
 ];
 

@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { X, Trash2, Save, Clock, Mail, Phone, Building2, Tag } from 'lucide-react';
+import { X, Trash2, Save, Clock, Mail, Phone, Building2, Tag, MessageCircle, UserPlus } from 'lucide-react';
 import { useI18n } from '../../context/ThemeContext';
 import { Lead, LeadStatus } from '../../types';
+import { MOCK_TEAM_MEMBERS } from '../../data/mockData';
 
 const STATUS_OPTIONS: LeadStatus[] = ['New', 'Contacted', 'Qualified', 'Booked', 'Lost'];
 
@@ -10,9 +11,10 @@ interface LeadDetailPaneProps {
   onClose: () => void;
   onSave: (updated: Lead) => void;
   onDelete: (id: string) => void;
+  onOpenChat?: () => void;
 }
 
-const LeadDetailPane: React.FC<LeadDetailPaneProps> = ({ lead, onClose, onSave, onDelete }) => {
+const LeadDetailPane: React.FC<LeadDetailPaneProps> = ({ lead, onClose, onSave, onDelete, onOpenChat }) => {
   const { t } = useI18n();
 
   const getAny = (obj: any, key: string, fallback: any = '') => {
@@ -29,6 +31,7 @@ const LeadDetailPane: React.FC<LeadDetailPaneProps> = ({ lead, onClose, onSave, 
     company: String(getAny(lead, 'company', '')),
     value: String(getAny(lead, 'value', '')),
     notes: String(getAny(lead, 'notes', '')),
+    assignedTo: String(getAny(lead, 'assignedTo', '')),
   }));
 
   useEffect(() => {
@@ -41,6 +44,7 @@ const LeadDetailPane: React.FC<LeadDetailPaneProps> = ({ lead, onClose, onSave, 
       company: String(getAny(lead, 'company', '')),
       value: String(getAny(lead, 'value', '')),
       notes: String(getAny(lead, 'notes', '')),
+      assignedTo: String(getAny(lead, 'assignedTo', '')),
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [(lead as any).id]);
@@ -54,7 +58,8 @@ const LeadDetailPane: React.FC<LeadDetailPaneProps> = ({ lead, onClose, onSave, 
       form.phone !== String(getAny(lead, 'phone', '')) ||
       form.company !== String(getAny(lead, 'company', '')) ||
       form.value !== String(getAny(lead, 'value', '')) ||
-      form.notes !== String(getAny(lead, 'notes', ''))
+      form.notes !== String(getAny(lead, 'notes', '')) ||
+      form.assignedTo !== String(getAny(lead, 'assignedTo', ''))
     );
   }, [form, lead]);
 
@@ -76,6 +81,7 @@ const LeadDetailPane: React.FC<LeadDetailPaneProps> = ({ lead, onClose, onSave, 
       company: form.company,
       value: safeValue as any,
       notes: form.notes,
+      assignedTo: form.assignedTo,
     };
 
     onSave(updated);
@@ -110,13 +116,24 @@ const LeadDetailPane: React.FC<LeadDetailPaneProps> = ({ lead, onClose, onSave, 
           </div>
         </div>
 
-        <button
-          onClick={onClose}
-          className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700/40 text-gray-500 dark:text-gray-300"
-          title="Close"
-        >
-          <X className="w-5 h-5" />
-        </button>
+        <div className="flex items-center gap-2">
+          {onOpenChat && (
+            <button
+              onClick={onOpenChat}
+              className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700/40 text-indigo-600 dark:text-indigo-400"
+              title="Message"
+            >
+              <MessageCircle className="w-5 h-5" />
+            </button>
+          )}
+          <button
+            onClick={onClose}
+            className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700/40 text-gray-500 dark:text-gray-300"
+            title="Close"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
       </div>
 
       {/* Body */}
@@ -162,6 +179,28 @@ const LeadDetailPane: React.FC<LeadDetailPaneProps> = ({ lead, onClose, onSave, 
                   className="w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
                   placeholder="Website, WhatsApp, Email..."
                 />
+              </div>
+            </div>
+
+            {/* Assigned To */}
+            <div>
+              <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">
+                Assigned To
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <UserPlus className="h-4 w-4 text-gray-400" />
+                </div>
+                <select
+                  value={form.assignedTo}
+                  onChange={(e) => onChange('assignedTo', e.target.value)}
+                  className="w-full pl-9 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 appearance-none"
+                >
+                  <option value="">Unassigned</option>
+                  {MOCK_TEAM_MEMBERS.map(member => (
+                    <option key={member.id} value={member.name}>{member.name}</option>
+                  ))}
+                </select>
               </div>
             </div>
           </div>

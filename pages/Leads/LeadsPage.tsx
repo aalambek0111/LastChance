@@ -37,6 +37,11 @@ const LeadsPage: React.FC<LeadsPageProps> = ({ searchTerm = '', onOpenConversati
     setLeads(prev => prev.map(l => l.id === updatedLead.id ? updatedLead : l));
     setSelectedLeadId(null);
   };
+
+  const handleDeleteLead = (id: string) => {
+    setLeads(prev => prev.filter(l => l.id !== id));
+    setSelectedLeadId(null);
+  };
   
   // Drag and Drop Handlers
   const handleDragStart = (e: React.DragEvent, leadId: string) => {
@@ -74,6 +79,7 @@ const LeadsPage: React.FC<LeadsPageProps> = ({ searchTerm = '', onOpenConversati
                   lead={activeLead} 
                   onClose={() => setSelectedLeadId(null)} 
                   onSave={handleUpdateLead}
+                  onDelete={handleDeleteLead}
                   onOpenChat={() => onOpenConversation && onOpenConversation(activeLead.name)}
                />
             </div>
