@@ -1,6 +1,7 @@
 export type LeadStatus = 'New' | 'Contacted' | 'Qualified' | 'Booked' | 'Lost';
 export type BookingStatus = 'Confirmed' | 'Pending' | 'Completed' | 'Cancelled';
 export type Channel = 'Website' | 'WhatsApp' | 'Email' | 'Referral';
+export type PaymentStatus = 'Unpaid' | 'Waiting for payment' | 'Paid';
 
 export interface Lead {
   id: string;
@@ -18,8 +19,10 @@ export interface Booking {
   clientName: string;
   people: number;
   status: BookingStatus;
+  paymentStatus?: PaymentStatus;
   notes?: string;
   pickupLocation?: string;
+  assignedTo?: string;
 }
 
 export interface KPIMetric {

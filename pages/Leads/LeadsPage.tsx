@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { List, LayoutGrid, Tag, Clock, MoreHorizontal } from 'lucide-react';
+import { List, LayoutGrid, Tag, Clock, MoreHorizontal, Filter, User } from 'lucide-react';
 import { Lead, LeadStatus } from '../../types';
 import { RECENT_LEADS } from '../../data/mockData';
 import { useI18n } from '../../context/ThemeContext';
@@ -11,6 +11,8 @@ interface LeadsPageProps {
   onOpenConversation?: (leadName: string) => void;
 }
 
+const CURRENT_USER_NAME = "Alex Walker"; // Mock user for "My Leads" filter
+
 const LeadsPage: React.FC<LeadsPageProps> = ({ searchTerm = '', onOpenConversation }) => {
   const { t } = useI18n();
   const [leads, setLeads] = useState<Lead[]>(RECENT_LEADS);
@@ -18,6 +20,11 @@ const LeadsPage: React.FC<LeadsPageProps> = ({ searchTerm = '', onOpenConversati
   const [viewMode, setViewMode] = useState<'table' | 'kanban'>('table');
   const [draggedLeadId, setDraggedLeadId] = useState<string | null>(null);
   const [isAddLeadModalOpen, setIsAddLeadModalOpen] = useState(false);
+
+  // Filters
+  const [statusFilter, setStatusFilter] = useState('All');
+  const [channelFilter, setChannelFilter] = useState('All');
+  const [assignedFilter, setAssignedFilter] = useState<'All' | 'Mine'>('All');
   
   const KANBAN_COLUMNS: { id: LeadStatus; label: string; color: string }[] = [
     { id: 'New', label: t('leads_status_new'), color: 'bg-blue-500' },
@@ -27,9 +34,14 @@ const LeadsPage: React.FC<LeadsPageProps> = ({ searchTerm = '', onOpenConversati
     { id: 'Lost', label: t('leads_status_lost'), color: 'bg-gray-500' },
   ];
 
-  const filteredLeads = leads.filter(lead => 
-    lead.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredLeads = leads.filter(lead => {
+    const matchesSearch = lead.name.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus = statusFilter === 'All' || lead.status === statusFilter;
+    const matchesChannel = channelFilter === 'All' || lead.channel === channelFilter;
+    const matchesAssigned = assignedFilter === 'All' || (assignedFilter === 'Mine' && lead.assignedTo === CURRENT_USER_NAME);
+    
+    return matchesSearch && matchesStatus && matchesChannel && matchesAssigned;
+  });
   
   const activeLead = leads.find(l => l.id === selectedLeadId);
 
@@ -42,6 +54,14 @@ const LeadsPage: React.FC<LeadsPageProps> = ({ searchTerm = '', onOpenConversati
     setLeads(prev => prev.filter(l => l.id !== id));
     setSelectedLeadId(null);
   };
+
+  const clearFilters = () => {
+    setStatusFilter('All');
+    setChannelFilter('All');
+    setAssignedFilter('All');
+  };
+
+  const hasActiveFilters = statusFilter !== 'All' || channelFilter !== 'All' || assignedFilter !== 'All';
   
   // Drag and Drop Handlers
   const handleDragStart = (e: React.DragEvent, leadId: string) => {
@@ -87,8 +107,8 @@ const LeadsPage: React.FC<LeadsPageProps> = ({ searchTerm = '', onOpenConversati
       )}
 
       {/* Header Section */}
-      <div className="flex-none p-6 lg:p-8">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <div className="flex-none p-6 lg:p-8 pb-4">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
           <h2 className="text-3xl font-bold text-gray-900 dark:text-white">{t('page_leads_title')}</h2>
           
           <div className="flex items-center gap-3">
@@ -126,6 +146,75 @@ const LeadsPage: React.FC<LeadsPageProps> = ({ searchTerm = '', onOpenConversati
             </button>
           </div>
         </div>
+
+        {/* Filter Bar */}
+        <div className="flex flex-wrap items-center gap-3 bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
+          <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400 mr-2">
+            <Filter className="w-4 h-4" />
+            <span className="text-sm font-medium">Filter by:</span>
+          </div>
+
+          {/* Assigned To Filter (Tabs) */}
+          <div className="flex bg-gray-100 dark:bg-gray-700/50 p-1 rounded-lg">
+            <button
+              onClick={() => setAssignedFilter('All')}
+              className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${
+                assignedFilter === 'All'
+                  ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow-sm'
+                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+              }`}
+            >
+              All Leads
+            </button>
+            <button
+              onClick={() => setAssignedFilter('Mine')}
+              className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all flex items-center gap-1.5 ${
+                assignedFilter === 'Mine'
+                  ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow-sm'
+                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+              }`}
+            >
+              <User className="w-3 h-3" />
+              My Leads
+            </button>
+          </div>
+
+          <div className="h-6 w-px bg-gray-200 dark:bg-gray-700 mx-1 hidden sm:block"></div>
+
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-200 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2.5 outline-none"
+          >
+            <option value="All">All Status</option>
+            <option value="New">New</option>
+            <option value="Contacted">Contacted</option>
+            <option value="Qualified">Qualified</option>
+            <option value="Booked">Booked</option>
+            <option value="Lost">Lost</option>
+          </select>
+
+          <select
+            value={channelFilter}
+            onChange={(e) => setChannelFilter(e.target.value)}
+            className="bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-200 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2.5 outline-none"
+          >
+            <option value="All">All Channels</option>
+            <option value="Website">Website</option>
+            <option value="WhatsApp">WhatsApp</option>
+            <option value="Email">Email</option>
+            <option value="Referral">Referral</option>
+          </select>
+
+          {hasActiveFilters && (
+            <button
+              onClick={clearFilters}
+              className="text-sm text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 ml-auto font-medium transition-colors"
+            >
+              Clear Filters
+            </button>
+          )}
+        </div>
       </div>
       
       {/* Content Section */}
@@ -139,6 +228,7 @@ const LeadsPage: React.FC<LeadsPageProps> = ({ searchTerm = '', onOpenConversati
                   <th className="px-6 py-3">Name</th>
                   <th className="px-6 py-3">Status</th>
                   <th className="px-6 py-3">Channel</th>
+                  <th className="px-6 py-3">Assigned To</th>
                   <th className="px-6 py-3">Last Active</th>
                 </tr>
               </thead>
@@ -162,13 +252,24 @@ const LeadsPage: React.FC<LeadsPageProps> = ({ searchTerm = '', onOpenConversati
                           </span>
                         </td>
                         <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">{lead.channel}</td>
+                        <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
+                          {lead.assignedTo ? (
+                            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-gray-50 dark:bg-gray-700/50 text-xs">
+                              {lead.assignedTo}
+                            </span>
+                          ) : (
+                            <span className="text-gray-400 italic text-xs">Unassigned</span>
+                          )}
+                        </td>
                         <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">{lead.lastMessageTime}</td>
                     </tr>
                   ))}
                   {filteredLeads.length === 0 && (
                       <tr>
-                        <td colSpan={4} className="px-6 py-8 text-center text-gray-500 text-sm">
-                          No leads found matching "{searchTerm}".
+                        <td colSpan={5} className="px-6 py-8 text-center text-gray-500 text-sm">
+                          {searchTerm 
+                            ? `No leads found matching "${searchTerm}".` 
+                            : "No leads found for the selected filters."}
                         </td>
                       </tr>
                   )}
@@ -218,9 +319,16 @@ const LeadsPage: React.FC<LeadsPageProps> = ({ searchTerm = '', onOpenConversati
                               </div>
                               
                               <div className="space-y-2">
-                                <div className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
-                                  <Tag className="w-3 h-3" />
-                                  <span>{lead.channel}</span>
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
+                                    <Tag className="w-3 h-3" />
+                                    <span>{lead.channel}</span>
+                                  </div>
+                                  {lead.assignedTo && (
+                                    <div className="text-[10px] bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 px-1.5 py-0.5 rounded">
+                                      {lead.assignedTo.split(' ')[0]}
+                                    </div>
+                                  )}
                                 </div>
                                 <div className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
                                   <Clock className="w-3 h-3" />

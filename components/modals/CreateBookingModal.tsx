@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, Calendar, MapPin, Users, FileText, Flag, User } from 'lucide-react';
-import { Booking } from '../../types';
+import { X, Calendar, MapPin, Users, FileText, Flag, User, CheckCircle, CreditCard } from 'lucide-react';
+import { Booking, BookingStatus, PaymentStatus } from '../../types';
 import { TOURS, RECENT_LEADS } from '../../data/mockData';
 
 interface CreateBookingModalProps {
@@ -117,6 +117,8 @@ const CreateBookingModal: React.FC<CreateBookingModalProps> = ({
     clientName: '',
     date: '',
     pax: 2,
+    status: 'Pending' as BookingStatus,
+    paymentStatus: 'Unpaid' as PaymentStatus,
     pickupLocation: '',
     notes: ''
   });
@@ -141,6 +143,8 @@ const CreateBookingModal: React.FC<CreateBookingModalProps> = ({
         clientName: bookingToEdit.clientName,
         date: bookingToEdit.date,
         pax: bookingToEdit.people,
+        status: bookingToEdit.status,
+        paymentStatus: bookingToEdit.paymentStatus || 'Unpaid',
         pickupLocation: bookingToEdit.pickupLocation || '',
         notes: bookingToEdit.notes || ''
       });
@@ -150,6 +154,8 @@ const CreateBookingModal: React.FC<CreateBookingModalProps> = ({
         clientName: leadName && leadName !== 'New Client' ? leadName : '',
         date: new Date().toISOString().split('T')[0],
         pax: 2,
+        status: 'Pending',
+        paymentStatus: 'Unpaid',
         pickupLocation: '',
         notes: ''
       });
@@ -169,6 +175,8 @@ const CreateBookingModal: React.FC<CreateBookingModalProps> = ({
         clientName: formData.clientName || 'Unknown Client',
         date: formData.date,
         people: formData.pax,
+        status: formData.status,
+        paymentStatus: formData.paymentStatus,
         pickupLocation: formData.pickupLocation,
         notes: formData.notes
       };
@@ -181,7 +189,8 @@ const CreateBookingModal: React.FC<CreateBookingModalProps> = ({
         date: formData.date,
         clientName: formData.clientName || 'Unknown Client',
         people: formData.pax,
-        status: 'Pending',
+        status: formData.status,
+        paymentStatus: formData.paymentStatus,
         pickupLocation: formData.pickupLocation,
         notes: formData.notes
       };
@@ -272,6 +281,47 @@ const CreateBookingModal: React.FC<CreateBookingModalProps> = ({
                     value={formData.pax}
                     onChange={e => setFormData({...formData, pax: parseInt(e.target.value)})}
                   />
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              {/* Status Field */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase mb-1.5">Status</label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                     <CheckCircle className="w-4 h-4 text-gray-400" />
+                  </div>
+                  <select
+                    className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white bg-white dark:bg-gray-700/50 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm appearance-none"
+                    value={formData.status}
+                    onChange={e => setFormData({...formData, status: e.target.value as BookingStatus})}
+                  >
+                    <option value="Pending">Pending</option>
+                    <option value="Confirmed">Confirmed</option>
+                    <option value="Completed">Completed</option>
+                    <option value="Cancelled">Cancelled</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Payment Status Field */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase mb-1.5">Payment</label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                     <CreditCard className="w-4 h-4 text-gray-400" />
+                  </div>
+                  <select
+                    className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white bg-white dark:bg-gray-700/50 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm appearance-none"
+                    value={formData.paymentStatus}
+                    onChange={e => setFormData({...formData, paymentStatus: e.target.value as PaymentStatus})}
+                  >
+                    <option value="Unpaid">Unpaid</option>
+                    <option value="Waiting for payment">Waiting</option>
+                    <option value="Paid">Paid</option>
+                  </select>
                 </div>
               </div>
             </div>

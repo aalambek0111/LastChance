@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Users, Filter, Pencil, Download, ArrowUpDown } from 'lucide-react';
+import { Users, Filter, Pencil, Download, ArrowUpDown, User, Search, Flag } from 'lucide-react';
 import { Booking } from '../../types';
 import { useI18n } from '../../context/ThemeContext';
 import CreateBookingModal from '../../components/modals/CreateBookingModal';
@@ -13,6 +13,8 @@ interface BookingsPageProps {
 type SortKey = 'date' | 'status' | 'clientName' | 'tourName';
 type SortDir = 'asc' | 'desc';
 
+const CURRENT_USER_NAME = "Alex Walker"; // Mock user for "My Bookings" filter
+
 const BookingsPage: React.FC<BookingsPageProps> = ({
   bookings,
   searchTerm = '',
@@ -24,19 +26,17 @@ const BookingsPage: React.FC<BookingsPageProps> = ({
   const [isCreateOpen, setIsCreateOpen] = useState(false);
 
   const [statusFilter, setStatusFilter] = useState('All');
-  const [tourFilter, setTourFilter] = useState('All');
+  const [tourSearch, setTourSearch] = useState(''); // Changed from tourFilter (select) to text search
+  const [assignedFilter, setAssignedFilter] = useState<'All' | 'Mine'>('All');
 
   const [sortKey, setSortKey] = useState<SortKey>('date');
   const [sortDir, setSortDir] = useState<SortDir>('asc');
 
-  const hasActiveFilters = statusFilter !== 'All' || tourFilter !== 'All';
-
-  const uniqueTours = useMemo(() => {
-    return Array.from(new Set((bookings || []).map(b => b.tourName))).sort();
-  }, [bookings]);
+  const hasActiveFilters = statusFilter !== 'All' || tourSearch.trim() !== '' || assignedFilter !== 'All';
 
   const filteredBookings = useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
+    const tourQuery = tourSearch.trim().toLowerCase();
 
     return (bookings || []).filter(b => {
       const matchesSearch =
@@ -45,11 +45,16 @@ const BookingsPage: React.FC<BookingsPageProps> = ({
         b.tourName.toLowerCase().includes(term);
 
       const matchesStatus = statusFilter === 'All' || b.status === statusFilter;
-      const matchesTour = tourFilter === 'All' || b.tourName === tourFilter;
+      
+      // Tour text search logic
+      const matchesTour = tourQuery.length === 0 || b.tourName.toLowerCase().includes(tourQuery);
 
-      return matchesSearch && matchesStatus && matchesTour;
+      // Assigned To logic
+      const matchesAssigned = assignedFilter === 'All' || (assignedFilter === 'Mine' && b.assignedTo === CURRENT_USER_NAME);
+
+      return matchesSearch && matchesStatus && matchesTour && matchesAssigned;
     });
-  }, [bookings, searchTerm, statusFilter, tourFilter]);
+  }, [bookings, searchTerm, statusFilter, tourSearch, assignedFilter]);
 
   const sortedBookings = useMemo(() => {
     const data = [...filteredBookings];
@@ -84,13 +89,14 @@ const BookingsPage: React.FC<BookingsPageProps> = ({
 
   const clearFilters = () => {
     setStatusFilter('All');
-    setTourFilter('All');
+    setTourSearch('');
+    setAssignedFilter('All');
   };
 
   const handleExport = () => {
     if (sortedBookings.length === 0) return;
 
-    const headers = ['ID', 'Tour Name', 'Client', 'Date', 'Guests', 'Status', 'Notes', 'Pickup Location'];
+    const headers = ['ID', 'Tour Name', 'Client', 'Assigned To', 'Date', 'Guests', 'Status', 'Notes', 'Pickup Location'];
 
     const csvContent = [
       headers.join(','),
@@ -98,6 +104,7 @@ const BookingsPage: React.FC<BookingsPageProps> = ({
         booking.id,
         `"${(booking.tourName || '').replace(/"/g, '""')}"`,
         `"${(booking.clientName || '').replace(/"/g, '""')}"`,
+        `"${(booking.assignedTo || '').replace(/"/g, '""')}"`,
         booking.date || '',
         booking.people ?? '',
         booking.status || '',
@@ -159,6 +166,33 @@ const BookingsPage: React.FC<BookingsPageProps> = ({
           <span className="text-sm font-medium">Filter by:</span>
         </div>
 
+        {/* Assigned To Filter (Tabs) */}
+        <div className="flex bg-gray-100 dark:bg-gray-700/50 p-1 rounded-lg">
+          <button
+            onClick={() => setAssignedFilter('All')}
+            className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${
+              assignedFilter === 'All'
+                ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow-sm'
+                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+            }`}
+          >
+            All Bookings
+          </button>
+          <button
+            onClick={() => setAssignedFilter('Mine')}
+            className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all flex items-center gap-1.5 ${
+              assignedFilter === 'Mine'
+                ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow-sm'
+                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+            }`}
+          >
+            <User className="w-3 h-3" />
+            My Bookings
+          </button>
+        </div>
+
+        <div className="h-6 w-px bg-gray-200 dark:bg-gray-700 mx-1 hidden sm:block"></div>
+
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
@@ -171,16 +205,19 @@ const BookingsPage: React.FC<BookingsPageProps> = ({
           <option value="Completed">Completed</option>
         </select>
 
-        <select
-          value={tourFilter}
-          onChange={(e) => setTourFilter(e.target.value)}
-          className="bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-200 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2.5 outline-none max-w-[260px]"
-        >
-          <option value="All">All Tours</option>
-          {uniqueTours.map(tour => (
-            <option key={tour} value={tour}>{tour}</option>
-          ))}
-        </select>
+        {/* Tour Text Filter Input */}
+        <div className="relative">
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <Flag className="h-4 w-4 text-gray-400" />
+          </div>
+          <input
+            type="text"
+            value={tourSearch}
+            onChange={(e) => setTourSearch(e.target.value)}
+            placeholder="Filter by tour..."
+            className="block w-full pl-10 pr-3 py-2.5 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-200 text-sm focus:ring-indigo-500 focus:border-indigo-500 outline-none"
+          />
+        </div>
 
         {/* Sort */}
         <div className="flex items-center gap-2 ml-auto">
@@ -226,6 +263,7 @@ const BookingsPage: React.FC<BookingsPageProps> = ({
             <tr>
               <th className="px-6 py-4">Tour Info</th>
               <th className="px-6 py-4">Client</th>
+              <th className="px-6 py-4">Assigned To</th>
               <th className="px-6 py-4">Status</th>
               <th className="px-6 py-4">Date</th>
               <th className="px-6 py-4 text-right">Actions</th>
@@ -250,6 +288,16 @@ const BookingsPage: React.FC<BookingsPageProps> = ({
 
                 <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-300">
                   {booking.clientName}
+                </td>
+
+                <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
+                  {booking.assignedTo ? (
+                    <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-gray-50 dark:bg-gray-700/50 text-xs">
+                      {booking.assignedTo}
+                    </span>
+                  ) : (
+                    <span className="text-gray-400 italic text-xs">Unassigned</span>
+                  )}
                 </td>
 
                 <td className="px-6 py-4">
@@ -284,7 +332,7 @@ const BookingsPage: React.FC<BookingsPageProps> = ({
 
             {sortedBookings.length === 0 && (
               <tr>
-                <td colSpan={5} className="px-6 py-12 text-center text-gray-500 dark:text-gray-400 text-sm">
+                <td colSpan={6} className="px-6 py-12 text-center text-gray-500 dark:text-gray-400 text-sm">
                   {!hasActiveFilters && searchTerm.trim().length === 0 ? (
                     <div>
                       <div className="font-semibold text-gray-900 dark:text-white">No bookings yet</div>

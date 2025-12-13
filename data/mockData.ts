@@ -91,6 +91,8 @@ export const UPCOMING_BOOKINGS: Booking[] = [
     clientName: 'John Doe',
     people: 2,
     status: 'Confirmed',
+    paymentStatus: 'Paid',
+    assignedTo: 'Alex Walker',
   },
   {
     id: 'B002',
@@ -99,6 +101,8 @@ export const UPCOMING_BOOKINGS: Booking[] = [
     clientName: 'Alice Cooper',
     people: 4,
     status: 'Pending',
+    paymentStatus: 'Waiting for payment',
+    assignedTo: 'Sarah Miller',
   },
   {
     id: 'B003',
@@ -107,6 +111,8 @@ export const UPCOMING_BOOKINGS: Booking[] = [
     clientName: 'Robert Langdon',
     people: 1,
     status: 'Confirmed',
+    paymentStatus: 'Paid',
+    assignedTo: 'Alex Walker',
   },
   {
     id: 'B004',
@@ -115,6 +121,8 @@ export const UPCOMING_BOOKINGS: Booking[] = [
     clientName: 'Team Alpha',
     people: 8,
     status: 'Confirmed',
+    paymentStatus: 'Unpaid',
+    assignedTo: 'Mike Johnson',
   },
   {
     id: 'B005',
@@ -123,6 +131,8 @@ export const UPCOMING_BOOKINGS: Booking[] = [
     clientName: 'The Kardashians',
     people: 6,
     status: 'Cancelled',
+    paymentStatus: 'Unpaid',
+    assignedTo: 'Alex Walker',
   },
 ];
 
