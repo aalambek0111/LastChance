@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { 
   X, Calendar, MapPin, Users, FileText, Flag, User, CheckCircle, CreditCard, 
-  MessageSquare, Activity, Send, Clock, History, ChevronRight 
+  MessageSquare, Activity, Send, Clock, History, ChevronRight, UserPlus, Info, Search 
 } from 'lucide-react';
 import { Booking, BookingStatus, PaymentStatus } from '../../types';
 import { TOURS, RECENT_LEADS } from '../../data/mockData';
@@ -44,6 +44,21 @@ const TEAM_USERS: TeamUser[] = [
 const CURRENT_USER_NAME = 'Alex Walker'; // Mock current user
 
 // --- Helper Components ---
+
+// Local Toast Component
+const ModalToast = ({ message, onClose }: { message: string; onClose: () => void }) => {
+  useEffect(() => {
+    const timer = setTimeout(onClose, 2500);
+    return () => clearTimeout(timer);
+  }, [onClose]);
+
+  return (
+    <div className="absolute top-6 left-1/2 -translate-x-1/2 z-[100] bg-gray-900/90 text-white px-4 py-2.5 rounded-full shadow-xl text-sm font-medium flex items-center gap-2 animate-in fade-in zoom-in duration-300 backdrop-blur-sm border border-gray-700/50">
+      <CheckCircle className="w-4 h-4 text-emerald-400" />
+      {message}
+    </div>
+  );
+};
 
 interface SearchableSelectProps {
   label: string;
@@ -134,6 +149,174 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
   );
 };
 
+// Specialized Lookup for Assignee
+interface AssigneeLookupProps {
+  label: string;
+  users: TeamUser[];
+  selectedUserName: string;
+  onSelect: (userName: string) => void;
+}
+
+const AssigneeLookup: React.FC<AssigneeLookupProps> = ({ label, users, selectedUserName, onSelect }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [search, setSearch] = useState('');
+  const [highlightedIndex, setHighlightedIndex] = useState(0);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // Filter users based on search
+  const filteredUsers = useMemo(() => {
+    const term = search.toLowerCase();
+    return users.filter(u => 
+      u.name.toLowerCase().includes(term) || 
+      u.role.toLowerCase().includes(term)
+    );
+  }, [users, search]);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+        setSearch(''); // Reset search on close
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  // Keyboard navigation
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (!isOpen) {
+      if (e.key === 'ArrowDown' || e.key === 'Enter') {
+        setIsOpen(true);
+        setHighlightedIndex(0);
+        e.preventDefault();
+      }
+      return;
+    }
+
+    switch (e.key) {
+      case 'ArrowDown':
+        e.preventDefault();
+        setHighlightedIndex(prev => (prev + 1) % filteredUsers.length);
+        break;
+      case 'ArrowUp':
+        e.preventDefault();
+        setHighlightedIndex(prev => (prev - 1 + filteredUsers.length) % filteredUsers.length);
+        break;
+      case 'Enter':
+        e.preventDefault();
+        if (filteredUsers[highlightedIndex]) {
+          onSelect(filteredUsers[highlightedIndex].name);
+          setIsOpen(false);
+          setSearch('');
+        }
+        break;
+      case 'Escape':
+        setIsOpen(false);
+        inputRef.current?.blur();
+        break;
+    }
+  };
+
+  const handleClear = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onSelect('');
+    setSearch('');
+    setTimeout(() => inputRef.current?.focus(), 0);
+  };
+
+  const selectedUser = users.find(u => u.name === selectedUserName);
+
+  return (
+    <div ref={containerRef} className="relative">
+      <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase mb-1.5">
+        {label}
+      </label>
+      
+      <div 
+        className={`relative flex items-center w-full border rounded-lg bg-white dark:bg-gray-700/50 transition-shadow ${
+          isOpen ? 'ring-2 ring-indigo-500 border-indigo-500' : 'border-gray-300 dark:border-gray-600'
+        }`}
+        onClick={() => {
+          if (!isOpen) {
+            setIsOpen(true);
+            setTimeout(() => inputRef.current?.focus(), 0);
+          }
+        }}
+      >
+        <div className="pl-3 flex items-center pointer-events-none">
+          <UserPlus className="w-4 h-4 text-gray-400" />
+        </div>
+
+        {selectedUserName && !isOpen ? (
+          <div className="flex-1 flex items-center justify-between py-2.5 px-3">
+            <span className="text-sm font-medium text-gray-900 dark:text-white flex items-center gap-2">
+              {selectedUserName}
+              {selectedUser && <span className="text-xs text-gray-500 dark:text-gray-400 font-normal">({selectedUser.role})</span>}
+            </span>
+            <button 
+              type="button"
+              onClick={handleClear}
+              className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-0.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        ) : (
+          <input
+            ref={inputRef}
+            type="text"
+            className="block w-full px-3 py-2.5 bg-transparent border-none focus:ring-0 text-gray-900 dark:text-white sm:text-sm placeholder-gray-400"
+            placeholder="Search team members..."
+            value={search}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setIsOpen(true);
+              setHighlightedIndex(0);
+            }}
+            onFocus={() => setIsOpen(true)}
+            onKeyDown={handleKeyDown}
+          />
+        )}
+      </div>
+
+      {isOpen && (
+        <div className="absolute z-20 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl max-h-60 overflow-y-auto">
+          {filteredUsers.length > 0 ? (
+            filteredUsers.map((user, idx) => (
+              <button
+                key={user.id}
+                type="button"
+                className={`w-full text-left px-4 py-2.5 text-sm transition-colors flex flex-col border-b border-gray-50 dark:border-gray-700 last:border-0 ${
+                  idx === highlightedIndex 
+                    ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-900 dark:text-white' 
+                    : 'text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700'
+                }`}
+                onMouseEnter={() => setHighlightedIndex(idx)}
+                onClick={() => {
+                  onSelect(user.name);
+                  setIsOpen(false);
+                  setSearch('');
+                }}
+              >
+                <span className="font-medium">{user.name}</span>
+                <span className={`text-xs ${idx === highlightedIndex ? 'text-indigo-700 dark:text-indigo-300' : 'text-gray-500 dark:text-gray-400'}`}>
+                  {user.role} • {user.email}
+                </span>
+              </button>
+            ))
+          ) : (
+            <div className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400 text-center">
+              No matching members
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
 // --- Main Modal Component ---
 
 interface CreateBookingModalProps {
@@ -162,19 +345,32 @@ const CreateBookingModal: React.FC<CreateBookingModalProps> = ({
     status: 'Pending' as BookingStatus,
     paymentStatus: 'Unpaid' as PaymentStatus,
     pickupLocation: '',
-    notes: ''
+    notes: '',
+    assignedTo: ''
   });
 
   // Right Panel State (Edit Mode Only)
   const [activeTab, setActiveTab] = useState<'comments' | 'activity'>('comments');
   const [activities, setActivities] = useState<ActivityLogItem[]>([]);
   const [comments, setComments] = useState<CommentItem[]>([]);
+  const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
   
   // Comment Composer State
   const [commentText, setCommentText] = useState('');
   const [showMentionList, setShowMentionList] = useState(false);
   const [mentionQuery, setMentionQuery] = useState('');
   const commentInputRef = useRef<HTMLTextAreaElement>(null);
+
+  // Metadata State
+  const metadata = useMemo(() => {
+    if (!bookingToEdit) return null;
+    return {
+      createdAt: 'Oct 12, 2023 09:30 AM', // Mock
+      updatedAt: 'Oct 24, 2023 04:15 PM', // Mock
+      updatedBy: 'Alex Walker'
+    };
+  }, [bookingToEdit]);
 
   // Helper to format date for input (YYYY-MM-DD)
   const formatDateForInput = (dateString: string) => {
@@ -201,7 +397,8 @@ const CreateBookingModal: React.FC<CreateBookingModalProps> = ({
         status: bookingToEdit.status,
         paymentStatus: bookingToEdit.paymentStatus || 'Unpaid',
         pickupLocation: bookingToEdit.pickupLocation || '',
-        notes: bookingToEdit.notes || ''
+        notes: bookingToEdit.notes || '',
+        assignedTo: bookingToEdit.assignedTo || ''
       });
 
       // Load Activities
@@ -224,7 +421,8 @@ const CreateBookingModal: React.FC<CreateBookingModalProps> = ({
         status: 'Pending',
         paymentStatus: 'Unpaid',
         pickupLocation: '',
-        notes: ''
+        notes: '',
+        assignedTo: ''
       });
       setActivities([]);
       setComments([]);
@@ -289,80 +487,97 @@ const CreateBookingModal: React.FC<CreateBookingModalProps> = ({
     setCommentText('');
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (bookingToEdit && onBookingUpdated) {
-      // 1. Detect Changes for Activity Log
-      const changes: ActivityLogItem[] = [];
-      const original = {
-        tourName: bookingToEdit.tourName,
-        clientName: bookingToEdit.clientName,
-        date: formatDateForInput(bookingToEdit.date),
-        pax: bookingToEdit.people,
-        status: bookingToEdit.status,
-        paymentStatus: bookingToEdit.paymentStatus || 'Unpaid',
-        pickupLocation: bookingToEdit.pickupLocation || '',
-        notes: bookingToEdit.notes || ''
-      };
+    try {
+      if (bookingToEdit && onBookingUpdated) {
+        // 1. Detect Changes for Activity Log
+        const changes: ActivityLogItem[] = [];
+        const original = {
+          tourName: bookingToEdit.tourName,
+          clientName: bookingToEdit.clientName,
+          date: formatDateForInput(bookingToEdit.date),
+          pax: bookingToEdit.people,
+          status: bookingToEdit.status,
+          paymentStatus: bookingToEdit.paymentStatus || 'Unpaid',
+          pickupLocation: bookingToEdit.pickupLocation || '',
+          notes: bookingToEdit.notes || '',
+          assignedTo: bookingToEdit.assignedTo || ''
+        };
 
-      // Helper to compare values loosely
-      const hasChanged = (a: any, b: any) => String(a) !== String(b);
+        // Helper to compare values loosely
+        const hasChanged = (a: any, b: any) => String(a) !== String(b);
 
-      if (hasChanged(original.tourName, formData.tourName)) 
-        changes.push({ id: `a_${Date.now()}_1`, bookingId: bookingToEdit.id, field: 'Tour', from: original.tourName, to: formData.tourName, actorName: CURRENT_USER_NAME, timestamp: Date.now() });
-      if (hasChanged(original.status, formData.status)) 
-        changes.push({ id: `a_${Date.now()}_2`, bookingId: bookingToEdit.id, field: 'Status', from: original.status, to: formData.status, actorName: CURRENT_USER_NAME, timestamp: Date.now() });
-      if (hasChanged(original.paymentStatus, formData.paymentStatus)) 
-        changes.push({ id: `a_${Date.now()}_3`, bookingId: bookingToEdit.id, field: 'Payment', from: original.paymentStatus, to: formData.paymentStatus, actorName: CURRENT_USER_NAME, timestamp: Date.now() });
-      if (hasChanged(original.date, formData.date)) 
-        changes.push({ id: `a_${Date.now()}_4`, bookingId: bookingToEdit.id, field: 'Date', from: original.date, to: formData.date, actorName: CURRENT_USER_NAME, timestamp: Date.now() });
-      if (hasChanged(original.pax, formData.pax)) 
-        changes.push({ id: `a_${Date.now()}_5`, bookingId: bookingToEdit.id, field: 'Pax', from: original.pax, to: formData.pax, actorName: CURRENT_USER_NAME, timestamp: Date.now() });
-      if (hasChanged(original.pickupLocation, formData.pickupLocation)) 
-        changes.push({ id: `a_${Date.now()}_6`, bookingId: bookingToEdit.id, field: 'Pickup', from: original.pickupLocation, to: formData.pickupLocation, actorName: CURRENT_USER_NAME, timestamp: Date.now() });
+        if (hasChanged(original.tourName, formData.tourName)) 
+          changes.push({ id: `a_${Date.now()}_1`, bookingId: bookingToEdit.id, field: 'Tour', from: original.tourName, to: formData.tourName, actorName: CURRENT_USER_NAME, timestamp: Date.now() });
+        if (hasChanged(original.status, formData.status)) 
+          changes.push({ id: `a_${Date.now()}_2`, bookingId: bookingToEdit.id, field: 'Status', from: original.status, to: formData.status, actorName: CURRENT_USER_NAME, timestamp: Date.now() });
+        if (hasChanged(original.paymentStatus, formData.paymentStatus)) 
+          changes.push({ id: `a_${Date.now()}_3`, bookingId: bookingToEdit.id, field: 'Payment', from: original.paymentStatus, to: formData.paymentStatus, actorName: CURRENT_USER_NAME, timestamp: Date.now() });
+        if (hasChanged(original.date, formData.date)) 
+          changes.push({ id: `a_${Date.now()}_4`, bookingId: bookingToEdit.id, field: 'Date', from: original.date, to: formData.date, actorName: CURRENT_USER_NAME, timestamp: Date.now() });
+        if (hasChanged(original.pax, formData.pax)) 
+          changes.push({ id: `a_${Date.now()}_5`, bookingId: bookingToEdit.id, field: 'Pax', from: original.pax, to: formData.pax, actorName: CURRENT_USER_NAME, timestamp: Date.now() });
+        if (hasChanged(original.pickupLocation, formData.pickupLocation)) 
+          changes.push({ id: `a_${Date.now()}_6`, bookingId: bookingToEdit.id, field: 'Pickup', from: original.pickupLocation, to: formData.pickupLocation, actorName: CURRENT_USER_NAME, timestamp: Date.now() });
+        if (hasChanged(original.assignedTo, formData.assignedTo)) 
+          changes.push({ id: `a_${Date.now()}_7`, bookingId: bookingToEdit.id, field: 'Assigned To', from: original.assignedTo || 'Unassigned', to: formData.assignedTo, actorName: CURRENT_USER_NAME, timestamp: Date.now() });
 
-      // Save Activities
-      if (changes.length > 0) {
-        const updatedActivities = [...changes, ...activities];
-        setActivities(updatedActivities); // update local state just in case
-        localStorage.setItem(`booking_activities_${bookingToEdit.id}`, JSON.stringify(updatedActivities));
+        // Save Activities
+        if (changes.length > 0) {
+          const updatedActivities = [...changes, ...activities];
+          setActivities(updatedActivities); // update local state just in case
+          localStorage.setItem(`booking_activities_${bookingToEdit.id}`, JSON.stringify(updatedActivities));
+        }
+
+        // 2. Update Booking
+        const updatedBooking: Booking = {
+          ...bookingToEdit,
+          tourName: formData.tourName,
+          clientName: formData.clientName || 'Unknown Client',
+          date: formData.date,
+          people: formData.pax,
+          status: formData.status,
+          paymentStatus: formData.paymentStatus,
+          pickupLocation: formData.pickupLocation,
+          notes: formData.notes,
+          assignedTo: formData.assignedTo
+        };
+        onBookingUpdated(updatedBooking);
+
+      } else {
+        // Create Mode
+        const newBooking: Booking = {
+          id: `B${Date.now()}`,
+          tourName: formData.tourName,
+          date: formData.date,
+          clientName: formData.clientName || 'Unknown Client',
+          people: formData.pax,
+          status: formData.status,
+          paymentStatus: formData.paymentStatus,
+          pickupLocation: formData.pickupLocation,
+          notes: formData.notes,
+          assignedTo: formData.assignedTo
+        };
+
+        if (onBookingCreated) {
+          onBookingCreated(newBooking);
+        }
       }
 
-      // 2. Update Booking
-      const updatedBooking: Booking = {
-        ...bookingToEdit,
-        tourName: formData.tourName,
-        clientName: formData.clientName || 'Unknown Client',
-        date: formData.date,
-        people: formData.pax,
-        status: formData.status,
-        paymentStatus: formData.paymentStatus,
-        pickupLocation: formData.pickupLocation,
-        notes: formData.notes
-      };
-      onBookingUpdated(updatedBooking);
+      setToastMessage('Saved successfully');
+      setShowToast(true);
+      
+      // Delay closing to show success message
+      setTimeout(() => {
+        onClose();
+      }, 1500);
 
-    } else {
-      // Create Mode
-      const newBooking: Booking = {
-        id: `B${Date.now()}`,
-        tourName: formData.tourName,
-        date: formData.date,
-        clientName: formData.clientName || 'Unknown Client',
-        people: formData.pax,
-        status: formData.status,
-        paymentStatus: formData.paymentStatus,
-        pickupLocation: formData.pickupLocation,
-        notes: formData.notes
-      };
-
-      if (onBookingCreated) {
-        onBookingCreated(newBooking);
-      }
+    } catch (error) {
+      setToastMessage('Save failed. Try again.');
+      setShowToast(true);
     }
-
-    onClose();
   };
 
   // --- Render Helpers ---
@@ -395,6 +610,8 @@ const CreateBookingModal: React.FC<CreateBookingModalProps> = ({
         {/* Modal Container: wider if editing */}
         <div className={`relative bg-white dark:bg-gray-800 rounded-2xl w-full border border-gray-100 dark:border-gray-700 shadow-2xl transform transition-all flex flex-col max-h-[90vh] ${bookingToEdit ? 'max-w-5xl' : 'max-w-md'}`}>
           
+          {showToast && <ModalToast message={toastMessage} onClose={() => setShowToast(false)} />}
+
           {/* Header */}
           <div className="flex-none flex justify-between items-center px-6 py-4 border-b border-gray-100 dark:border-gray-700">
             <div>
@@ -417,131 +634,158 @@ const CreateBookingModal: React.FC<CreateBookingModalProps> = ({
           <div className="flex-1 overflow-hidden flex flex-col lg:flex-row">
             
             {/* LEFT COLUMN: FORM */}
-            <div className={`flex-1 overflow-y-auto p-6 ${bookingToEdit ? 'lg:border-r border-gray-100 dark:border-gray-700' : ''}`}>
-              <form id="booking-form" onSubmit={handleSubmit} className="space-y-5">
-                <SearchableSelect 
-                  label="Client"
-                  icon={<User className="w-4 h-4 text-gray-400" />}
-                  options={clientOptions}
-                  value={formData.clientName}
-                  onChange={(val) => setFormData({ ...formData, clientName: val })}
-                  placeholder="Select a lead..."
-                />
+            <div className={`flex-1 flex flex-col ${bookingToEdit ? 'lg:border-r border-gray-100 dark:border-gray-700' : ''}`}>
+              <div className="flex-1 overflow-y-auto p-6">
+                <form id="booking-form" onSubmit={handleSubmit} className="space-y-5">
+                  <SearchableSelect 
+                    label="Client"
+                    icon={<User className="w-4 h-4 text-gray-400" />}
+                    options={clientOptions}
+                    value={formData.clientName}
+                    onChange={(val) => setFormData({ ...formData, clientName: val })}
+                    placeholder="Select a lead..."
+                  />
 
-                <SearchableSelect 
-                  label="Tour Name"
-                  icon={<Flag className="w-4 h-4 text-gray-400" />}
-                  options={tourOptions}
-                  value={formData.tourName}
-                  onChange={(val) => setFormData({ ...formData, tourName: val })}
-                  placeholder="Select a tour..."
-                />
+                  <SearchableSelect 
+                    label="Tour Name"
+                    icon={<Flag className="w-4 h-4 text-gray-400" />}
+                    options={tourOptions}
+                    value={formData.tourName}
+                    onChange={(val) => setFormData({ ...formData, tourName: val })}
+                    placeholder="Select a tour..."
+                  />
 
-                <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase mb-1.5">Date</label>
+                      <div className="relative">
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                           <Calendar className="w-4 h-4 text-gray-400" />
+                        </div>
+                        <input 
+                          type="date" 
+                          required
+                          className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white bg-white dark:bg-gray-700/50 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                          value={formData.date}
+                          onChange={e => setFormData({...formData, date: e.target.value})}
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase mb-1.5">Pax</label>
+                      <div className="relative">
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                           <Users className="w-4 h-4 text-gray-400" />
+                        </div>
+                        <input 
+                          type="number" 
+                          min="1"
+                          required
+                          className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white bg-white dark:bg-gray-700/50 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                          value={formData.pax}
+                          onChange={e => setFormData({...formData, pax: parseInt(e.target.value)})}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase mb-1.5">Status</label>
+                      <div className="relative">
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                           <CheckCircle className="w-4 h-4 text-gray-400" />
+                        </div>
+                        <select
+                          className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white bg-white dark:bg-gray-700/50 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm appearance-none"
+                          value={formData.status}
+                          onChange={e => setFormData({...formData, status: e.target.value as BookingStatus})}
+                        >
+                          <option value="Pending">Pending</option>
+                          <option value="Confirmed">Confirmed</option>
+                          <option value="Completed">Completed</option>
+                          <option value="Cancelled">Cancelled</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase mb-1.5">Payment</label>
+                      <div className="relative">
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                           <CreditCard className="w-4 h-4 text-gray-400" />
+                        </div>
+                        <select
+                          className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white bg-white dark:bg-gray-700/50 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm appearance-none"
+                          value={formData.paymentStatus}
+                          onChange={e => setFormData({...formData, paymentStatus: e.target.value as PaymentStatus})}
+                        >
+                          <option value="Unpaid">Unpaid</option>
+                          <option value="Waiting for payment">Waiting</option>
+                          <option value="Paid">Paid</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+
+                  <AssigneeLookup 
+                    label="Assigned To"
+                    users={TEAM_USERS}
+                    selectedUserName={formData.assignedTo}
+                    onSelect={(name) => setFormData({ ...formData, assignedTo: name })}
+                  />
+
                   <div>
-                    <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase mb-1.5">Date</label>
+                    <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase mb-1.5">Pickup Location</label>
                     <div className="relative">
                       <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                         <Calendar className="w-4 h-4 text-gray-400" />
+                         <MapPin className="w-4 h-4 text-gray-400" />
                       </div>
                       <input 
-                        type="date" 
-                        required
+                        type="text" 
                         className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white bg-white dark:bg-gray-700/50 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                        value={formData.date}
-                        onChange={e => setFormData({...formData, date: e.target.value})}
+                        placeholder="e.g. Hotel Grand Central"
+                        value={formData.pickupLocation}
+                        onChange={e => setFormData({...formData, pickupLocation: e.target.value})}
                       />
                     </div>
                   </div>
+
                   <div>
-                    <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase mb-1.5">Pax</label>
+                    <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase mb-1.5">Notes</label>
                     <div className="relative">
-                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                         <Users className="w-4 h-4 text-gray-400" />
+                      <div className="absolute left-3 top-3 pointer-events-none">
+                         <FileText className="w-4 h-4 text-gray-400" />
                       </div>
-                      <input 
-                        type="number" 
-                        min="1"
-                        required
-                        className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white bg-white dark:bg-gray-700/50 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                        value={formData.pax}
-                        onChange={e => setFormData({...formData, pax: parseInt(e.target.value)})}
+                      <textarea 
+                        className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white bg-white dark:bg-gray-700/50 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm resize-none"
+                        rows={3}
+                        placeholder="Dietary requirements, special requests..."
+                        value={formData.notes}
+                        onChange={e => setFormData({...formData, notes: e.target.value})}
                       />
                     </div>
                   </div>
-                </div>
+                </form>
+              </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase mb-1.5">Status</label>
-                    <div className="relative">
-                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                         <CheckCircle className="w-4 h-4 text-gray-400" />
-                      </div>
-                      <select
-                        className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white bg-white dark:bg-gray-700/50 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm appearance-none"
-                        value={formData.status}
-                        onChange={e => setFormData({...formData, status: e.target.value as BookingStatus})}
-                      >
-                        <option value="Pending">Pending</option>
-                        <option value="Confirmed">Confirmed</option>
-                        <option value="Completed">Completed</option>
-                        <option value="Cancelled">Cancelled</option>
-                      </select>
-                    </div>
+              {/* Metadata Footer (Fixed at bottom of left column in Edit Mode) */}
+              {bookingToEdit && metadata && (
+                <div className="flex-none px-6 py-3 bg-gray-50/50 dark:bg-gray-800/50 border-t border-gray-100 dark:border-gray-700 text-xs text-gray-400 dark:text-gray-500 space-y-1">
+                  <div className="flex justify-between">
+                    <span>Created:</span>
+                    <span className="font-medium text-gray-600 dark:text-gray-400">{metadata.createdAt}</span>
                   </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase mb-1.5">Payment</label>
-                    <div className="relative">
-                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                         <CreditCard className="w-4 h-4 text-gray-400" />
-                      </div>
-                      <select
-                        className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white bg-white dark:bg-gray-700/50 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm appearance-none"
-                        value={formData.paymentStatus}
-                        onChange={e => setFormData({...formData, paymentStatus: e.target.value as PaymentStatus})}
-                      >
-                        <option value="Unpaid">Unpaid</option>
-                        <option value="Waiting for payment">Waiting</option>
-                        <option value="Paid">Paid</option>
-                      </select>
-                    </div>
+                  <div className="flex justify-between">
+                    <span>Last Modified:</span>
+                    <span className="font-medium text-gray-600 dark:text-gray-400">{metadata.updatedAt}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Modified By:</span>
+                    <span className="font-medium text-gray-600 dark:text-gray-400">{metadata.updatedBy}</span>
                   </div>
                 </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase mb-1.5">Pickup Location</label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                       <MapPin className="w-4 h-4 text-gray-400" />
-                    </div>
-                    <input 
-                      type="text" 
-                      className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white bg-white dark:bg-gray-700/50 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                      placeholder="e.g. Hotel Grand Central"
-                      value={formData.pickupLocation}
-                      onChange={e => setFormData({...formData, pickupLocation: e.target.value})}
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase mb-1.5">Notes</label>
-                  <div className="relative">
-                    <div className="absolute left-3 top-3 pointer-events-none">
-                       <FileText className="w-4 h-4 text-gray-400" />
-                    </div>
-                    <textarea 
-                      className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white bg-white dark:bg-gray-700/50 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm resize-none"
-                      rows={3}
-                      placeholder="Dietary requirements, special requests..."
-                      value={formData.notes}
-                      onChange={e => setFormData({...formData, notes: e.target.value})}
-                    />
-                  </div>
-                </div>
-              </form>
+              )}
             </div>
 
             {/* RIGHT COLUMN: TABS (Only visible when editing) */}
