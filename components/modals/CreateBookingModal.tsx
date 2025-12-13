@@ -102,7 +102,7 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
   );
 
   return (
-    <div ref={wrapperRef} className="relative">
+    <div ref={wrapperRef} className="relative w-full">
       <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase mb-1.5">
         {label}
       </label>
@@ -230,7 +230,7 @@ const AssigneeLookup: React.FC<AssigneeLookupProps> = ({ label, users, selectedU
   const selectedUser = users.find(u => u.name === selectedUserName);
 
   return (
-    <div ref={containerRef} className="relative">
+    <div ref={containerRef} className="relative w-full">
       <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase mb-1.5">
         {label}
       </label>
@@ -687,7 +687,7 @@ const CreateBookingModal: React.FC<CreateBookingModalProps> = ({
 
       <div className="flex items-center justify-center min-h-screen p-4">
         {/* Modal Container: wider if editing */}
-        <div className={`relative bg-white dark:bg-gray-800 rounded-2xl w-full border border-gray-100 dark:border-gray-700 shadow-2xl transform transition-all flex flex-col max-h-[90vh] ${bookingToEdit ? 'max-w-5xl' : 'max-w-md'}`}>
+        <div className={`relative bg-white dark:bg-gray-800 rounded-2xl w-full border border-gray-100 dark:border-gray-700 shadow-2xl transform transition-all flex flex-col ${bookingToEdit ? 'max-w-[95vw] lg:max-w-[1300px] h-[90vh]' : 'max-w-lg max-h-[90vh]'}`}>
           
           {showToast && <ModalToast message={toastMessage} onClose={() => setShowToast(false)} />}
 
@@ -713,27 +713,31 @@ const CreateBookingModal: React.FC<CreateBookingModalProps> = ({
           <div className="flex-1 overflow-hidden flex flex-col lg:flex-row">
             
             {/* LEFT COLUMN: FORM */}
-            <div className={`flex-1 flex flex-col ${bookingToEdit ? 'lg:border-r border-gray-100 dark:border-gray-700' : ''}`}>
-              <div className="flex-1 overflow-y-auto p-6">
-                <form id="booking-form" onSubmit={handleSubmit} className="space-y-5">
-                  <SearchableSelect 
-                    label="Client"
-                    icon={<User className="w-4 h-4 text-gray-400" />}
-                    options={clientOptions}
-                    value={formData.clientName}
-                    onChange={(val) => setFormData({ ...formData, clientName: val })}
-                    placeholder="Select a lead..."
-                  />
+            <div className={`flex-1 flex flex-col min-w-0 ${bookingToEdit ? 'lg:border-r border-gray-100 dark:border-gray-700' : ''}`}>
+              <div className="flex-1 overflow-y-auto p-6 lg:p-8">
+                <form id="booking-form" onSubmit={handleSubmit} className="space-y-4">
+                  {/* Row 1: Client & Tour */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    <SearchableSelect 
+                      label="Client"
+                      icon={<User className="w-4 h-4 text-gray-400" />}
+                      options={clientOptions}
+                      value={formData.clientName}
+                      onChange={(val) => setFormData({ ...formData, clientName: val })}
+                      placeholder="Select a lead..."
+                    />
 
-                  <SearchableSelect 
-                    label="Tour Name"
-                    icon={<Flag className="w-4 h-4 text-gray-400" />}
-                    options={tourOptions}
-                    value={formData.tourName}
-                    onChange={(val) => setFormData({ ...formData, tourName: val })}
-                    placeholder="Select a tour..."
-                  />
+                    <SearchableSelect 
+                      label="Tour Name"
+                      icon={<Flag className="w-4 h-4 text-gray-400" />}
+                      options={tourOptions}
+                      value={formData.tourName}
+                      onChange={(val) => setFormData({ ...formData, tourName: val })}
+                      placeholder="Select a tour..."
+                    />
+                  </div>
 
+                  {/* Row 2: Date & Pax */}
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase mb-1.5">Date</label>
@@ -768,7 +772,7 @@ const CreateBookingModal: React.FC<CreateBookingModalProps> = ({
                     </div>
                   </div>
 
-                  {/* Status & Payment Status Row */}
+                  {/* Row 3: Status & Payment Status */}
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase mb-1.5">Status</label>
@@ -810,8 +814,8 @@ const CreateBookingModal: React.FC<CreateBookingModalProps> = ({
                     </div>
                   </div>
 
-                  {/* Payment Details Section */}
-                  <div className="p-4 bg-gray-50 dark:bg-gray-700/30 rounded-xl border border-gray-100 dark:border-gray-700 space-y-4">
+                  {/* Payment Details Card */}
+                  <div className="p-4 bg-gray-50/50 dark:bg-gray-700/30 rounded-xl border border-gray-200 dark:border-gray-700 space-y-3">
                     <div className="flex items-center justify-between">
                       <h4 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Payment Details</h4>
                       {amountPaid > totalAmount && (
@@ -827,7 +831,7 @@ const CreateBookingModal: React.FC<CreateBookingModalProps> = ({
                       <div>
                         <div className="flex items-center justify-between mb-1.5">
                           <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase">
-                            Total Amount
+                            Total
                           </label>
                           {isAmountOverridden && (
                             <button 
@@ -866,7 +870,7 @@ const CreateBookingModal: React.FC<CreateBookingModalProps> = ({
                       {/* Amount Paid */}
                       <div>
                         <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase mb-1.5">
-                          Amount Paid
+                          Paid
                         </label>
                         <div className="relative">
                           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-500 dark:text-gray-400 text-sm font-semibold">
@@ -886,9 +890,9 @@ const CreateBookingModal: React.FC<CreateBookingModalProps> = ({
 
                     {/* Amount Due & Hints */}
                     <div className="flex flex-col gap-2">
-                      <div className="flex items-center justify-between bg-white dark:bg-gray-800 p-3 rounded-lg border border-gray-200 dark:border-gray-600">
+                      <div className="flex items-center justify-between bg-white dark:bg-gray-800 p-2.5 rounded-lg border border-gray-200 dark:border-gray-600">
                         <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Amount Due</span>
-                        <span className={`text-lg font-bold ${amountDue > 0 ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`}>
+                        <span className={`text-base font-bold ${amountDue > 0 ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`}>
                           ${amountDue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </span>
                       </div>
@@ -915,26 +919,29 @@ const CreateBookingModal: React.FC<CreateBookingModalProps> = ({
                     </div>
                   </div>
 
-                  <AssigneeLookup 
-                    label="Assigned To"
-                    users={TEAM_USERS}
-                    selectedUserName={formData.assignedTo}
-                    onSelect={(name) => setFormData({ ...formData, assignedTo: name })}
-                  />
+                  {/* Row 4: Assigned To & Pickup */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    <AssigneeLookup 
+                      label="Assigned To"
+                      users={TEAM_USERS}
+                      selectedUserName={formData.assignedTo}
+                      onSelect={(name) => setFormData({ ...formData, assignedTo: name })}
+                    />
 
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase mb-1.5">Pickup Location</label>
-                    <div className="relative">
-                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                         <MapPin className="w-4 h-4 text-gray-400" />
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase mb-1.5">Pickup Location</label>
+                      <div className="relative">
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                           <MapPin className="w-4 h-4 text-gray-400" />
+                        </div>
+                        <input 
+                          type="text" 
+                          className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white bg-white dark:bg-gray-700/50 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                          placeholder="e.g. Hotel Grand Central"
+                          value={formData.pickupLocation}
+                          onChange={e => setFormData({...formData, pickupLocation: e.target.value})}
+                        />
                       </div>
-                      <input 
-                        type="text" 
-                        className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white bg-white dark:bg-gray-700/50 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                        placeholder="e.g. Hotel Grand Central"
-                        value={formData.pickupLocation}
-                        onChange={e => setFormData({...formData, pickupLocation: e.target.value})}
-                      />
                     </div>
                   </div>
 
@@ -954,32 +961,28 @@ const CreateBookingModal: React.FC<CreateBookingModalProps> = ({
                     </div>
                   </div>
                 </form>
+                
+                {/* Metadata Footer (Inline for left col) */}
+                {bookingToEdit && metadata && (
+                  <div className="mt-8 pt-6 border-t border-gray-100 dark:border-gray-700 text-xs text-gray-400 dark:text-gray-500 grid grid-cols-2 gap-y-1">
+                    <div>
+                      <span className="block text-gray-300 dark:text-gray-600 uppercase text-[10px] tracking-wider mb-0.5">Created</span>
+                      {metadata.createdAt}
+                    </div>
+                    <div>
+                      <span className="block text-gray-300 dark:text-gray-600 uppercase text-[10px] tracking-wider mb-0.5">Last Modified</span>
+                      {metadata.updatedAt} by {metadata.updatedBy}
+                    </div>
+                  </div>
+                )}
               </div>
-
-              {/* Metadata Footer (Fixed at bottom of left column in Edit Mode) */}
-              {bookingToEdit && metadata && (
-                <div className="flex-none px-6 py-3 bg-gray-50/50 dark:bg-gray-800/50 border-t border-gray-100 dark:border-gray-700 text-xs text-gray-400 dark:text-gray-500 space-y-1">
-                  <div className="flex justify-between">
-                    <span>Created:</span>
-                    <span className="font-medium text-gray-600 dark:text-gray-400">{metadata.createdAt}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Last Modified:</span>
-                    <span className="font-medium text-gray-600 dark:text-gray-400">{metadata.updatedAt}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Modified By:</span>
-                    <span className="font-medium text-gray-600 dark:text-gray-400">{metadata.updatedBy}</span>
-                  </div>
-                </div>
-              )}
             </div>
 
             {/* RIGHT COLUMN: TABS (Only visible when editing) */}
             {bookingToEdit && (
-              <div className="flex-1 flex flex-col bg-gray-50/50 dark:bg-gray-900/30 min-h-[400px]">
+              <div className="flex-none w-full lg:w-[400px] flex flex-col bg-gray-50/50 dark:bg-gray-900/30 border-t lg:border-t-0 lg:border-l border-gray-200 dark:border-gray-700">
                 {/* Tab Headers */}
-                <div className="flex border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-6">
+                <div className="flex border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-6 sticky top-0 z-10">
                   <button
                     onClick={() => setActiveTab('comments')}
                     className={`py-4 text-sm font-medium mr-6 border-b-2 transition-colors flex items-center gap-2 ${
@@ -1136,7 +1139,7 @@ const CreateBookingModal: React.FC<CreateBookingModalProps> = ({
           </div>
 
           {/* Footer Actions */}
-          <div className="flex-none px-6 py-4 border-t border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800 flex justify-end gap-3 rounded-b-2xl">
+          <div className="flex-none px-6 py-4 border-t border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800 flex justify-end gap-3 rounded-b-2xl sticky bottom-0 z-20">
             <button 
               type="button" 
               onClick={onClose} 
