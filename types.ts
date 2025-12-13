@@ -1,7 +1,7 @@
 export type LeadStatus = 'New' | 'Contacted' | 'Qualified' | 'Booked' | 'Lost';
 export type BookingStatus = 'Confirmed' | 'Pending' | 'Completed' | 'Cancelled';
 export type Channel = 'Website' | 'WhatsApp' | 'Email' | 'Referral';
-export type PaymentStatus = 'Unpaid' | 'Waiting for payment' | 'Paid';
+export type PaymentStatus = 'Unpaid' | 'Waiting' | 'Partially Paid' | 'Paid' | 'Refunded';
 
 export interface Lead {
   id: string;
@@ -23,6 +23,12 @@ export interface Booking {
   notes?: string;
   pickupLocation?: string;
   assignedTo?: string;
+  
+  // Payment fields
+  totalAmount?: number;
+  amountPaid?: number;
+  amountDue?: number; // Calculated/Read-only usually
+  isAmountOverridden?: boolean;
 }
 
 export interface KPIMetric {

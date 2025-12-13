@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { 
   X, Calendar, MapPin, Users, FileText, Flag, User, CheckCircle, CreditCard, 
-  MessageSquare, Activity, Send, Clock, History, ChevronRight, UserPlus, Info, Search 
+  MessageSquare, Activity, Send, Clock, History, ChevronRight, UserPlus, Info, Search,
+  RotateCcw, AlertCircle
 } from 'lucide-react';
 import { Booking, BookingStatus, PaymentStatus } from '../../types';
 import { TOURS, RECENT_LEADS } from '../../data/mockData';
@@ -349,6 +350,11 @@ const CreateBookingModal: React.FC<CreateBookingModalProps> = ({
     assignedTo: ''
   });
 
+  // New Payment Fields State
+  const [totalAmount, setTotalAmount] = useState(0);
+  const [amountPaid, setAmountPaid] = useState(0);
+  const [isAmountOverridden, setIsAmountOverridden] = useState(false);
+
   // Right Panel State (Edit Mode Only)
   const [activeTab, setActiveTab] = useState<'comments' | 'activity'>('comments');
   const [activities, setActivities] = useState<ActivityLogItem[]>([]);
@@ -401,6 +407,11 @@ const CreateBookingModal: React.FC<CreateBookingModalProps> = ({
         assignedTo: bookingToEdit.assignedTo || ''
       });
 
+      // Load Payment Details
+      setTotalAmount(bookingToEdit.totalAmount ?? 0);
+      setAmountPaid(bookingToEdit.amountPaid ?? 0);
+      setIsAmountOverridden(bookingToEdit.isAmountOverridden ?? false);
+
       // Load Activities
       const storedActivities = localStorage.getItem(`booking_activities_${bookingToEdit.id}`);
       if (storedActivities) setActivities(JSON.parse(storedActivities));
@@ -424,12 +435,66 @@ const CreateBookingModal: React.FC<CreateBookingModalProps> = ({
         notes: '',
         assignedTo: ''
       });
+      setTotalAmount(0);
+      setAmountPaid(0);
+      setIsAmountOverridden(false);
       setActivities([]);
       setComments([]);
     }
   }, [bookingToEdit, isOpen, leadName]);
 
+  // 2. Auto-calculate Total Amount based on Tour & Pax
+  useEffect(() => {
+    if (isAmountOverridden) return;
+
+    const tour = TOURS.find(t => t.name === formData.tourName);
+    const price = tour ? tour.price : 0;
+    const pax = formData.pax || 0;
+    const newTotal = price * pax;
+
+    setTotalAmount(newTotal);
+  }, [formData.tourName, formData.pax, isAmountOverridden]);
+
+  // Derived Financials
+  const amountDue = formData.paymentStatus === 'Refunded' ? 0 : Math.max(totalAmount - amountPaid, 0);
+
   // --- Handlers ---
+
+  const handleTotalChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const rawValue = e.target.value;
+    // Allow clearing the input (which sets value to 0 internally)
+    if (rawValue === '') {
+      setTotalAmount(0);
+      setIsAmountOverridden(true);
+      return;
+    }
+    const val = parseFloat(rawValue);
+    if (!isNaN(val) && val >= 0) {
+      setTotalAmount(val);
+      setIsAmountOverridden(true);
+    }
+  };
+
+  const handleResetTotal = () => {
+    const tour = TOURS.find(t => t.name === formData.tourName);
+    const price = tour ? tour.price : 0;
+    const pax = formData.pax || 0;
+    setTotalAmount(price * pax);
+    setIsAmountOverridden(false);
+  };
+
+  const handleAmountPaidChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const rawValue = e.target.value;
+    // Allow clearing the input (which sets value to 0 internally)
+    if (rawValue === '') {
+      setAmountPaid(0);
+      return;
+    }
+    const val = parseFloat(rawValue);
+    if (!isNaN(val) && val >= 0) {
+      setAmountPaid(val);
+    }
+  };
 
   const handleCommentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const val = e.target.value;
@@ -503,7 +568,9 @@ const CreateBookingModal: React.FC<CreateBookingModalProps> = ({
           paymentStatus: bookingToEdit.paymentStatus || 'Unpaid',
           pickupLocation: bookingToEdit.pickupLocation || '',
           notes: bookingToEdit.notes || '',
-          assignedTo: bookingToEdit.assignedTo || ''
+          assignedTo: bookingToEdit.assignedTo || '',
+          totalAmount: bookingToEdit.totalAmount,
+          amountPaid: bookingToEdit.amountPaid
         };
 
         // Helper to compare values loosely
@@ -514,7 +581,7 @@ const CreateBookingModal: React.FC<CreateBookingModalProps> = ({
         if (hasChanged(original.status, formData.status)) 
           changes.push({ id: `a_${Date.now()}_2`, bookingId: bookingToEdit.id, field: 'Status', from: original.status, to: formData.status, actorName: CURRENT_USER_NAME, timestamp: Date.now() });
         if (hasChanged(original.paymentStatus, formData.paymentStatus)) 
-          changes.push({ id: `a_${Date.now()}_3`, bookingId: bookingToEdit.id, field: 'Payment', from: original.paymentStatus, to: formData.paymentStatus, actorName: CURRENT_USER_NAME, timestamp: Date.now() });
+          changes.push({ id: `a_${Date.now()}_3`, bookingId: bookingToEdit.id, field: 'Payment Status', from: original.paymentStatus, to: formData.paymentStatus, actorName: CURRENT_USER_NAME, timestamp: Date.now() });
         if (hasChanged(original.date, formData.date)) 
           changes.push({ id: `a_${Date.now()}_4`, bookingId: bookingToEdit.id, field: 'Date', from: original.date, to: formData.date, actorName: CURRENT_USER_NAME, timestamp: Date.now() });
         if (hasChanged(original.pax, formData.pax)) 
@@ -523,6 +590,10 @@ const CreateBookingModal: React.FC<CreateBookingModalProps> = ({
           changes.push({ id: `a_${Date.now()}_6`, bookingId: bookingToEdit.id, field: 'Pickup', from: original.pickupLocation, to: formData.pickupLocation, actorName: CURRENT_USER_NAME, timestamp: Date.now() });
         if (hasChanged(original.assignedTo, formData.assignedTo)) 
           changes.push({ id: `a_${Date.now()}_7`, bookingId: bookingToEdit.id, field: 'Assigned To', from: original.assignedTo || 'Unassigned', to: formData.assignedTo, actorName: CURRENT_USER_NAME, timestamp: Date.now() });
+        if (original.totalAmount !== totalAmount)
+          changes.push({ id: `a_${Date.now()}_8`, bookingId: bookingToEdit.id, field: 'Total Amount', from: original.totalAmount, to: totalAmount, actorName: CURRENT_USER_NAME, timestamp: Date.now() });
+        if (original.amountPaid !== amountPaid)
+          changes.push({ id: `a_${Date.now()}_9`, bookingId: bookingToEdit.id, field: 'Amount Paid', from: original.amountPaid, to: amountPaid, actorName: CURRENT_USER_NAME, timestamp: Date.now() });
 
         // Save Activities
         if (changes.length > 0) {
@@ -542,7 +613,11 @@ const CreateBookingModal: React.FC<CreateBookingModalProps> = ({
           paymentStatus: formData.paymentStatus,
           pickupLocation: formData.pickupLocation,
           notes: formData.notes,
-          assignedTo: formData.assignedTo
+          assignedTo: formData.assignedTo,
+          totalAmount: totalAmount,
+          amountPaid: amountPaid,
+          amountDue: amountDue,
+          isAmountOverridden: isAmountOverridden
         };
         onBookingUpdated(updatedBooking);
 
@@ -558,7 +633,11 @@ const CreateBookingModal: React.FC<CreateBookingModalProps> = ({
           paymentStatus: formData.paymentStatus,
           pickupLocation: formData.pickupLocation,
           notes: formData.notes,
-          assignedTo: formData.assignedTo
+          assignedTo: formData.assignedTo,
+          totalAmount: totalAmount,
+          amountPaid: amountPaid,
+          amountDue: amountDue,
+          isAmountOverridden: isAmountOverridden
         };
 
         if (onBookingCreated) {
@@ -689,6 +768,7 @@ const CreateBookingModal: React.FC<CreateBookingModalProps> = ({
                     </div>
                   </div>
 
+                  {/* Status & Payment Status Row */}
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase mb-1.5">Status</label>
@@ -710,7 +790,7 @@ const CreateBookingModal: React.FC<CreateBookingModalProps> = ({
                     </div>
 
                     <div>
-                      <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase mb-1.5">Payment</label>
+                      <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase mb-1.5">Payment Status</label>
                       <div className="relative">
                         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                            <CreditCard className="w-4 h-4 text-gray-400" />
@@ -721,10 +801,117 @@ const CreateBookingModal: React.FC<CreateBookingModalProps> = ({
                           onChange={e => setFormData({...formData, paymentStatus: e.target.value as PaymentStatus})}
                         >
                           <option value="Unpaid">Unpaid</option>
-                          <option value="Waiting for payment">Waiting</option>
+                          <option value="Waiting">Waiting</option>
+                          <option value="Partially Paid">Partially Paid</option>
                           <option value="Paid">Paid</option>
+                          <option value="Refunded">Refunded</option>
                         </select>
                       </div>
+                    </div>
+                  </div>
+
+                  {/* Payment Details Section */}
+                  <div className="p-4 bg-gray-50 dark:bg-gray-700/30 rounded-xl border border-gray-100 dark:border-gray-700 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Payment Details</h4>
+                      {amountPaid > totalAmount && (
+                        <div className="flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400">
+                          <AlertCircle className="w-3 h-3" />
+                          <span>Paid exceeds total</span>
+                        </div>
+                      )}
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-4">
+                      {/* Total Amount */}
+                      <div>
+                        <div className="flex items-center justify-between mb-1.5">
+                          <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase">
+                            Total Amount
+                          </label>
+                          {isAmountOverridden && (
+                            <button 
+                              type="button" 
+                              onClick={handleResetTotal}
+                              className="text-[10px] flex items-center gap-1 text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300 transition-colors"
+                            >
+                              <RotateCcw className="w-3 h-3" /> Reset
+                            </button>
+                          )}
+                        </div>
+                        <div className="relative">
+                          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-500 dark:text-gray-400 text-sm font-semibold">
+                             $
+                          </div>
+                          <input 
+                            type="number" 
+                            min="0"
+                            step="0.01"
+                            className={`block w-full pl-8 pr-3 py-2.5 border rounded-lg text-gray-900 dark:text-white bg-white dark:bg-gray-800 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm ${
+                              isAmountOverridden 
+                                ? 'border-indigo-300 dark:border-indigo-500/50 bg-indigo-50/20 dark:bg-indigo-900/10' 
+                                : 'border-gray-300 dark:border-gray-600'
+                            }`}
+                            value={totalAmount === 0 ? '' : totalAmount}
+                            onChange={handleTotalChange}
+                          />
+                          {isAmountOverridden && (
+                            <span className="absolute inset-y-0 right-2 flex items-center pointer-events-none">
+                              <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-100 dark:bg-indigo-900/50 px-1.5 py-0.5 rounded">Manual</span>
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Amount Paid */}
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase mb-1.5">
+                          Amount Paid
+                        </label>
+                        <div className="relative">
+                          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-500 dark:text-gray-400 text-sm font-semibold">
+                             $
+                          </div>
+                          <input 
+                            type="number" 
+                            min="0"
+                            step="0.01"
+                            className="block w-full pl-8 pr-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white bg-white dark:bg-gray-800 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                            value={amountPaid === 0 ? '' : amountPaid}
+                            onChange={handleAmountPaidChange}
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Amount Due & Hints */}
+                    <div className="flex flex-col gap-2">
+                      <div className="flex items-center justify-between bg-white dark:bg-gray-800 p-3 rounded-lg border border-gray-200 dark:border-gray-600">
+                        <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Amount Due</span>
+                        <span className={`text-lg font-bold ${amountDue > 0 ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`}>
+                          ${amountDue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </span>
+                      </div>
+                      
+                      {/* Hint Logic */}
+                      {formData.paymentStatus === 'Paid' && amountPaid < totalAmount && (
+                        <div className="flex items-center justify-between text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 px-3 py-2 rounded-lg">
+                          <span>"Paid" usually means Amount Paid equals Total.</span>
+                          <button 
+                            type="button"
+                            onClick={() => setAmountPaid(totalAmount)}
+                            className="text-amber-700 dark:text-amber-300 font-bold hover:underline"
+                          >
+                            Set to Total
+                          </button>
+                        </div>
+                      )}
+                      {amountPaid > 0 && amountDue === 0 && formData.paymentStatus !== 'Paid' && formData.paymentStatus !== 'Refunded' && (
+                        <div className="flex items-center text-xs text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 px-3 py-2 rounded-lg">
+                          <Info className="w-3 h-3 mr-1.5" />
+                          <span>Amount fully paid. Consider changing status to <b>Paid</b>.</span>
+                        </div>
+                      )}
                     </div>
                   </div>
 

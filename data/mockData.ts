@@ -93,6 +93,10 @@ export const UPCOMING_BOOKINGS: Booking[] = [
     status: 'Confirmed',
     paymentStatus: 'Paid',
     assignedTo: 'Alex Walker',
+    totalAmount: 170,
+    amountPaid: 170,
+    amountDue: 0,
+    isAmountOverridden: false
   },
   {
     id: 'B002',
@@ -101,8 +105,12 @@ export const UPCOMING_BOOKINGS: Booking[] = [
     clientName: 'Alice Cooper',
     people: 4,
     status: 'Pending',
-    paymentStatus: 'Waiting for payment',
+    paymentStatus: 'Waiting',
     assignedTo: 'Sarah Miller',
+    totalAmount: 180,
+    amountPaid: 0,
+    amountDue: 180,
+    isAmountOverridden: false
   },
   {
     id: 'B003',
@@ -113,6 +121,10 @@ export const UPCOMING_BOOKINGS: Booking[] = [
     status: 'Confirmed',
     paymentStatus: 'Paid',
     assignedTo: 'Alex Walker',
+    totalAmount: 120,
+    amountPaid: 120,
+    amountDue: 0,
+    isAmountOverridden: false
   },
   {
     id: 'B004',
@@ -123,6 +135,10 @@ export const UPCOMING_BOOKINGS: Booking[] = [
     status: 'Confirmed',
     paymentStatus: 'Unpaid',
     assignedTo: 'Mike Johnson',
+    totalAmount: 760,
+    amountPaid: 0,
+    amountDue: 760,
+    isAmountOverridden: false
   },
   {
     id: 'B005',
@@ -133,6 +149,10 @@ export const UPCOMING_BOOKINGS: Booking[] = [
     status: 'Cancelled',
     paymentStatus: 'Unpaid',
     assignedTo: 'Alex Walker',
+    totalAmount: 1500,
+    amountPaid: 0,
+    amountDue: 1500,
+    isAmountOverridden: true
   },
 ];
 
