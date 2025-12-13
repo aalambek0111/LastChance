@@ -1,170 +1,258 @@
-import React, { useState, useEffect } from 'react';
-import { X, MessageCircle, Phone, Mail, Building, Save } from 'lucide-react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { X, Trash2, Save, Clock, Mail, Phone, Building2, Tag } from 'lucide-react';
+import { useI18n } from '../../context/ThemeContext';
 import { Lead, LeadStatus } from '../../types';
+
+const STATUS_OPTIONS: LeadStatus[] = ['New', 'Contacted', 'Qualified', 'Booked', 'Lost'];
 
 interface LeadDetailPaneProps {
   lead: Lead;
   onClose: () => void;
-  onSave: (l: Lead) => void;
-  onOpenChat: () => void;
+  onSave: (updated: Lead) => void;
+  onDelete: (id: string) => void;
 }
 
-const LeadDetailPane: React.FC<LeadDetailPaneProps> = ({ lead, onClose, onSave, onOpenChat }) => {
-   // Extended mock state for the edit form since Lead type is limited
-   const [formData, setFormData] = useState({
-      ...lead,
-      email: 'contact@example.com',
-      phone: '+1 (555) 123-4567',
-      notes: '',
-      value: 1250,
-      company: 'Private Group'
-   });
+const LeadDetailPane: React.FC<LeadDetailPaneProps> = ({ lead, onClose, onSave, onDelete }) => {
+  const { t } = useI18n();
 
-   // Generate deterministic mock data based on ID if empty
-   useEffect(() => {
-     setFormData({
-       ...lead,
-       email: `${lead.name.toLowerCase().replace(' ', '.')}@example.com`,
-       phone: '+1 (555) ' + Math.floor(100 + Math.random() * 900) + '-' + Math.floor(1000 + Math.random() * 9000),
-       notes: formData.notes || 'Looking for a private tour for family.',
-       value: formData.value || Math.floor(Math.random() * 5000) + 500,
-       company: formData.company || 'Private Client'
-     });
-   }, [lead.id]);
+  const getAny = (obj: any, key: string, fallback: any = '') => {
+    const v = obj?.[key];
+    return v === undefined || v === null ? fallback : v;
+  };
 
-   return (
-      <div className="h-full flex flex-col bg-white dark:bg-gray-800 shadow-2xl">
-         {/* Header */}
-         <div className="flex items-center justify-between p-6 border-b border-gray-100 dark:border-gray-700 bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm z-10">
-            <div>
-               <h2 className="text-lg font-bold text-gray-900 dark:text-white">Lead Details</h2>
-               <p className="text-xs text-gray-500 dark:text-gray-400">ID: {lead.id}</p>
-            </div>
-            <button 
-               onClick={onClose}
-               className="p-2 text-gray-400 hover:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors"
-            >
-               <X className="w-5 h-5" />
-            </button>
-         </div>
+  const [form, setForm] = useState(() => ({
+    name: String(getAny(lead, 'name', '')),
+    status: (getAny(lead, 'status', 'New') as LeadStatus) ?? 'New',
+    channel: String(getAny(lead, 'channel', '')),
+    email: String(getAny(lead, 'email', '')),
+    phone: String(getAny(lead, 'phone', '')),
+    company: String(getAny(lead, 'company', '')),
+    value: String(getAny(lead, 'value', '')),
+    notes: String(getAny(lead, 'notes', '')),
+  }));
 
-         {/* Content */}
-         <div className="flex-1 overflow-y-auto p-6 space-y-8">
-            {/* Hero Profile */}
-            <div className="flex flex-col items-center text-center">
-               <div className="w-20 h-20 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-full flex items-center justify-center text-2xl font-bold mb-3">
-                  {formData.name.charAt(0)}
-               </div>
-               <h3 className="text-xl font-bold text-gray-900 dark:text-white">{formData.name}</h3>
-               <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">{formData.company}</p>
-               
-               <div className="flex gap-2 w-full">
-                  <button 
-                     onClick={onOpenChat}
-                     className="flex-1 flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white py-2.5 rounded-xl font-medium transition-colors shadow-sm"
-                  >
-                     <MessageCircle className="w-4 h-4" /> Message
-                  </button>
-                  <button className="flex-1 flex items-center justify-center gap-2 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600 text-gray-700 dark:text-white py-2.5 rounded-xl font-medium transition-colors">
-                     <Phone className="w-4 h-4" /> Call
-                  </button>
-               </div>
-            </div>
+  useEffect(() => {
+    setForm({
+      name: String(getAny(lead, 'name', '')),
+      status: (getAny(lead, 'status', 'New') as LeadStatus) ?? 'New',
+      channel: String(getAny(lead, 'channel', '')),
+      email: String(getAny(lead, 'email', '')),
+      phone: String(getAny(lead, 'phone', '')),
+      company: String(getAny(lead, 'company', '')),
+      value: String(getAny(lead, 'value', '')),
+      notes: String(getAny(lead, 'notes', '')),
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [(lead as any).id]);
 
-            {/* Status & Value */}
-            <div className="grid grid-cols-2 gap-4">
-               <div className="p-4 bg-gray-50 dark:bg-gray-700/30 rounded-xl border border-gray-100 dark:border-gray-700">
-                  <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2 block">Status</label>
-                  <select 
-                     value={formData.status}
-                     onChange={(e) => setFormData({...formData, status: e.target.value as LeadStatus})}
-                     className="w-full bg-transparent font-semibold text-gray-900 dark:text-white outline-none"
-                  >
-                     <option>New</option>
-                     <option>Contacted</option>
-                     <option>Qualified</option>
-                     <option>Booked</option>
-                     <option>Lost</option>
-                  </select>
-               </div>
-               <div className="p-4 bg-gray-50 dark:bg-gray-700/30 rounded-xl border border-gray-100 dark:border-gray-700">
-                  <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2 block">Deal Value</label>
-                  <div className="flex items-center">
-                     <span className="text-gray-400 mr-1">$</span>
-                     <input 
-                        type="number"
-                        value={formData.value}
-                        onChange={(e) => setFormData({...formData, value: Number(e.target.value)})}
-                        className="w-full bg-transparent font-semibold text-gray-900 dark:text-white outline-none"
-                     />
-                  </div>
-               </div>
-            </div>
+  const isDirty = useMemo(() => {
+    return (
+      form.name !== String(getAny(lead, 'name', '')) ||
+      form.status !== (getAny(lead, 'status', 'New') as LeadStatus) ||
+      form.channel !== String(getAny(lead, 'channel', '')) ||
+      form.email !== String(getAny(lead, 'email', '')) ||
+      form.phone !== String(getAny(lead, 'phone', '')) ||
+      form.company !== String(getAny(lead, 'company', '')) ||
+      form.value !== String(getAny(lead, 'value', '')) ||
+      form.notes !== String(getAny(lead, 'notes', ''))
+    );
+  }, [form, lead]);
 
-            {/* Contact Info */}
-            <div className="space-y-4">
-               <h4 className="text-sm font-bold text-gray-900 dark:text-white border-b border-gray-100 dark:border-gray-700 pb-2">Contact Information</h4>
-               <div className="space-y-3">
-                  <div className="flex items-center gap-3">
-                     <div className="w-8 h-8 rounded-lg bg-gray-50 dark:bg-gray-700 flex items-center justify-center text-gray-400">
-                        <Mail className="w-4 h-4" />
-                     </div>
-                     <input 
-                        value={formData.email} 
-                        onChange={(e) => setFormData({...formData, email: e.target.value})}
-                        className="flex-1 bg-transparent text-sm text-gray-900 dark:text-white border-b border-transparent hover:border-gray-200 focus:border-indigo-500 outline-none transition-colors py-1"
-                     />
-                  </div>
-                  <div className="flex items-center gap-3">
-                     <div className="w-8 h-8 rounded-lg bg-gray-50 dark:bg-gray-700 flex items-center justify-center text-gray-400">
-                        <Phone className="w-4 h-4" />
-                     </div>
-                     <input 
-                        value={formData.phone} 
-                        onChange={(e) => setFormData({...formData, phone: e.target.value})}
-                        className="flex-1 bg-transparent text-sm text-gray-900 dark:text-white border-b border-transparent hover:border-gray-200 focus:border-indigo-500 outline-none transition-colors py-1"
-                     />
-                  </div>
-                  <div className="flex items-center gap-3">
-                     <div className="w-8 h-8 rounded-lg bg-gray-50 dark:bg-gray-700 flex items-center justify-center text-gray-400">
-                        <Building className="w-4 h-4" />
-                     </div>
-                     <input 
-                        value={formData.company} 
-                        onChange={(e) => setFormData({...formData, company: e.target.value})}
-                        className="flex-1 bg-transparent text-sm text-gray-900 dark:text-white border-b border-transparent hover:border-gray-200 focus:border-indigo-500 outline-none transition-colors py-1"
-                     />
-                  </div>
-               </div>
-            </div>
+  const onChange = (key: keyof typeof form, value: string) => {
+    setForm((prev) => ({ ...prev, [key]: value }));
+  };
 
-            {/* Notes */}
-            <div className="space-y-3">
-               <h4 className="text-sm font-bold text-gray-900 dark:text-white border-b border-gray-100 dark:border-gray-700 pb-2">Notes</h4>
-               <textarea 
-                  value={formData.notes}
-                  onChange={(e) => setFormData({...formData, notes: e.target.value})}
-                  rows={4}
-                  className="w-full p-3 bg-gray-50 dark:bg-gray-700/50 rounded-xl text-sm text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none resize-none transition-all"
-                  placeholder="Add private notes about this lead..."
-               />
-            </div>
-         </div>
+  const handleSave = () => {
+    const parsed = form.value.trim() === '' ? getAny(lead as any, 'value', '') : Number(form.value);
+    const safeValue = typeof parsed === 'number' && Number.isFinite(parsed) ? parsed : form.value;
 
-         {/* Footer */}
-         <div className="p-6 border-t border-gray-100 dark:border-gray-700 bg-gray-50/80 dark:bg-gray-900/80 backdrop-blur-sm flex gap-3">
-            <button 
-               onClick={() => {
-                  onSave({...formData, id: lead.id, channel: lead.channel, name: formData.name, status: formData.status as LeadStatus, lastMessageTime: lead.lastMessageTime});
-               }}
-               className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-semibold shadow-sm transition-all active:scale-95 flex items-center justify-center gap-2"
-            >
-               <Save className="w-4 h-4" />
-               Save Details
-            </button>
-         </div>
+    const updated: Lead = {
+      ...(lead as any),
+      name: form.name,
+      status: form.status as LeadStatus,
+      channel: form.channel,
+      email: form.email,
+      phone: form.phone,
+      company: form.company,
+      value: safeValue as any,
+      notes: form.notes,
+    };
+
+    onSave(updated);
+    onClose();
+  };
+
+  const handleDelete = () => {
+    const ok = window.confirm('Delete this lead? This cannot be undone.');
+    if (!ok) return;
+    onDelete(String((lead as any).id));
+    onClose();
+  };
+
+  return (
+    <div className="h-full flex flex-col">
+      {/* Header */}
+      <div className="px-5 py-4 border-b border-gray-200 dark:border-gray-700 flex items-start justify-between">
+        <div>
+          <div className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+            {t('lead_details_title') ?? 'Lead Details'}
+          </div>
+          <div className="mt-1 text-xl font-bold text-gray-900 dark:text-white">
+            {String(getAny(lead, 'name', 'Lead'))}
+          </div>
+
+          <div className="mt-2 flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+            <Clock className="w-4 h-4" />
+            <span>{String(getAny(lead, 'lastMessageTime', ''))}</span>
+            <span className="text-gray-300 dark:text-gray-600">•</span>
+            <Tag className="w-4 h-4" />
+            <span>{String(getAny(lead, 'channel', ''))}</span>
+          </div>
+        </div>
+
+        <button
+          onClick={onClose}
+          className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700/40 text-gray-500 dark:text-gray-300"
+          title="Close"
+        >
+          <X className="w-5 h-5" />
+        </button>
       </div>
-   );
+
+      {/* Body */}
+      <div className="flex-1 overflow-auto px-5 py-5 space-y-6">
+        {/* Basic */}
+        <div className="bg-gray-50 dark:bg-gray-900/20 border border-gray-200 dark:border-gray-700 rounded-xl p-4 space-y-3">
+          <div className="grid grid-cols-1 gap-3">
+            <div>
+              <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">
+                Name
+              </label>
+              <input
+                value={form.name}
+                onChange={(e) => onChange('name', e.target.value)}
+                className="w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                placeholder="Lead name"
+              />
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">
+                  Status
+                </label>
+                <select
+                  value={form.status}
+                  onChange={(e) => onChange('status', e.target.value)}
+                  className="w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                >
+                  {STATUS_OPTIONS.map((s) => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">
+                  Channel
+                </label>
+                <input
+                  value={form.channel}
+                  onChange={(e) => onChange('channel', e.target.value)}
+                  className="w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                  placeholder="Website, WhatsApp, Email..."
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Contact */}
+        <div className="space-y-3">
+          <div className="text-sm font-bold text-gray-900 dark:text-white">Contact</div>
+
+          <div className="grid grid-cols-1 gap-3">
+            <div className="relative">
+              <Mail className="w-4 h-4 text-gray-400 absolute left-3 top-3" />
+              <input
+                value={form.email}
+                onChange={(e) => onChange('email', e.target.value)}
+                className="w-full pl-9 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                placeholder="Email"
+              />
+            </div>
+
+            <div className="relative">
+              <Phone className="w-4 h-4 text-gray-400 absolute left-3 top-3" />
+              <input
+                value={form.phone}
+                onChange={(e) => onChange('phone', e.target.value)}
+                className="w-full pl-9 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                placeholder="Phone"
+              />
+            </div>
+
+            <div className="relative">
+              <Building2 className="w-4 h-4 text-gray-400 absolute left-3 top-3" />
+              <input
+                value={form.company}
+                onChange={(e) => onChange('company', e.target.value)}
+                className="w-full pl-9 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                placeholder="Company (optional)"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Value + Notes */}
+        <div className="grid grid-cols-1 gap-4">
+          <div>
+            <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">
+              Estimated Value
+            </label>
+            <input
+              value={form.value}
+              onChange={(e) => onChange('value', e.target.value)}
+              className="w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+              placeholder="0"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">
+              Notes
+            </label>
+            <textarea
+              value={form.notes}
+              onChange={(e) => onChange('notes', e.target.value)}
+              className="w-full min-h-[120px] bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+              placeholder="Add context, preferences, special requests..."
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Footer */}
+      <div className="px-5 py-4 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between gap-3">
+        <button
+          onClick={handleDelete}
+          className="px-3 py-2 rounded-lg text-sm font-medium border border-red-200 dark:border-red-900/30 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition flex items-center gap-2"
+        >
+          <Trash2 className="w-4 h-4" />
+          Delete
+        </button>
+
+        <button
+          onClick={handleSave}
+          disabled={!isDirty}
+          className="px-4 py-2 rounded-lg text-sm font-medium bg-indigo-600 text-white hover:bg-indigo-700 transition flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <Save className="w-4 h-4" />
+          Save
+        </button>
+      </div>
+    </div>
+  );
 };
 
 export default LeadDetailPane;
