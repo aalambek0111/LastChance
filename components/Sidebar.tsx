@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { 
   LayoutDashboard, 
@@ -9,7 +10,8 @@ import {
   LogOut,
   Map,
   BarChart3,
-  LifeBuoy
+  LifeBuoy,
+  UploadCloud
 } from 'lucide-react';
 import { useI18n } from '../context/ThemeContext';
 
@@ -31,6 +33,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activePage, onNavigate }) => {
   const orgNav = [
     { name: t('nav_tours'), icon: Map, id: 'tours' },
     { name: t('nav_reports'), icon: BarChart3, id: 'reports' },
+    { name: 'Import Data', icon: UploadCloud, id: 'import' },
     { name: t('nav_team'), icon: Briefcase, id: 'team' },
   ];
 

@@ -11,6 +11,7 @@ import TeamPage from './pages/Team/TeamPage';
 import SettingsPage from './pages/Settings/SettingsPage';
 import ToursPage from './pages/Tours/ToursPage';
 import ReportsPage from './pages/Reports/ReportsPage';
+import ImportPage from './pages/Import/ImportPage';
 import SupportPage from './pages/Support/SupportPage';
 import Toast from './components/Toast';
 import { ThemeProvider } from './context/ThemeContext';
@@ -104,6 +105,7 @@ function App() {
             {activePage === 'settings' && <SettingsPage />}
             {activePage === 'tours' && <ToursPage searchTerm={searchTerm} />}
             {activePage === 'reports' && <ReportsPage />}
+            {activePage === 'import' && <ImportPage />}
             {activePage === 'support' && <SupportPage />}
           </div>
         </main>
