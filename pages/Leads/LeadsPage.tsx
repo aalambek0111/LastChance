@@ -133,7 +133,7 @@ const LeadsPage: React.FC<LeadsPageProps> = ({
                onClick={() => setSelectedLeadId(null)}
             />
             <div 
-               className="fixed inset-y-0 right-0 z-[70] w-full max-w-md bg-white dark:bg-gray-800 shadow-2xl transform transition-transform duration-300 ease-in-out border-l border-gray-200 dark:border-gray-700"
+               className="fixed inset-y-0 right-0 z-[70] h-full w-full sm:w-[520px] lg:w-[640px] bg-white dark:bg-gray-800 shadow-2xl transform transition-transform duration-300 ease-in-out border-l border-gray-200 dark:border-gray-700"
             >
                <LeadDetailPane 
                   lead={activeLead} 
