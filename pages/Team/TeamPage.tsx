@@ -235,8 +235,7 @@ const MemberDetailPane: React.FC<MemberDetailPaneProps> = ({ member, currentUser
   // RBAC Checks
   const canEditProfile = currentUserRole === 'Owner' || currentUserRole === 'Admin';
   const canEditRole = currentUserRole === 'Owner' || (currentUserRole === 'Admin' && member.role !== 'Owner');
-  const isSelf = member.id === 1; // Mocking current user ID as 1 (Alex)
-
+  
   return (
     <div className="w-full lg:w-[480px] bg-white dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700 flex flex-col h-full absolute inset-0 lg:static z-20 shadow-xl transition-all duration-300">
       
@@ -307,7 +306,7 @@ const MemberDetailPane: React.FC<MemberDetailPaneProps> = ({ member, currentUser
       </div>
 
       {/* 4. Scrollable Form Content */}
-      <div className="flex-1 overflow-y-auto p-6 bg-gray-50/30 dark:bg-gray-900/10">
+      <div className="flex-1 overflow-y-auto min-h-0 p-6 bg-gray-50/30 dark:bg-gray-900/10">
         {activeTab === 'profile' && (
           <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2">
             
@@ -473,19 +472,28 @@ const MemberDetailPane: React.FC<MemberDetailPaneProps> = ({ member, currentUser
         )}
       </div>
 
-      {/* 5. Sticky Footer (Only Visible when Dirty) */}
-      <div className={`flex-none p-4 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 transition-all duration-300 transform ${isDirty ? 'translate-y-0 opacity-100' : 'translate-y-full opacity-0 absolute bottom-0 w-full'}`}>
+      {/* 5. Sticky Footer (Always Visible) */}
+      <div className="flex-none p-4 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 z-10">
         <div className="flex gap-3">
           <button 
-            onClick={() => { setFormData(member); setIsDirty(false); setErrors({}); }}
+            onClick={() => { 
+                if (isDirty) {
+                    // Revert changes
+                    setFormData(member); 
+                    setIsDirty(false); 
+                    setErrors({}); 
+                } else {
+                    onClose();
+                }
+            }}
             className="flex-1 py-2.5 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-white rounded-lg text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
           >
-            Cancel
+            {isDirty ? 'Revert' : 'Close'}
           </button>
           <button 
             onClick={handleSave}
-            disabled={isSaving}
-            className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-bold shadow-md transition-all active:scale-95 flex items-center justify-center gap-2"
+            disabled={!isDirty || isSaving}
+            className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-bold shadow-md transition-all active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isSaving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
             {isSaving ? 'Saving...' : 'Save Changes'}
