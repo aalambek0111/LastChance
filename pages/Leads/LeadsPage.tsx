@@ -190,80 +190,82 @@ const LeadsPage: React.FC<LeadsPageProps> = ({
         </div>
 
         {/* Filter Bar */}
-        <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col gap-4">
-          
-          {/* Top Row: Label + Tabs + Clear */}
-          <div className="flex flex-col md:flex-row md:items-center gap-3">
-            <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400 min-w-fit">
-              <Filter className="w-4 h-4" />
-              <span className="text-sm font-medium">Filter by:</span>
+        <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
+          <div className="flex flex-col lg:flex-row lg:items-center gap-4">
+            
+            {/* Left: Filter Label + Toggle */}
+            <div className="flex items-center gap-3 flex-none">
+              <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400">
+                <Filter className="w-4 h-4" />
+                <span className="text-sm font-medium">Filter:</span>
+              </div>
+
+              <div className="flex bg-gray-100 dark:bg-gray-700/50 p-1 rounded-lg">
+                <button
+                  onClick={() => setAssignedFilter('All')}
+                  className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${
+                    assignedFilter === 'All'
+                      ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow-sm'
+                      : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+                  }`}
+                >
+                  All
+                </button>
+                <button
+                  onClick={() => setAssignedFilter('Mine')}
+                  className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all flex items-center gap-1.5 ${
+                    assignedFilter === 'Mine'
+                      ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow-sm'
+                      : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+                  }`}
+                >
+                  <User className="w-3 h-3" />
+                  Mine
+                </button>
+              </div>
             </div>
 
-            {/* Assigned To Filter (Tabs) */}
-            <div className="flex bg-gray-100 dark:bg-gray-700/50 p-1 rounded-lg w-full md:w-auto">
-              <button
-                onClick={() => setAssignedFilter('All')}
-                className={`flex-1 md:flex-none px-4 py-1.5 text-xs font-semibold rounded-md transition-all ${
-                  assignedFilter === 'All'
-                    ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow-sm'
-                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
-                }`}
-              >
-                All Leads
-              </button>
-              <button
-                onClick={() => setAssignedFilter('Mine')}
-                className={`flex-1 md:flex-none px-4 py-1.5 text-xs font-semibold rounded-md transition-all flex items-center justify-center gap-1.5 ${
-                  assignedFilter === 'Mine'
-                    ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow-sm'
-                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
-                }`}
-              >
-                <User className="w-3 h-3" />
-                My Leads
-              </button>
+            {/* Middle: Dropdowns */}
+            <div className="flex flex-col sm:flex-row gap-3 flex-1 min-w-0">
+              <div className="w-full sm:w-48">
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  className="w-full bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-200 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2.5 outline-none"
+                >
+                  <option value="All">All Status</option>
+                  <option value="New">New</option>
+                  <option value="Contacted">Contacted</option>
+                  <option value="Qualified">Qualified</option>
+                  <option value="Booked">Booked</option>
+                  <option value="Lost">Lost</option>
+                </select>
+              </div>
+
+              <div className="w-full sm:w-48">
+                <select
+                  value={channelFilter}
+                  onChange={(e) => setChannelFilter(e.target.value)}
+                  className="w-full bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-200 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2.5 outline-none"
+                >
+                  <option value="All">All Channels</option>
+                  <option value="Website">Website</option>
+                  <option value="WhatsApp">WhatsApp</option>
+                  <option value="Email">Email</option>
+                  <option value="Referral">Referral</option>
+                </select>
+              </div>
             </div>
 
+            {/* Right: Clear Filters */}
             {hasActiveFilters && (
               <button
                 onClick={clearFilters}
-                className="text-sm text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 md:ml-auto font-medium transition-colors text-left"
+                className="flex-none text-sm text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 font-medium transition-colors"
               >
                 Clear Filters
               </button>
             )}
-          </div>
-
-          {/* Bottom Row: Dropdowns */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:flex lg:items-center gap-3">
-            <div className="w-full lg:w-48">
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="w-full bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-200 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2.5 outline-none"
-              >
-                <option value="All">All Status</option>
-                <option value="New">New</option>
-                <option value="Contacted">Contacted</option>
-                <option value="Qualified">Qualified</option>
-                <option value="Booked">Booked</option>
-                <option value="Lost">Lost</option>
-              </select>
-            </div>
-
-            <div className="w-full lg:w-48">
-              <select
-                value={channelFilter}
-                onChange={(e) => setChannelFilter(e.target.value)}
-                className="w-full bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-200 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2.5 outline-none"
-              >
-                <option value="All">All Channels</option>
-                <option value="Website">Website</option>
-                <option value="WhatsApp">WhatsApp</option>
-                <option value="Email">Email</option>
-                <option value="Referral">Referral</option>
-              </select>
-            </div>
           </div>
         </div>
       </div>
