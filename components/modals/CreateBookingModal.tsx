@@ -329,6 +329,7 @@ interface CreateBookingModalProps {
   onBookingCreated?: (booking: Booking) => void;
   bookingToEdit?: Booking | null;
   onBookingUpdated?: (booking: Booking) => void;
+  initialTab?: 'comments' | 'activity';
 }
 
 const CreateBookingModal: React.FC<CreateBookingModalProps> = ({ 
@@ -338,7 +339,8 @@ const CreateBookingModal: React.FC<CreateBookingModalProps> = ({
   leadName = '', 
   onBookingCreated,
   bookingToEdit,
-  onBookingUpdated
+  onBookingUpdated,
+  initialTab = 'comments'
 }) => {
   // Form State
   const [formData, setFormData] = useState({
@@ -359,7 +361,7 @@ const CreateBookingModal: React.FC<CreateBookingModalProps> = ({
   const [isAmountOverridden, setIsAmountOverridden] = useState(false);
 
   // Right Panel State (Edit Mode Only)
-  const [activeTab, setActiveTab] = useState<'comments' | 'activity'>('comments');
+  const [activeTab, setActiveTab] = useState<'comments' | 'activity'>(initialTab);
   const [activities, setActivities] = useState<ActivityLogItem[]>([]);
   const [comments, setComments] = useState<CommentItem[]>([]);
   const [showToast, setShowToast] = useState(false);
@@ -426,6 +428,7 @@ const CreateBookingModal: React.FC<CreateBookingModalProps> = ({
 
   // 1. Initialize Form & Load Data
   useEffect(() => {
+    setActiveTab(initialTab);
     if (bookingToEdit) {
       setFormData({
         tourName: bookingToEdit.tourName,
@@ -475,7 +478,7 @@ const CreateBookingModal: React.FC<CreateBookingModalProps> = ({
       setActivities([]);
       setComments([]);
     }
-  }, [bookingToEdit, isOpen, lead, leadName]);
+  }, [bookingToEdit, isOpen, lead, leadName, initialTab]);
 
   // 2. Auto-calculate Total Amount based on Tour & Pax
   useEffect(() => {
@@ -1053,7 +1056,7 @@ const CreateBookingModal: React.FC<CreateBookingModalProps> = ({
 
                 {/* Tab Content */}
                 <div className="flex-1 overflow-y-auto p-6 relative">
-                  
+                  {/* ... same content as before ... */}
                   {/* COMMENTS TAB */}
                   {activeTab === 'comments' && (
                     <div className="flex flex-col h-full">

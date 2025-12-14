@@ -34,6 +34,11 @@ function App() {
     showToast('Booking updated successfully');
   };
 
+  const deleteBooking = (bookingId: string) => {
+    setBookings(prev => prev.filter(b => b.id !== bookingId));
+    showToast('Booking deleted successfully');
+  };
+
   const showToast = (message: string) => {
     setToast({ message, visible: true });
   };
@@ -92,6 +97,7 @@ function App() {
                 bookings={bookings} 
                 searchTerm={searchTerm} 
                 onUpdateBooking={updateBooking}
+                onDeleteBooking={deleteBooking}
               />
             )}
             {activePage === 'team' && <TeamPage />}

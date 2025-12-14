@@ -1,6 +1,6 @@
 
-import React, { useState } from 'react';
-import { List, LayoutGrid, Tag, Clock, MoreHorizontal, Filter, User } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { List, LayoutGrid, Tag, Clock, MoreHorizontal, Filter, User, Pencil, Trash2, MessageSquare, CalendarPlus, FileText } from 'lucide-react';
 import { Lead, LeadStatus, Booking } from '../../types';
 import { RECENT_LEADS } from '../../data/mockData';
 import { useI18n } from '../../context/ThemeContext';
@@ -30,6 +30,13 @@ const LeadsPage: React.FC<LeadsPageProps> = ({
   const [draggedLeadId, setDraggedLeadId] = useState<string | null>(null);
   const [isAddLeadModalOpen, setIsAddLeadModalOpen] = useState(false);
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
+  
+  // State for actions menu
+  const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
+  // State for booking modal when triggered from menu (without opening drawer)
+  const [leadForBooking, setLeadForBooking] = useState<Lead | null>(null);
+  // State to direct DetailPane to specific tab
+  const [initialDetailTab, setInitialDetailTab] = useState<'details' | 'comments' | 'activity'>('details');
 
   // Filters
   const [statusFilter, setStatusFilter] = useState('All');
@@ -43,6 +50,17 @@ const LeadsPage: React.FC<LeadsPageProps> = ({
     { id: 'Booked', label: t('leads_status_booked'), color: 'bg-purple-500' },
     { id: 'Lost', label: t('leads_status_lost'), color: 'bg-gray-500' },
   ];
+
+  // Close menus on click outside
+  useEffect(() => {
+    const onMouseDown = (e: MouseEvent) => {
+      const target = e.target as HTMLElement | null;
+      const clickedInsideMenu = target?.closest?.('[data-lead-menu="true"]');
+      if (!clickedInsideMenu) setMenuOpenId(null);
+    };
+    document.addEventListener('mousedown', onMouseDown);
+    return () => document.removeEventListener('mousedown', onMouseDown);
+  }, []);
 
   const filteredLeads = leads.filter(lead => {
     const matchesSearch = lead.name.toLowerCase().includes(searchTerm.toLowerCase());
@@ -61,21 +79,26 @@ const LeadsPage: React.FC<LeadsPageProps> = ({
   };
 
   const handleDeleteLead = (id: string) => {
-    setLeads(prev => prev.filter(l => l.id !== id));
-    setSelectedLeadId(null);
+    if (window.confirm("Are you sure you want to delete this lead?")) {
+      setLeads(prev => prev.filter(l => l.id !== id));
+      setMenuOpenId(null);
+      if (selectedLeadId === id) setSelectedLeadId(null);
+    }
   };
 
   const handleBookingCreated = (newBooking: Booking) => {
     onAddBooking(newBooking);
     
+    const targetLead = leadForBooking || activeLead;
+
     // Log activity on the lead side
-    if (activeLead) {
-      const storedActivities = localStorage.getItem(`lead_activities_${activeLead.id}`);
+    if (targetLead) {
+      const storedActivities = localStorage.getItem(`lead_activities_${targetLead.id}`);
       const activities = storedActivities ? JSON.parse(storedActivities) : [];
       
       const newActivity = {
         id: `a_${Date.now()}_booking`,
-        leadId: activeLead.id,
+        leadId: targetLead.id,
         field: 'Booking',
         from: 'None',
         to: `Created Booking ${newBooking.id}`,
@@ -83,16 +106,17 @@ const LeadsPage: React.FC<LeadsPageProps> = ({
         timestamp: Date.now()
       };
       
-      localStorage.setItem(`lead_activities_${activeLead.id}`, JSON.stringify([newActivity, ...activities]));
+      localStorage.setItem(`lead_activities_${targetLead.id}`, JSON.stringify([newActivity, ...activities]));
       
       // Auto update status if not already booked
-      if (activeLead.status !== 'Booked' && activeLead.status !== 'Lost') {
-         const updatedLead = { ...activeLead, status: 'Booked' as LeadStatus };
+      if (targetLead.status !== 'Booked' && targetLead.status !== 'Lost') {
+         const updatedLead = { ...targetLead, status: 'Booked' as LeadStatus };
          setLeads(prev => prev.map(l => l.id === updatedLead.id ? updatedLead : l));
       }
     }
     
     setIsBookingModalOpen(false);
+    setLeadForBooking(null);
   };
 
   const clearFilters = () => {
@@ -123,6 +147,12 @@ const LeadsPage: React.FC<LeadsPageProps> = ({
     }
   };
 
+  const openLeadDrawer = (leadId: string, tab: 'details' | 'comments' | 'activity' = 'details') => {
+    setInitialDetailTab(tab);
+    setSelectedLeadId(leadId);
+    setMenuOpenId(null);
+  };
+
   return (
     <div className="relative h-full flex flex-col">
       {/* Lead Details Drawer */}
@@ -137,11 +167,15 @@ const LeadsPage: React.FC<LeadsPageProps> = ({
             >
                <LeadDetailPane 
                   lead={activeLead} 
+                  initialTab={initialDetailTab}
                   onClose={() => setSelectedLeadId(null)} 
                   onSave={handleUpdateLead}
                   onDelete={handleDeleteLead}
                   onOpenChat={() => onOpenConversation && onOpenConversation(activeLead.name)}
-                  onCreateBooking={() => setIsBookingModalOpen(true)}
+                  onCreateBooking={() => {
+                    setLeadForBooking(activeLead);
+                    setIsBookingModalOpen(true);
+                  }}
                   relatedBookings={bookings.filter(b => b.leadId === activeLead.id || b.clientName === activeLead.name)}
                />
             </div>
@@ -283,13 +317,14 @@ const LeadsPage: React.FC<LeadsPageProps> = ({
                   <th className="px-6 py-3">Channel</th>
                   <th className="px-6 py-3">Assigned To</th>
                   <th className="px-6 py-3">Last Active</th>
+                  <th className="px-6 py-3 text-right">Actions</th>
                 </tr>
               </thead>
                 <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
                   {filteredLeads.map((lead) => (
                     <tr 
                       key={lead.id} 
-                      onClick={() => setSelectedLeadId(lead.id)}
+                      onClick={() => openLeadDrawer(lead.id)}
                       className={`hover:bg-gray-50 dark:hover:bg-gray-700/30 cursor-pointer transition-colors ${selectedLeadId === lead.id ? 'bg-indigo-50 dark:bg-indigo-900/10' : ''}`}
                     >
                         <td className="px-6 py-4 text-sm font-medium text-gray-900 dark:text-white">{lead.name}</td>
@@ -315,11 +350,70 @@ const LeadsPage: React.FC<LeadsPageProps> = ({
                           )}
                         </td>
                         <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">{lead.lastMessageTime}</td>
+                        <td className="px-6 py-4 text-right">
+                          <div className="relative inline-block" data-lead-menu="true">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setMenuOpenId(prev => (prev === lead.id ? null : lead.id));
+                              }}
+                              className="p-2 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                              aria-label="Actions"
+                            >
+                              <MoreHorizontal className="w-5 h-5" />
+                            </button>
+
+                            {menuOpenId === lead.id && (
+                              <div
+                                onClick={(e) => e.stopPropagation()}
+                                className="absolute right-0 mt-2 w-48 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-lg overflow-hidden z-20"
+                              >
+                                <button
+                                  onClick={() => openLeadDrawer(lead.id, 'details')}
+                                  className="w-full px-4 py-2.5 text-sm text-left text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700/40 flex items-center gap-2"
+                                >
+                                  <Pencil className="w-4 h-4" />
+                                  Edit Details
+                                </button>
+
+                                <button
+                                  onClick={() => openLeadDrawer(lead.id, 'comments')}
+                                  className="w-full px-4 py-2.5 text-sm text-left text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700/40 flex items-center gap-2"
+                                >
+                                  <MessageSquare className="w-4 h-4" />
+                                  Open Activity
+                                </button>
+
+                                <button
+                                  onClick={() => {
+                                    setMenuOpenId(null);
+                                    setLeadForBooking(lead);
+                                    setIsBookingModalOpen(true);
+                                  }}
+                                  className="w-full px-4 py-2.5 text-sm text-left text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700/40 flex items-center gap-2"
+                                >
+                                  <CalendarPlus className="w-4 h-4" />
+                                  Create Booking
+                                </button>
+
+                                <div className="border-t border-gray-100 dark:border-gray-700 my-1"></div>
+
+                                <button
+                                  onClick={() => handleDeleteLead(lead.id)}
+                                  className="w-full px-4 py-2.5 text-sm text-left text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-2"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                  Delete
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        </td>
                     </tr>
                   ))}
                   {filteredLeads.length === 0 && (
                       <tr>
-                        <td colSpan={5} className="px-6 py-8 text-center text-gray-500 text-sm">
+                        <td colSpan={6} className="px-6 py-8 text-center text-gray-500 text-sm">
                           {searchTerm 
                             ? `No leads found matching "${searchTerm}".` 
                             : "No leads found for the selected filters."}
@@ -364,7 +458,7 @@ const LeadsPage: React.FC<LeadsPageProps> = ({
                               key={lead.id}
                               draggable
                               onDragStart={(e) => handleDragStart(e, lead.id)}
-                              onClick={() => setSelectedLeadId(lead.id)}
+                              onClick={() => openLeadDrawer(lead.id)}
                               className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 cursor-pointer hover:shadow-md hover:border-indigo-300 dark:hover:border-indigo-500 transition-all group active:scale-95"
                             >
                               <div className="flex justify-between items-start mb-2">
@@ -414,7 +508,7 @@ const LeadsPage: React.FC<LeadsPageProps> = ({
       <CreateBookingModal 
         isOpen={isBookingModalOpen} 
         onClose={() => setIsBookingModalOpen(false)}
-        lead={activeLead}
+        lead={leadForBooking || activeLead}
         onBookingCreated={handleBookingCreated}
       />
     </div>

@@ -3,7 +3,7 @@ import React, { useEffect, useMemo, useState, useRef } from 'react';
 import { 
   X, Trash2, Save, Clock, Mail, Phone, Building2, Tag, 
   MessageCircle, UserPlus, Activity, MessageSquare, Send,
-  History, ChevronRight, CalendarPlus, CalendarCheck
+  History, ChevronRight, CalendarPlus, CalendarCheck, Info
 } from 'lucide-react';
 import { useI18n } from '../../context/ThemeContext';
 import { Lead, LeadStatus, Booking } from '../../types';
@@ -158,6 +158,7 @@ interface LeadDetailPaneProps {
   onOpenChat?: () => void;
   onCreateBooking?: () => void;
   relatedBookings?: Booking[];
+  initialTab?: Tab;
 }
 
 const LeadDetailPane: React.FC<LeadDetailPaneProps> = ({ 
@@ -167,10 +168,11 @@ const LeadDetailPane: React.FC<LeadDetailPaneProps> = ({
   onDelete, 
   onOpenChat,
   onCreateBooking,
-  relatedBookings = []
+  relatedBookings = [],
+  initialTab = 'details'
 }) => {
   const { t } = useI18n();
-  const [activeTab, setActiveTab] = useState<Tab>('details');
+  const [activeTab, setActiveTab] = useState<Tab>(initialTab);
 
   // Form State
   const [form, setForm] = useState(() => ({
@@ -217,9 +219,9 @@ const LeadDetailPane: React.FC<LeadDetailPaneProps> = ({
     if (storedComments) setComments(JSON.parse(storedComments));
     else setComments([]);
     
-    // Reset tab to details when opening a new lead
-    setActiveTab('details');
-  }, [lead.id]);
+    // Reset tab when lead changes (unless initialTab is provided in this render cycle which we rely on parent to key or reset)
+    setActiveTab(initialTab);
+  }, [lead.id, initialTab]);
 
   const isDirty = useMemo(() => {
     const original = {

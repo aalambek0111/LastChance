@@ -1,6 +1,6 @@
 
-import React, { useMemo, useState } from 'react';
-import { Users, Filter, Pencil, Download, User, ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react';
+import React, { useMemo, useState, useEffect } from 'react';
+import { Users, Filter, Pencil, Download, User, ArrowUp, ArrowDown, ArrowUpDown, MoreHorizontal, MessageSquare, Copy, XCircle, Trash2, CalendarCheck } from 'lucide-react';
 import { Booking } from '../../types';
 import { useI18n } from '../../context/ThemeContext';
 import CreateBookingModal from '../../components/modals/CreateBookingModal';
@@ -9,6 +9,7 @@ interface BookingsPageProps {
   bookings: Booking[];
   searchTerm?: string;
   onUpdateBooking?: (booking: Booking) => void;
+  onDeleteBooking?: (bookingId: string) => void;
 }
 
 type SortKey = 'date' | 'status' | 'clientName' | 'tourName' | 'assignedTo';
@@ -19,18 +20,35 @@ const CURRENT_USER_NAME = "Alex Walker"; // Mock user for "My Bookings" filter
 const BookingsPage: React.FC<BookingsPageProps> = ({
   bookings,
   searchTerm = '',
-  onUpdateBooking
+  onUpdateBooking,
+  onDeleteBooking
 }) => {
   const { t } = useI18n();
 
   const [editingBooking, setEditingBooking] = useState<Booking | null>(null);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  
+  // State for actions menu
+  const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
+  // State for controlling initial tab in modal
+  const [initialModalTab, setInitialModalTab] = useState<'comments' | 'activity'>('comments');
 
   const [statusFilter, setStatusFilter] = useState('All');
   const [assignedFilter, setAssignedFilter] = useState<'All' | 'Mine'>('All');
 
   const [sortKey, setSortKey] = useState<SortKey>('date');
   const [sortDir, setSortDir] = useState<SortDir>('desc'); // Default to newest first
+
+  // Close menus on click outside
+  useEffect(() => {
+    const onMouseDown = (e: MouseEvent) => {
+      const target = e.target as HTMLElement | null;
+      const clickedInsideMenu = target?.closest?.('[data-booking-menu="true"]');
+      if (!clickedInsideMenu) setMenuOpenId(null);
+    };
+    document.addEventListener('mousedown', onMouseDown);
+    return () => document.removeEventListener('mousedown', onMouseDown);
+  }, []);
 
   const hasActiveFilters = statusFilter !== 'All' || assignedFilter !== 'All';
 
@@ -98,6 +116,45 @@ const BookingsPage: React.FC<BookingsPageProps> = ({
   const clearFilters = () => {
     setStatusFilter('All');
     setAssignedFilter('All');
+  };
+
+  const handleDuplicateBooking = (booking: Booking) => {
+    // Create copy without ID so it's treated as new by CreateBookingModal
+    const duplicatedBooking = {
+      ...booking,
+      id: '', 
+      status: 'Pending',
+      date: new Date().toISOString().split('T')[0], // Reset date to today
+      notes: `Copy of Booking ${booking.id}. ${booking.notes || ''}`
+    } as Booking;
+    
+    setEditingBooking(duplicatedBooking);
+    setInitialModalTab('comments');
+    setMenuOpenId(null);
+  };
+
+  const handleCancelBooking = (booking: Booking) => {
+    if (window.confirm('Are you sure you want to cancel this booking?')) {
+      if (onUpdateBooking) {
+        onUpdateBooking({ ...booking, status: 'Cancelled' });
+      }
+      setMenuOpenId(null);
+    }
+  };
+
+  const handleDeleteBooking = (bookingId: string) => {
+    if (window.confirm('Are you sure you want to delete this booking? This cannot be undone.')) {
+      if (onDeleteBooking) {
+        onDeleteBooking(bookingId);
+      }
+      setMenuOpenId(null);
+    }
+  };
+
+  const openEditModal = (booking: Booking, tab: 'comments' | 'activity' = 'comments') => {
+    setInitialModalTab(tab);
+    setEditingBooking(booking);
+    setMenuOpenId(null);
   };
 
   const handleExport = () => {
@@ -267,7 +324,7 @@ const BookingsPage: React.FC<BookingsPageProps> = ({
             {sortedBookings.map(booking => (
               <tr
                 key={booking.id}
-                onClick={() => setEditingBooking(booking)}
+                onClick={() => openEditModal(booking)}
                 className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors group"
               >
                 <td className="px-6 py-4">
@@ -309,16 +366,67 @@ const BookingsPage: React.FC<BookingsPageProps> = ({
                 </td>
 
                 <td className="px-6 py-4 text-right">
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setEditingBooking(booking);
-                    }}
-                    className="text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 p-2 rounded-lg opacity-0 group-hover:opacity-100 transition-all"
-                    title="Edit booking"
-                  >
-                    <Pencil className="w-4 h-4" />
-                  </button>
+                  <div className="relative inline-block" data-booking-menu="true">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setMenuOpenId(prev => (prev === booking.id ? null : booking.id));
+                      }}
+                      className="p-2 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                      aria-label="Actions"
+                    >
+                      <MoreHorizontal className="w-5 h-5" />
+                    </button>
+
+                    {menuOpenId === booking.id && (
+                      <div
+                        onClick={(e) => e.stopPropagation()}
+                        className="absolute right-0 mt-2 w-48 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-lg overflow-hidden z-20"
+                      >
+                        <button
+                          onClick={() => openEditModal(booking, 'comments')}
+                          className="w-full px-4 py-2.5 text-sm text-left text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700/40 flex items-center gap-2"
+                        >
+                          <Pencil className="w-4 h-4" />
+                          Edit Booking
+                        </button>
+
+                        <button
+                          onClick={() => openEditModal(booking, 'comments')}
+                          className="w-full px-4 py-2.5 text-sm text-left text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700/40 flex items-center gap-2"
+                        >
+                          <MessageSquare className="w-4 h-4" />
+                          View Activity
+                        </button>
+
+                        <button
+                          onClick={() => handleDuplicateBooking(booking)}
+                          className="w-full px-4 py-2.5 text-sm text-left text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700/40 flex items-center gap-2"
+                        >
+                          <Copy className="w-4 h-4" />
+                          Duplicate
+                        </button>
+
+                        <button
+                          onClick={() => handleCancelBooking(booking)}
+                          className="w-full px-4 py-2.5 text-sm text-left text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700/40 flex items-center gap-2"
+                        >
+                          <XCircle className="w-4 h-4" />
+                          Cancel Booking
+                        </button>
+
+                        <div className="border-t border-gray-100 dark:border-gray-700 my-1"></div>
+
+                        <button
+                          onClick={() => handleDeleteBooking(booking.id)}
+                          className="w-full px-4 py-2.5 text-sm text-left text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-2"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                          Delete
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </td>
               </tr>
             ))}
@@ -358,6 +466,7 @@ const BookingsPage: React.FC<BookingsPageProps> = ({
           isOpen={true}
           onClose={() => setIsCreateOpen(false)}
           bookingToEdit={null}
+          initialTab='comments'
           onBookingCreated={(b) => {
             if (onUpdateBooking) onUpdateBooking(b);
             setIsCreateOpen(false);
@@ -375,8 +484,9 @@ const BookingsPage: React.FC<BookingsPageProps> = ({
           isOpen={true}
           onClose={() => setEditingBooking(null)}
           bookingToEdit={editingBooking}
+          initialTab={initialModalTab}
           onBookingCreated={(b) => {
-            if (onUpdateBooking) onUpdateBooking(b);
+            if (onUpdateBooking) onUpdateBooking(b); // Reuse update for this mock
             setEditingBooking(null);
           }}
           onBookingUpdated={(b) => {

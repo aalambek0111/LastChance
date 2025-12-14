@@ -1,6 +1,6 @@
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Plus, MoreHorizontal, Search, Pencil, Trash2, Filter, Activity, MapPin } from 'lucide-react';
+import { Plus, MoreHorizontal, Search, Pencil, Trash2, Filter, Activity, MapPin, ArrowUp, ArrowDown, Copy, Archive } from 'lucide-react';
 import { TOURS } from '../../data/mockData';
 import { useI18n } from '../../context/ThemeContext';
 import TourEditForm from './TourEditForm';
@@ -10,6 +10,8 @@ interface ToursPageProps {
 }
 
 type Tour = typeof TOURS[number];
+type SortKey = keyof Tour | 'status';
+type SortDir = 'asc' | 'desc';
 
 // Default template for a new tour
 const EMPTY_TOUR = {
@@ -43,6 +45,10 @@ const ToursPage: React.FC<ToursPageProps> = ({ searchTerm = '' }) => {
   const [difficultyFilter, setDifficultyFilter] = useState('All');
   const [localSearch, setLocalSearch] = useState(searchTerm);
 
+  // Sorting
+  const [sortKey, setSortKey] = useState<SortKey>('name');
+  const [sortDir, setSortDir] = useState<SortDir>('asc');
+
   // Drawer animation state
   const [drawerOpen, setDrawerOpen] = useState(false);
   const closeTimerRef = useRef<number | null>(null);
@@ -68,7 +74,7 @@ const ToursPage: React.FC<ToursPageProps> = ({ searchTerm = '' }) => {
   const filteredTours = useMemo(() => {
     const q = localSearch.trim().toLowerCase();
     
-    return tours.filter(tour => {
+    let result = tours.filter(tour => {
       // Search Text
       const matchesSearch = 
         (tour.name || '').toLowerCase().includes(q) || 
@@ -86,7 +92,40 @@ const ToursPage: React.FC<ToursPageProps> = ({ searchTerm = '' }) => {
 
       return matchesSearch && matchesStatus && matchesDifficulty;
     });
-  }, [tours, localSearch, statusFilter, difficultyFilter]);
+
+    // Sorting
+    result.sort((a, b) => {
+      let valA: any = a[sortKey as keyof Tour];
+      let valB: any = b[sortKey as keyof Tour];
+
+      // Handle Status specially since it's boolean in data but we might want to sort by that
+      if (sortKey === 'status') {
+        valA = a.active ? 1 : 0;
+        valB = b.active ? 1 : 0;
+      } else if (sortKey === 'price' || sortKey === 'bookingsCount') {
+        valA = Number(valA);
+        valB = Number(valB);
+      } else {
+        valA = String(valA || '').toLowerCase();
+        valB = String(valB || '').toLowerCase();
+      }
+
+      if (valA < valB) return sortDir === 'asc' ? -1 : 1;
+      if (valA > valB) return sortDir === 'asc' ? 1 : -1;
+      return 0;
+    });
+
+    return result;
+  }, [tours, localSearch, statusFilter, difficultyFilter, sortKey, sortDir]);
+
+  const handleSort = (key: SortKey) => {
+    if (sortKey === key) {
+      setSortDir(prev => prev === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortKey(key);
+      setSortDir('asc');
+    }
+  };
 
   const hasActiveFilters = statusFilter !== 'All' || difficultyFilter !== 'All' || localSearch !== '';
 
@@ -145,18 +184,37 @@ const ToursPage: React.FC<ToursPageProps> = ({ searchTerm = '' }) => {
   };
 
   const handleDeleteTour = (tourId: number) => {
-    setTours(prev => prev.filter(t => t.id !== tourId));
-    setMenuOpenId(null);
-
-    if (selectedTour?.id === tourId) {
-      closeDrawer();
+    if(window.confirm("Are you sure you want to delete this tour?")) {
+      setTours(prev => prev.filter(t => t.id !== tourId));
+      setMenuOpenId(null);
+      if (selectedTour?.id === tourId) {
+        closeDrawer();
+      }
     }
+  };
+
+  const handleDuplicateTour = (tour: Tour) => {
+    const newTour = {
+      ...tour,
+      id: Date.now(),
+      name: `${tour.name} (Copy)`,
+      active: false, // Default to draft for copy
+      bookingsCount: 0,
+      revenue: 0
+    };
+    setTours(prev => [newTour, ...prev]);
+    setMenuOpenId(null);
   };
 
   const onImgError = (e: React.SyntheticEvent<HTMLImageElement>) => {
     const img = e.currentTarget;
     img.onerror = null;
     img.src = FALLBACK_IMAGE;
+  };
+
+  const SortIcon = ({ colKey }: { colKey: SortKey }) => {
+    if (sortKey !== colKey) return <div className="w-3 h-3" />; // spacer
+    return sortDir === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />;
   };
 
   return (
@@ -182,12 +240,12 @@ const ToursPage: React.FC<ToursPageProps> = ({ searchTerm = '' }) => {
         </div>
 
         {/* Filter Bar */}
-        <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
-          <div className="flex flex-col lg:flex-row lg:items-center gap-4">
+        <div className="bg-white dark:bg-gray-800 p-3 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
+          <div className="flex flex-col lg:flex-row lg:items-center gap-3 lg:flex-nowrap">
             
             {/* Left: Filter Label + Status Toggle */}
             <div className="flex items-center gap-3 flex-none">
-              <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400">
+              <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400 px-1">
                 <Filter className="w-4 h-4" />
                 <span className="text-sm font-medium">Filter:</span>
               </div>
@@ -211,7 +269,7 @@ const ToursPage: React.FC<ToursPageProps> = ({ searchTerm = '' }) => {
 
             {/* Middle: Difficulty Dropdown + Search */}
             <div className="flex flex-col sm:flex-row gap-3 flex-1 min-w-0">
-              <div className="w-full sm:w-40">
+              <div className="w-full sm:w-40 lg:flex-none">
                 <select
                   value={difficultyFilter}
                   onChange={(e) => setDifficultyFilter(e.target.value)}
@@ -225,12 +283,12 @@ const ToursPage: React.FC<ToursPageProps> = ({ searchTerm = '' }) => {
                 </select>
               </div>
 
-              <div className="relative flex-1">
+              <div className="relative flex-1 min-w-[200px]">
                 <Search className="absolute left-3 top-2.5 w-4 h-4 text-gray-400 pointer-events-none" />
                 <input
                   value={localSearch}
                   onChange={e => setLocalSearch(e.target.value)}
-                  placeholder="Search tours or locations..."
+                  placeholder="Search tours..."
                   className="w-full pl-9 pr-3 py-2.5 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-sm text-gray-900 dark:text-white outline-none focus:ring-indigo-500 focus:border-indigo-500"
                 />
               </div>
@@ -240,7 +298,7 @@ const ToursPage: React.FC<ToursPageProps> = ({ searchTerm = '' }) => {
             {hasActiveFilters && (
               <button
                 onClick={clearFilters}
-                className="flex-none text-sm text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 font-medium transition-colors"
+                className="flex-none text-sm text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 font-medium transition-colors px-2 whitespace-nowrap"
               >
                 Clear Filters
               </button>
@@ -255,17 +313,29 @@ const ToursPage: React.FC<ToursPageProps> = ({ searchTerm = '' }) => {
           <table className="w-full text-left border-collapse">
             <thead className="bg-gray-50 dark:bg-gray-700/50 border-b border-gray-100 dark:border-gray-700 sticky top-0 z-10 backdrop-blur-sm">
               <tr>
-                <th className="px-6 py-4 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Tour Name
+                <th 
+                  className="px-6 py-4 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:text-gray-700 dark:hover:text-gray-200"
+                  onClick={() => handleSort('name')}
+                >
+                  <div className="flex items-center gap-1">Tour Name <SortIcon colKey="name" /></div>
                 </th>
-                <th className="px-6 py-4 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Duration
+                <th 
+                  className="px-6 py-4 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:text-gray-700 dark:hover:text-gray-200"
+                  onClick={() => handleSort('duration')}
+                >
+                  <div className="flex items-center gap-1">Duration <SortIcon colKey="duration" /></div>
                 </th>
-                <th className="px-6 py-4 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Price
+                <th 
+                  className="px-6 py-4 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:text-gray-700 dark:hover:text-gray-200"
+                  onClick={() => handleSort('price')}
+                >
+                  <div className="flex items-center gap-1">Price <SortIcon colKey="price" /></div>
                 </th>
-                <th className="px-6 py-4 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Status
+                <th 
+                  className="px-6 py-4 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:text-gray-700 dark:hover:text-gray-200"
+                  onClick={() => handleSort('status')}
+                >
+                  <div className="flex items-center gap-1">Status <SortIcon colKey="status" /></div>
                 </th>
                 <th className="px-6 py-4 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-right">
                   Actions
@@ -325,7 +395,7 @@ const ToursPage: React.FC<ToursPageProps> = ({ searchTerm = '' }) => {
                           : 'bg-gray-100 text-gray-600 border-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600'
                       }`}
                     >
-                      {tour.active ? 'Active' : 'Draft'}
+                      {tour.active ? 'Live' : 'Draft'}
                     </span>
                   </td>
 
@@ -345,7 +415,7 @@ const ToursPage: React.FC<ToursPageProps> = ({ searchTerm = '' }) => {
                       {menuOpenId === tour.id && (
                         <div
                           onClick={e => e.stopPropagation()}
-                          className="absolute right-0 mt-2 w-44 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-lg overflow-hidden z-20"
+                          className="absolute right-0 mt-2 w-48 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-lg overflow-hidden z-20"
                         >
                           <button
                             onClick={() => {
@@ -355,8 +425,31 @@ const ToursPage: React.FC<ToursPageProps> = ({ searchTerm = '' }) => {
                             className="w-full px-4 py-2.5 text-sm text-left text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700/40 flex items-center gap-2"
                           >
                             <Pencil className="w-4 h-4" />
-                            Edit
+                            Edit Details
                           </button>
+
+                          <button
+                            onClick={() => {
+                              handleDuplicateTour(tour);
+                            }}
+                            className="w-full px-4 py-2.5 text-sm text-left text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700/40 flex items-center gap-2"
+                          >
+                            <Copy className="w-4 h-4" />
+                            Duplicate
+                          </button>
+
+                          <button
+                            onClick={() => {
+                              handleSaveTour({ ...tour, active: !tour.active });
+                              setMenuOpenId(null);
+                            }}
+                            className="w-full px-4 py-2.5 text-sm text-left text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700/40 flex items-center gap-2"
+                          >
+                            <Archive className="w-4 h-4" />
+                            {tour.active ? 'Archive (Draft)' : 'Publish (Live)'}
+                          </button>
+
+                          <div className="border-t border-gray-100 dark:border-gray-700 my-1"></div>
 
                           <button
                             onClick={() => handleDeleteTour(tour.id)}
@@ -400,7 +493,7 @@ const ToursPage: React.FC<ToursPageProps> = ({ searchTerm = '' }) => {
 
           {/* Drawer */}
           <div
-            className={`absolute top-0 right-0 h-full w-full sm:max-w-[540px] bg-white dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700 shadow-2xl transform transition-transform duration-200 ease-out ${
+            className={`absolute top-0 right-0 h-full w-full lg:w-[720px] max-w-[90vw] bg-white dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700 shadow-2xl transform transition-transform duration-200 ease-out ${
               drawerOpen ? 'translate-x-0' : 'translate-x-full'
             }`}
             role="dialog"
