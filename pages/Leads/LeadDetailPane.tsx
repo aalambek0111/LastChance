@@ -1,11 +1,12 @@
+
 import React, { useEffect, useMemo, useState, useRef } from 'react';
 import { 
   X, Trash2, Save, Clock, Mail, Phone, Building2, Tag, 
   MessageCircle, UserPlus, Activity, MessageSquare, Send,
-  History, ChevronRight, CheckCircle 
+  History, ChevronRight, CalendarPlus, CalendarCheck
 } from 'lucide-react';
 import { useI18n } from '../../context/ThemeContext';
-import { Lead, LeadStatus } from '../../types';
+import { Lead, LeadStatus, Booking } from '../../types';
 
 // --- Types & Constants ---
 
@@ -155,9 +156,19 @@ interface LeadDetailPaneProps {
   onSave: (updated: Lead) => void;
   onDelete: (id: string) => void;
   onOpenChat?: () => void;
+  onCreateBooking?: () => void;
+  relatedBookings?: Booking[];
 }
 
-const LeadDetailPane: React.FC<LeadDetailPaneProps> = ({ lead, onClose, onSave, onDelete, onOpenChat }) => {
+const LeadDetailPane: React.FC<LeadDetailPaneProps> = ({ 
+  lead, 
+  onClose, 
+  onSave, 
+  onDelete, 
+  onOpenChat,
+  onCreateBooking,
+  relatedBookings = []
+}) => {
   const { t } = useI18n();
   const [activeTab, setActiveTab] = useState<Tab>('details');
 
@@ -295,8 +306,6 @@ const LeadDetailPane: React.FC<LeadDetailPaneProps> = ({ lead, onClose, onSave, 
     };
 
     onSave(updated);
-    // Do not close automatically, allow user to continue working or switch tabs
-    // But maybe show a toast or feedback? For now, we'll just stay open.
   };
 
   const handleDelete = () => {
@@ -365,6 +374,8 @@ const LeadDetailPane: React.FC<LeadDetailPaneProps> = ({ lead, onClose, onSave, 
     u.name.toLowerCase().includes(mentionQuery.toLowerCase())
   );
 
+  const existingBooking = relatedBookings.find(b => b.leadId === lead.id || b.clientName === lead.name);
+
   return (
     <div className="h-full flex flex-col bg-white dark:bg-gray-800 shadow-2xl">
       {/* Header */}
@@ -387,8 +398,23 @@ const LeadDetailPane: React.FC<LeadDetailPaneProps> = ({ lead, onClose, onSave, 
           </div>
         </div>
         <div className="flex items-center gap-2">
+          {existingBooking ? (
+             <button className="flex items-center gap-2 px-3 py-2 rounded-lg bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 transition-colors text-sm font-medium">
+               <CalendarCheck className="w-4 h-4" />
+               View Booking
+             </button>
+          ) : (
+             <button 
+                onClick={onCreateBooking}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg bg-indigo-50 text-indigo-700 dark:bg-indigo-900/20 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800 hover:bg-indigo-100 dark:hover:bg-indigo-900/30 transition-colors text-sm font-medium"
+             >
+               <CalendarPlus className="w-4 h-4" />
+               Create Booking
+             </button>
+          )}
+          
           {onOpenChat && (
-            <button onClick={onOpenChat} className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700/50 text-indigo-600 dark:text-indigo-400" title="Message">
+            <button onClick={onOpenChat} className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700/50 text-gray-600 dark:text-gray-300" title="Message">
               <MessageCircle className="w-5 h-5" />
             </button>
           )}

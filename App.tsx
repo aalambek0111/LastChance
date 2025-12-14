@@ -1,6 +1,8 @@
+
 import React, { useState } from 'react';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
+import MobileNav from './components/MobileNav';
 import DashboardPage from './pages/Dashboard/DashboardPage';
 import InboxPage from './pages/Inbox/InboxPage';
 import LeadsPage from './pages/Leads/LeadsPage';
@@ -24,11 +26,12 @@ function App() {
 
   const addBooking = (booking: Booking) => {
     setBookings(prev => [booking, ...prev]);
+    showToast(`Booking ${booking.id} created successfully`);
   };
 
   const updateBooking = (updatedBooking: Booking) => {
     setBookings(prev => prev.map(b => b.id === updatedBooking.id ? updatedBooking : b));
-    showToast('Booking updated successfully (mock)');
+    showToast('Booking updated successfully');
   };
 
   const showToast = (message: string) => {
@@ -50,8 +53,13 @@ function App() {
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex font-sans text-gray-900 dark:text-white transition-colors duration-200">
         <Sidebar activePage={activePage} onNavigate={setActivePage} />
 
-        {/* Removed w-full to prevent overflow with ml-64. Added overflow-x-hidden as safety. */}
-        <main className="flex-1 md:ml-64 min-h-screen flex flex-col relative overflow-x-hidden">
+        {/* 
+          Main Content Wrapper
+          - md:ml-64: Pushes content right on desktop to accommodate Sidebar
+          - pb-20: Adds bottom padding on mobile so content isn't hidden behind MobileNav
+          - md:pb-0: Removes bottom padding on desktop
+        */}
+        <main className="flex-1 md:ml-64 min-h-screen flex flex-col relative overflow-x-hidden pb-20 md:pb-0">
           <Header searchTerm={searchTerm} setSearchTerm={setSearchTerm} />
 
           <div className="flex-1 overflow-hidden flex flex-col">
@@ -64,6 +72,7 @@ function App() {
             )}
             {activePage === 'inbox' && (
               <InboxPage 
+                bookings={bookings}
                 onAddBooking={addBooking} 
                 showToast={showToast} 
                 searchTerm={searchTerm}
@@ -72,6 +81,8 @@ function App() {
             )}
             {activePage === 'leads' && (
               <LeadsPage 
+                bookings={bookings}
+                onAddBooking={addBooking}
                 searchTerm={searchTerm} 
                 onOpenConversation={handleOpenConversation}
               />
@@ -91,6 +102,9 @@ function App() {
           </div>
         </main>
         
+        {/* Mobile Navigation - Visible only on small screens */}
+        <MobileNav activePage={activePage} onNavigate={setActivePage} />
+
         <Toast 
           message={toast.message} 
           isVisible={toast.visible} 

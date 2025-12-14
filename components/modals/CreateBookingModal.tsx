@@ -1,10 +1,11 @@
+
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { 
   X, Calendar, MapPin, Users, FileText, Flag, User, CheckCircle, CreditCard, 
-  MessageSquare, Activity, Send, Clock, History, ChevronRight, UserPlus, Info, Search,
+  MessageSquare, Activity, Send, Clock, History, ChevronRight, UserPlus, Info,
   RotateCcw, AlertCircle
 } from 'lucide-react';
-import { Booking, BookingStatus, PaymentStatus } from '../../types';
+import { Booking, BookingStatus, PaymentStatus, Lead } from '../../types';
 import { TOURS, RECENT_LEADS } from '../../data/mockData';
 
 // --- Types for New Features ---
@@ -323,7 +324,8 @@ const AssigneeLookup: React.FC<AssigneeLookupProps> = ({ label, users, selectedU
 interface CreateBookingModalProps {
   isOpen: boolean;
   onClose: () => void;
-  leadName?: string;
+  lead?: Lead | null;
+  leadName?: string; // Fallback for simple name passing
   onBookingCreated?: (booking: Booking) => void;
   bookingToEdit?: Booking | null;
   onBookingUpdated?: (booking: Booking) => void;
@@ -332,6 +334,7 @@ interface CreateBookingModalProps {
 const CreateBookingModal: React.FC<CreateBookingModalProps> = ({ 
   isOpen, 
   onClose, 
+  lead,
   leadName = '', 
   onBookingCreated,
   bookingToEdit,
@@ -390,6 +393,35 @@ const CreateBookingModal: React.FC<CreateBookingModalProps> = ({
     return `${year}-${month}-${day}`;
   };
 
+  // --- Style Helpers for Payment Status ---
+  const getPaymentColorClass = (status: PaymentStatus) => {
+    switch (status) {
+      case 'Paid':
+        return 'text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800';
+      case 'Partially Paid':
+        return 'text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800';
+      case 'Unpaid':
+        return 'text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800';
+      case 'Refunded':
+        return 'text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700';
+      case 'Waiting':
+        return 'text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800';
+      default:
+        return 'text-gray-900 dark:text-white bg-white dark:bg-gray-700/50 border-gray-300 dark:border-gray-600';
+    }
+  };
+
+  const getPaymentIconColorClass = (status: PaymentStatus) => {
+    switch (status) {
+      case 'Paid': return 'text-emerald-500 dark:text-emerald-400';
+      case 'Partially Paid': return 'text-amber-500 dark:text-amber-400';
+      case 'Unpaid': return 'text-red-500 dark:text-red-400';
+      case 'Refunded': return 'text-gray-500 dark:text-gray-400';
+      case 'Waiting': return 'text-blue-500 dark:text-blue-400';
+      default: return 'text-gray-400';
+    }
+  };
+
   // --- Effects ---
 
   // 1. Initialize Form & Load Data
@@ -424,16 +456,18 @@ const CreateBookingModal: React.FC<CreateBookingModalProps> = ({
 
     } else {
       // Create Mode Reset
+      const defaultClientName = lead ? lead.name : (leadName && leadName !== 'New Client' ? leadName : '');
+      
       setFormData({
         tourName: '',
-        clientName: leadName && leadName !== 'New Client' ? leadName : '',
+        clientName: defaultClientName,
         date: new Date().toISOString().split('T')[0],
         pax: 2,
         status: 'Pending',
         paymentStatus: 'Unpaid',
         pickupLocation: '',
-        notes: '',
-        assignedTo: ''
+        notes: lead ? `Source: ${lead.channel}. ${lead.notes || ''}` : '',
+        assignedTo: lead?.assignedTo || ''
       });
       setTotalAmount(0);
       setAmountPaid(0);
@@ -441,7 +475,7 @@ const CreateBookingModal: React.FC<CreateBookingModalProps> = ({
       setActivities([]);
       setComments([]);
     }
-  }, [bookingToEdit, isOpen, leadName]);
+  }, [bookingToEdit, isOpen, lead, leadName]);
 
   // 2. Auto-calculate Total Amount based on Tour & Pax
   useEffect(() => {
@@ -462,7 +496,6 @@ const CreateBookingModal: React.FC<CreateBookingModalProps> = ({
 
   const handleTotalChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const rawValue = e.target.value;
-    // Allow clearing the input (which sets value to 0 internally)
     if (rawValue === '') {
       setTotalAmount(0);
       setIsAmountOverridden(true);
@@ -485,7 +518,6 @@ const CreateBookingModal: React.FC<CreateBookingModalProps> = ({
 
   const handleAmountPaidChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const rawValue = e.target.value;
-    // Allow clearing the input (which sets value to 0 internally)
     if (rawValue === '') {
       setAmountPaid(0);
       return;
@@ -500,7 +532,7 @@ const CreateBookingModal: React.FC<CreateBookingModalProps> = ({
     const val = e.target.value;
     setCommentText(val);
 
-    // Simple mention detection: Check if word currently typing starts with @
+    // Simple mention detection
     const cursorIndex = e.target.selectionStart;
     const textBeforeCursor = val.slice(0, cursorIndex);
     const words = textBeforeCursor.split(/\s/);
@@ -518,8 +550,6 @@ const CreateBookingModal: React.FC<CreateBookingModalProps> = ({
     const cursorIndex = commentInputRef.current?.selectionStart || 0;
     const textBeforeCursor = commentText.slice(0, cursorIndex);
     const textAfterCursor = commentText.slice(cursorIndex);
-    
-    // Replace the incomplete mention with full name
     const lastAtIndex = textBeforeCursor.lastIndexOf('@');
     const newTextBefore = textBeforeCursor.slice(0, lastAtIndex) + `@${userName} `;
     
@@ -532,7 +562,6 @@ const CreateBookingModal: React.FC<CreateBookingModalProps> = ({
     e?.preventDefault();
     if (!commentText.trim() || !bookingToEdit) return;
 
-    // Find mentions in final text
     const mentionsFound = TEAM_USERS
         .filter(u => commentText.includes(`@${u.name}`))
         .map(u => u.name);
@@ -573,7 +602,6 @@ const CreateBookingModal: React.FC<CreateBookingModalProps> = ({
           amountPaid: bookingToEdit.amountPaid
         };
 
-        // Helper to compare values loosely
         const hasChanged = (a: any, b: any) => String(a) !== String(b);
 
         if (hasChanged(original.tourName, formData.tourName)) 
@@ -595,14 +623,12 @@ const CreateBookingModal: React.FC<CreateBookingModalProps> = ({
         if (original.amountPaid !== amountPaid)
           changes.push({ id: `a_${Date.now()}_9`, bookingId: bookingToEdit.id, field: 'Amount Paid', from: original.amountPaid, to: amountPaid, actorName: CURRENT_USER_NAME, timestamp: Date.now() });
 
-        // Save Activities
         if (changes.length > 0) {
           const updatedActivities = [...changes, ...activities];
-          setActivities(updatedActivities); // update local state just in case
+          setActivities(updatedActivities);
           localStorage.setItem(`booking_activities_${bookingToEdit.id}`, JSON.stringify(updatedActivities));
         }
 
-        // 2. Update Booking
         const updatedBooking: Booking = {
           ...bookingToEdit,
           tourName: formData.tourName,
@@ -623,8 +649,26 @@ const CreateBookingModal: React.FC<CreateBookingModalProps> = ({
 
       } else {
         // Create Mode
+        const newBookingId = `B${Date.now()}`;
+        
+        // Initial Activity Log for creation from Lead
+        const initialActivities: ActivityLogItem[] = [];
+        if (lead) {
+           initialActivities.push({
+             id: `a_${Date.now()}_init`, 
+             bookingId: newBookingId, 
+             field: 'Origin', 
+             from: 'Lead', 
+             to: `Created from Lead: ${lead.name}`, 
+             actorName: CURRENT_USER_NAME, 
+             timestamp: Date.now() 
+           });
+           localStorage.setItem(`booking_activities_${newBookingId}`, JSON.stringify(initialActivities));
+        }
+
         const newBooking: Booking = {
-          id: `B${Date.now()}`,
+          id: newBookingId,
+          leadId: lead?.id, // Link the lead ID if available
           tourName: formData.tourName,
           date: formData.date,
           clientName: formData.clientName || 'Unknown Client',
@@ -648,7 +692,6 @@ const CreateBookingModal: React.FC<CreateBookingModalProps> = ({
       setToastMessage('Saved successfully');
       setShowToast(true);
       
-      // Delay closing to show success message
       setTimeout(() => {
         onClose();
       }, 1500);
@@ -658,8 +701,6 @@ const CreateBookingModal: React.FC<CreateBookingModalProps> = ({
       setShowToast(true);
     }
   };
-
-  // --- Render Helpers ---
 
   const clientOptions = [
     ...RECENT_LEADS.map(lead => ({ id: lead.id, label: lead.name, subLabel: `${lead.channel} • ${lead.status}` })),
@@ -797,10 +838,10 @@ const CreateBookingModal: React.FC<CreateBookingModalProps> = ({
                       <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase mb-1.5">Payment Status</label>
                       <div className="relative">
                         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                           <CreditCard className="w-4 h-4 text-gray-400" />
+                           <CreditCard className={`w-4 h-4 ${getPaymentIconColorClass(formData.paymentStatus)}`} />
                         </div>
                         <select
-                          className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white bg-white dark:bg-gray-700/50 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm appearance-none"
+                          className={`block w-full pl-10 pr-3 py-2.5 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm appearance-none font-medium transition-colors ${getPaymentColorClass(formData.paymentStatus)}`}
                           value={formData.paymentStatus}
                           onChange={e => setFormData({...formData, paymentStatus: e.target.value as PaymentStatus})}
                         >

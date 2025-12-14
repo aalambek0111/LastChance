@@ -174,7 +174,7 @@ function getDefaultSelectedFields(type: ReportType) {
 // -------------------- Page --------------------
 const ReportsPage: React.FC = () => {
   const { t } = useI18n();
-  const [activeTab, setActiveTab] = useState<'overview' | 'builder'>('builder');
+  const [activeTab, setActiveTab] = useState<'overview' | 'builder'>('overview');
 
   // Builder core
   const [reportName, setReportName] = useState('New Custom Report');

@@ -1,25 +1,35 @@
+
 import React, { useState } from 'react';
 import { List, LayoutGrid, Tag, Clock, MoreHorizontal, Filter, User } from 'lucide-react';
-import { Lead, LeadStatus } from '../../types';
+import { Lead, LeadStatus, Booking } from '../../types';
 import { RECENT_LEADS } from '../../data/mockData';
 import { useI18n } from '../../context/ThemeContext';
 import AddLeadModal from '../../components/modals/AddLeadModal';
+import CreateBookingModal from '../../components/modals/CreateBookingModal';
 import LeadDetailPane from './LeadDetailPane';
 
 interface LeadsPageProps {
   searchTerm?: string;
   onOpenConversation?: (leadName: string) => void;
+  bookings: Booking[];
+  onAddBooking: (booking: Booking) => void;
 }
 
 const CURRENT_USER_NAME = "Alex Walker"; // Mock user for "My Leads" filter
 
-const LeadsPage: React.FC<LeadsPageProps> = ({ searchTerm = '', onOpenConversation }) => {
+const LeadsPage: React.FC<LeadsPageProps> = ({ 
+  searchTerm = '', 
+  onOpenConversation,
+  bookings,
+  onAddBooking
+}) => {
   const { t } = useI18n();
   const [leads, setLeads] = useState<Lead[]>(RECENT_LEADS);
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'table' | 'kanban'>('table');
   const [draggedLeadId, setDraggedLeadId] = useState<string | null>(null);
   const [isAddLeadModalOpen, setIsAddLeadModalOpen] = useState(false);
+  const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
 
   // Filters
   const [statusFilter, setStatusFilter] = useState('All');
@@ -53,6 +63,36 @@ const LeadsPage: React.FC<LeadsPageProps> = ({ searchTerm = '', onOpenConversati
   const handleDeleteLead = (id: string) => {
     setLeads(prev => prev.filter(l => l.id !== id));
     setSelectedLeadId(null);
+  };
+
+  const handleBookingCreated = (newBooking: Booking) => {
+    onAddBooking(newBooking);
+    
+    // Log activity on the lead side
+    if (activeLead) {
+      const storedActivities = localStorage.getItem(`lead_activities_${activeLead.id}`);
+      const activities = storedActivities ? JSON.parse(storedActivities) : [];
+      
+      const newActivity = {
+        id: `a_${Date.now()}_booking`,
+        leadId: activeLead.id,
+        field: 'Booking',
+        from: 'None',
+        to: `Created Booking ${newBooking.id}`,
+        actorName: CURRENT_USER_NAME,
+        timestamp: Date.now()
+      };
+      
+      localStorage.setItem(`lead_activities_${activeLead.id}`, JSON.stringify([newActivity, ...activities]));
+      
+      // Auto update status if not already booked
+      if (activeLead.status !== 'Booked' && activeLead.status !== 'Lost') {
+         const updatedLead = { ...activeLead, status: 'Booked' as LeadStatus };
+         setLeads(prev => prev.map(l => l.id === updatedLead.id ? updatedLead : l));
+      }
+    }
+    
+    setIsBookingModalOpen(false);
   };
 
   const clearFilters = () => {
@@ -101,6 +141,8 @@ const LeadsPage: React.FC<LeadsPageProps> = ({ searchTerm = '', onOpenConversati
                   onSave={handleUpdateLead}
                   onDelete={handleDeleteLead}
                   onOpenChat={() => onOpenConversation && onOpenConversation(activeLead.name)}
+                  onCreateBooking={() => setIsBookingModalOpen(true)}
+                  relatedBookings={bookings.filter(b => b.leadId === activeLead.id || b.clientName === activeLead.name)}
                />
             </div>
         </>
@@ -111,7 +153,7 @@ const LeadsPage: React.FC<LeadsPageProps> = ({ searchTerm = '', onOpenConversati
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
           <h2 className="text-3xl font-bold text-gray-900 dark:text-white">{t('page_leads_title')}</h2>
           
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 w-full sm:w-auto">
             {/* View Switcher */}
             <div className="flex bg-gray-100 dark:bg-gray-800 p-1 rounded-lg border border-gray-200 dark:border-gray-700">
               <button
@@ -140,7 +182,7 @@ const LeadsPage: React.FC<LeadsPageProps> = ({ searchTerm = '', onOpenConversati
 
             <button 
               onClick={() => setIsAddLeadModalOpen(true)}
-              className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors shadow-sm whitespace-nowrap"
+              className="flex-1 sm:flex-none px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors shadow-sm whitespace-nowrap"
             >
               Add Lead
             </button>
@@ -148,72 +190,81 @@ const LeadsPage: React.FC<LeadsPageProps> = ({ searchTerm = '', onOpenConversati
         </div>
 
         {/* Filter Bar */}
-        <div className="flex flex-wrap items-center gap-3 bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
-          <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400 mr-2">
-            <Filter className="w-4 h-4" />
-            <span className="text-sm font-medium">Filter by:</span>
+        <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col gap-4">
+          
+          {/* Top Row: Label + Tabs + Clear */}
+          <div className="flex flex-col md:flex-row md:items-center gap-3">
+            <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400 min-w-fit">
+              <Filter className="w-4 h-4" />
+              <span className="text-sm font-medium">Filter by:</span>
+            </div>
+
+            {/* Assigned To Filter (Tabs) */}
+            <div className="flex bg-gray-100 dark:bg-gray-700/50 p-1 rounded-lg w-full md:w-auto">
+              <button
+                onClick={() => setAssignedFilter('All')}
+                className={`flex-1 md:flex-none px-4 py-1.5 text-xs font-semibold rounded-md transition-all ${
+                  assignedFilter === 'All'
+                    ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow-sm'
+                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+                }`}
+              >
+                All Leads
+              </button>
+              <button
+                onClick={() => setAssignedFilter('Mine')}
+                className={`flex-1 md:flex-none px-4 py-1.5 text-xs font-semibold rounded-md transition-all flex items-center justify-center gap-1.5 ${
+                  assignedFilter === 'Mine'
+                    ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow-sm'
+                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+                }`}
+              >
+                <User className="w-3 h-3" />
+                My Leads
+              </button>
+            </div>
+
+            {hasActiveFilters && (
+              <button
+                onClick={clearFilters}
+                className="text-sm text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 md:ml-auto font-medium transition-colors text-left"
+              >
+                Clear Filters
+              </button>
+            )}
           </div>
 
-          {/* Assigned To Filter (Tabs) */}
-          <div className="flex bg-gray-100 dark:bg-gray-700/50 p-1 rounded-lg">
-            <button
-              onClick={() => setAssignedFilter('All')}
-              className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${
-                assignedFilter === 'All'
-                  ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow-sm'
-                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
-              }`}
-            >
-              All Leads
-            </button>
-            <button
-              onClick={() => setAssignedFilter('Mine')}
-              className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all flex items-center gap-1.5 ${
-                assignedFilter === 'Mine'
-                  ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow-sm'
-                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
-              }`}
-            >
-              <User className="w-3 h-3" />
-              My Leads
-            </button>
+          {/* Bottom Row: Dropdowns */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:flex lg:items-center gap-3">
+            <div className="w-full lg:w-48">
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="w-full bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-200 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2.5 outline-none"
+              >
+                <option value="All">All Status</option>
+                <option value="New">New</option>
+                <option value="Contacted">Contacted</option>
+                <option value="Qualified">Qualified</option>
+                <option value="Booked">Booked</option>
+                <option value="Lost">Lost</option>
+              </select>
+            </div>
+
+            <div className="w-full lg:w-48">
+              <select
+                value={channelFilter}
+                onChange={(e) => setChannelFilter(e.target.value)}
+                className="w-full bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-200 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2.5 outline-none"
+              >
+                <option value="All">All Channels</option>
+                <option value="Website">Website</option>
+                <option value="WhatsApp">WhatsApp</option>
+                <option value="Email">Email</option>
+                <option value="Referral">Referral</option>
+              </select>
+            </div>
           </div>
-
-          <div className="h-6 w-px bg-gray-200 dark:bg-gray-700 mx-1 hidden sm:block"></div>
-
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-200 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2.5 outline-none"
-          >
-            <option value="All">All Status</option>
-            <option value="New">New</option>
-            <option value="Contacted">Contacted</option>
-            <option value="Qualified">Qualified</option>
-            <option value="Booked">Booked</option>
-            <option value="Lost">Lost</option>
-          </select>
-
-          <select
-            value={channelFilter}
-            onChange={(e) => setChannelFilter(e.target.value)}
-            className="bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-200 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2.5 outline-none"
-          >
-            <option value="All">All Channels</option>
-            <option value="Website">Website</option>
-            <option value="WhatsApp">WhatsApp</option>
-            <option value="Email">Email</option>
-            <option value="Referral">Referral</option>
-          </select>
-
-          {hasActiveFilters && (
-            <button
-              onClick={clearFilters}
-              className="text-sm text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 ml-auto font-medium transition-colors"
-            >
-              Clear Filters
-            </button>
-          )}
         </div>
       </div>
       
@@ -356,6 +407,13 @@ const LeadsPage: React.FC<LeadsPageProps> = ({ searchTerm = '', onOpenConversati
       <AddLeadModal 
         isOpen={isAddLeadModalOpen} 
         onClose={() => setIsAddLeadModalOpen(false)} 
+      />
+
+      <CreateBookingModal 
+        isOpen={isBookingModalOpen} 
+        onClose={() => setIsBookingModalOpen(false)}
+        lead={activeLead}
+        onBookingCreated={handleBookingCreated}
       />
     </div>
   );

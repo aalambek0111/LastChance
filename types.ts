@@ -1,3 +1,4 @@
+
 export type LeadStatus = 'New' | 'Contacted' | 'Qualified' | 'Booked' | 'Lost';
 export type BookingStatus = 'Confirmed' | 'Pending' | 'Completed' | 'Cancelled';
 export type Channel = 'Website' | 'WhatsApp' | 'Email' | 'Referral';
@@ -10,10 +11,17 @@ export interface Lead {
   status: LeadStatus;
   channel: Channel;
   assignedTo?: string;
+  // Extended fields used in mock data
+  email?: string;
+  phone?: string;
+  company?: string;
+  value?: number;
+  notes?: string;
 }
 
 export interface Booking {
   id: string;
+  leadId?: string; // Reference to the origin lead
   date: string;
   tourName: string;
   clientName: string;

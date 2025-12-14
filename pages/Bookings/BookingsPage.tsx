@@ -140,18 +140,18 @@ const BookingsPage: React.FC<BookingsPageProps> = ({
           </p>
         </div>
 
-        <div className="flex gap-3">
+        <div className="flex gap-3 w-full sm:w-auto">
           <button
             onClick={handleExport}
             disabled={sortedBookings.length === 0}
-            className="px-4 py-2 border border-gray-200 dark:border-gray-700 rounded-lg text-sm font-medium bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex-1 sm:flex-none justify-center px-4 py-2 border border-gray-200 dark:border-gray-700 rounded-lg text-sm font-medium bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Download className="w-4 h-4" />
             Export
           </button>
 
           <button
-            className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors shadow-sm"
+            className="flex-1 sm:flex-none justify-center px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors shadow-sm"
             onClick={() => setIsCreateOpen(true)}
           >
             Add Booking
@@ -160,99 +160,110 @@ const BookingsPage: React.FC<BookingsPageProps> = ({
       </div>
 
       {/* Filter Bar */}
-      <div className="flex flex-wrap items-center gap-3 mb-6 bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
-        <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400 mr-2">
-          <Filter className="w-4 h-4" />
-          <span className="text-sm font-medium">Filter by:</span>
-        </div>
-
-        {/* Assigned To Filter (Tabs) */}
-        <div className="flex bg-gray-100 dark:bg-gray-700/50 p-1 rounded-lg">
-          <button
-            onClick={() => setAssignedFilter('All')}
-            className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${
-              assignedFilter === 'All'
-                ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow-sm'
-                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
-            }`}
-          >
-            All Bookings
-          </button>
-          <button
-            onClick={() => setAssignedFilter('Mine')}
-            className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all flex items-center gap-1.5 ${
-              assignedFilter === 'Mine'
-                ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow-sm'
-                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
-            }`}
-          >
-            <User className="w-3 h-3" />
-            My Bookings
-          </button>
-        </div>
-
-        <div className="h-6 w-px bg-gray-200 dark:bg-gray-700 mx-1 hidden sm:block"></div>
-
-        <select
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-          className="bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-200 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2.5 outline-none"
-        >
-          <option value="All">All Status</option>
-          <option value="Confirmed">Confirmed</option>
-          <option value="Pending">Pending</option>
-          <option value="Cancelled">Cancelled</option>
-          <option value="Completed">Completed</option>
-        </select>
-
-        {/* Tour Text Filter Input */}
-        <div className="relative">
-          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <Flag className="h-4 w-4 text-gray-400" />
-          </div>
-          <input
-            type="text"
-            value={tourSearch}
-            onChange={(e) => setTourSearch(e.target.value)}
-            placeholder="Filter by tour..."
-            className="block w-full pl-10 pr-3 py-2.5 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-200 text-sm focus:ring-indigo-500 focus:border-indigo-500 outline-none"
-          />
-        </div>
-
-        {/* Sort */}
-        <div className="flex items-center gap-2 ml-auto">
-          <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400">
-            <ArrowUpDown className="w-4 h-4" />
-            <span className="text-sm font-medium">Sort:</span>
+      <div className="mb-6 bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col gap-4">
+        
+        {/* Top Row: Tabs + Label */}
+        <div className="flex flex-col md:flex-row md:items-center gap-3">
+          <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400 min-w-fit">
+            <Filter className="w-4 h-4" />
+            <span className="text-sm font-medium">Filter by:</span>
           </div>
 
-          <select
-            value={sortKey}
-            onChange={(e) => setSortKey(e.target.value as SortKey)}
-            className="bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-200 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2.5 outline-none"
-          >
-            <option value="date">Date</option>
-            <option value="status">Status</option>
-            <option value="clientName">Client</option>
-            <option value="tourName">Tour</option>
-          </select>
-
-          <button
-            onClick={() => setSortDir(prev => (prev === 'asc' ? 'desc' : 'asc'))}
-            className="px-3 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-            title="Toggle sort direction"
-          >
-            {sortDir.toUpperCase()}
-          </button>
+          {/* Assigned To Filter (Tabs) */}
+          <div className="flex bg-gray-100 dark:bg-gray-700/50 p-1 rounded-lg w-full md:w-auto">
+            <button
+              onClick={() => setAssignedFilter('All')}
+              className={`flex-1 md:flex-none px-4 py-1.5 text-xs font-semibold rounded-md transition-all ${
+                assignedFilter === 'All'
+                  ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow-sm'
+                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+              }`}
+            >
+              All Bookings
+            </button>
+            <button
+              onClick={() => setAssignedFilter('Mine')}
+              className={`flex-1 md:flex-none px-4 py-1.5 text-xs font-semibold rounded-md transition-all flex items-center justify-center gap-1.5 ${
+                assignedFilter === 'Mine'
+                  ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow-sm'
+                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+              }`}
+            >
+              <User className="w-3 h-3" />
+              My Bookings
+            </button>
+          </div>
 
           {hasActiveFilters && (
             <button
               onClick={clearFilters}
-              className="px-3 py-2.5 rounded-lg text-sm font-medium text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors"
+              className="text-sm text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 md:ml-auto font-medium transition-colors text-left"
             >
               Clear Filters
             </button>
           )}
+        </div>
+
+        {/* Bottom Row: Inputs & Sorting */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:flex lg:items-center gap-3">
+          <div className="w-full lg:w-48">
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="w-full bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-200 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2.5 outline-none"
+            >
+              <option value="All">All Status</option>
+              <option value="Confirmed">Confirmed</option>
+              <option value="Pending">Pending</option>
+              <option value="Cancelled">Cancelled</option>
+              <option value="Completed">Completed</option>
+            </select>
+          </div>
+
+          {/* Tour Text Filter Input */}
+          <div className="relative w-full lg:w-56">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <Flag className="h-4 w-4 text-gray-400" />
+            </div>
+            <input
+              type="text"
+              value={tourSearch}
+              onChange={(e) => setTourSearch(e.target.value)}
+              placeholder="Filter by tour..."
+              className="block w-full pl-10 pr-3 py-2.5 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-200 text-sm focus:ring-indigo-500 focus:border-indigo-500 outline-none"
+            />
+          </div>
+
+          <div className="hidden lg:block lg:flex-1"></div>
+
+          {/* Sort */}
+          <div className="col-span-1 sm:col-span-2 lg:col-span-auto flex items-center gap-2 lg:ml-auto">
+            <div className="hidden sm:flex items-center gap-2 text-gray-500 dark:text-gray-400">
+              <ArrowUpDown className="w-4 h-4" />
+              <span className="text-sm font-medium">Sort:</span>
+            </div>
+
+            <div className="flex flex-1 gap-2">
+              <select
+                value={sortKey}
+                onChange={(e) => setSortKey(e.target.value as SortKey)}
+                className="w-full sm:w-auto bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-200 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2.5 outline-none"
+              >
+                <option value="date">Date</option>
+                <option value="status">Status</option>
+                <option value="clientName">Client</option>
+                <option value="tourName">Tour</option>
+              </select>
+
+              <button
+                onClick={() => setSortDir(prev => (prev === 'asc' ? 'desc' : 'asc'))}
+                className="px-3 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                title="Toggle sort direction"
+              >
+                {sortDir.toUpperCase()}
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   Mail, 
@@ -9,9 +10,10 @@ import {
   CheckCheck, 
   CalendarPlus, 
   Sparkles, 
-  Send
+  Send,
+  CalendarCheck
 } from 'lucide-react';
-import { Booking } from '../../types';
+import { Booking, Lead, LeadStatus } from '../../types';
 import CreateBookingModal from '../../components/modals/CreateBookingModal';
 import { useI18n } from '../../context/ThemeContext';
 
@@ -92,13 +94,15 @@ interface InboxPageProps {
   showToast?: (message: string) => void;
   searchTerm?: string;
   initialLeadName?: string | null;
+  bookings: Booking[];
 }
 
 const InboxPage: React.FC<InboxPageProps> = ({ 
   onAddBooking, 
   showToast, 
   searchTerm = '', 
-  initialLeadName 
+  initialLeadName,
+  bookings
 }) => {
   const { t } = useI18n();
   // Lift threads to state to allow updates (e.g. sending messages)
@@ -131,6 +135,11 @@ const InboxPage: React.FC<InboxPageProps> = ({
   }, [initialLeadName, threads]);
 
   const selectedThread = threads.find(t => t.id === selectedConversationId);
+
+  // Check if current thread has an existing booking
+  const existingBooking = selectedThread 
+    ? bookings.find(b => b.clientName === selectedThread.sender)
+    : undefined;
 
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
@@ -191,6 +200,16 @@ const InboxPage: React.FC<InboxPageProps> = ({
     if (showToast) showToast('Booking created successfully (mock)');
     setIsBookingModalOpen(false);
   };
+
+  // Convert thread to partial Lead object for modal prefill
+  const mockLeadFromThread: Lead | undefined = selectedThread ? {
+    id: `temp_${selectedThread.id}`,
+    name: selectedThread.sender,
+    status: selectedThread.status as LeadStatus,
+    channel: selectedThread.channel as any,
+    lastMessageTime: selectedThread.time,
+    notes: `Context from Inbox conversation.`
+  } : undefined;
 
   return (
     <div className="flex flex-col h-[calc(100vh-5rem)] max-w-7xl mx-auto md:px-6 md:py-6 overflow-hidden w-full">
@@ -268,18 +287,26 @@ const InboxPage: React.FC<InboxPageProps> = ({
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <button 
-                  onClick={() => setIsBookingModalOpen(true)}
-                  className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg transition-colors mr-2"
-                >
-                  <CalendarPlus className="w-4 h-4" />
-                  Create Booking
-                </button>
+                {existingBooking ? (
+                  <button className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 text-xs font-semibold rounded-lg transition-colors mr-2">
+                    <CalendarCheck className="w-4 h-4" />
+                    View Booking
+                  </button>
+                ) : (
+                  <button 
+                    onClick={() => setIsBookingModalOpen(true)}
+                    className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg transition-colors mr-2"
+                  >
+                    <CalendarPlus className="w-4 h-4" />
+                    Create Booking
+                  </button>
+                )}
+                
                 <button 
                   onClick={() => setIsBookingModalOpen(true)}
                   className="sm:hidden p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
                 >
-                  <CalendarPlus className="w-5 h-5" />
+                  {existingBooking ? <CalendarCheck className="w-5 h-5 text-emerald-600" /> : <CalendarPlus className="w-5 h-5" />}
                 </button>
                 <div className="w-px h-6 bg-gray-200 dark:bg-gray-700 mx-1"></div>
                 <button className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
@@ -388,6 +415,7 @@ const InboxPage: React.FC<InboxPageProps> = ({
         isOpen={isBookingModalOpen} 
         onClose={() => setIsBookingModalOpen(false)} 
         leadName={selectedThread?.sender}
+        lead={mockLeadFromThread}
         onBookingCreated={handleBookingCreated}
       />
     </div>

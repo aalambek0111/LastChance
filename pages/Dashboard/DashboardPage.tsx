@@ -119,7 +119,7 @@ const DashboardPage: React.FC<DashboardProps> = ({
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
           
           {/* Leads Panel */}
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 flex flex-col h-full">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 flex flex-col h-full overflow-hidden">
             {/* Panel Header */}
             <div className="p-5 border-b border-gray-100 dark:border-gray-700 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div className="flex items-center gap-2">
@@ -146,9 +146,9 @@ const DashboardPage: React.FC<DashboardProps> = ({
             </div>
 
             {/* List */}
-            <div className="flex-1 overflow-x-auto">
+            <div className="flex-1 overflow-x-auto overflow-y-auto max-h-[400px]">
               <table className="w-full text-left border-collapse">
-                <thead className="bg-gray-50/50 dark:bg-gray-800/50 text-gray-500 dark:text-gray-400 font-medium text-xs uppercase tracking-wider">
+                <thead className="bg-gray-50/50 dark:bg-gray-800/50 text-gray-500 dark:text-gray-400 font-medium text-xs uppercase tracking-wider sticky top-0 backdrop-blur-sm z-10">
                   <tr>
                     <th className="px-6 py-3 border-b border-gray-100 dark:border-gray-700">Lead</th>
                     <th className="px-6 py-3 border-b border-gray-100 dark:border-gray-700">Status</th>
@@ -194,7 +194,7 @@ const DashboardPage: React.FC<DashboardProps> = ({
                 </tbody>
               </table>
             </div>
-            <div className="p-4 border-t border-gray-100 dark:border-gray-700">
+            <div className="p-4 border-t border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800 z-20">
               <button 
                 onClick={() => onNavigate && onNavigate('leads')}
                 className="w-full py-2 flex items-center justify-center gap-2 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded-lg transition-colors border border-dashed border-gray-200 dark:border-gray-700"
@@ -205,7 +205,7 @@ const DashboardPage: React.FC<DashboardProps> = ({
           </div>
 
           {/* Bookings Panel */}
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 flex flex-col h-full">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 flex flex-col h-full overflow-hidden">
             <div className="p-5 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
               <div>
                 <h2 className="text-lg font-bold text-gray-900 dark:text-white">Upcoming Bookings</h2>
@@ -228,9 +228,10 @@ const DashboardPage: React.FC<DashboardProps> = ({
               </div>
             </div>
             
-            <div className="flex-1 overflow-x-auto">
+            {/* Added max-h and overflow-y-auto to handle many bookings */}
+            <div className="flex-1 overflow-x-auto overflow-y-auto max-h-[400px]">
                <table className="w-full text-left border-collapse">
-                <thead className="bg-gray-50/50 dark:bg-gray-800/50 text-gray-500 dark:text-gray-400 font-medium text-xs uppercase tracking-wider">
+                <thead className="bg-gray-50/50 dark:bg-gray-800/50 text-gray-500 dark:text-gray-400 font-medium text-xs uppercase tracking-wider sticky top-0 backdrop-blur-sm z-10">
                   <tr>
                     <th className="px-6 py-3 border-b border-gray-100 dark:border-gray-700">Tour</th>
                     <th className="px-6 py-3 border-b border-gray-100 dark:border-gray-700">Client</th>
@@ -279,6 +280,15 @@ const DashboardPage: React.FC<DashboardProps> = ({
                   )}
                 </tbody>
               </table>
+            </div>
+            
+            <div className="p-4 border-t border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800 z-20">
+              <button 
+                onClick={() => onNavigate && onNavigate('bookings')}
+                className="w-full py-2 flex items-center justify-center gap-2 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded-lg transition-colors border border-dashed border-gray-200 dark:border-gray-700"
+              >
+                 View all bookings
+              </button>
             </div>
           </div>
         </div>
