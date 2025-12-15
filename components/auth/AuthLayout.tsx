@@ -83,30 +83,31 @@ const AuthLayout: React.FC<AuthLayoutProps> = ({ children, title, subtitle }) =>
       {/* RIGHT COLUMN: Branding / Marketing */}
       <div className="hidden lg:flex lg:w-[45%] relative bg-indigo-600 dark:bg-gray-800 text-white overflow-hidden flex-col justify-center items-center">
         {/* Animated Background Gradients */}
-        <div className="absolute inset-0 bg-gradient-to-br from-indigo-600 to-violet-700 dark:from-gray-900 dark:to-indigo-950">
+        <div className="absolute inset-0 bg-gradient-to-br from-indigo-600 to-violet-700 dark:from-gray-900 dark:to-indigo-950 pointer-events-none">
            <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10 mix-blend-overlay"></div>
            <div className="absolute top-[-10%] right-[-10%] w-[600px] h-[600px] bg-purple-500/20 rounded-full blur-[120px] mix-blend-screen"></div>
            <div className="absolute bottom-[-10%] left-[-10%] w-[500px] h-[500px] bg-indigo-400/20 rounded-full blur-[100px] mix-blend-screen"></div>
         </div>
 
-        <div className="relative z-10 w-full max-w-lg px-8 flex flex-col h-full justify-center gap-6 xl:gap-8">
+        {/* Content Container - No scroll, centered, scaled for smaller screens */}
+        <div className="relative z-10 w-full max-w-lg flex flex-col gap-6 xl:gap-8 p-8 xl:p-12 lg:scale-[0.85] xl:scale-100 transition-transform duration-300 ease-out origin-center">
            
            {/* Top: Value Prop */}
-           <div className="mt-4">
+           <div>
              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-xs font-semibold text-indigo-50 mb-6 shadow-sm">
                 <Star className="w-3.5 h-3.5 text-yellow-300 fill-yellow-300" />
                 <span>Enterprise Grade CRM</span>
              </div>
-             <h1 className="text-4xl lg:text-5xl font-bold leading-tight mb-6 text-white tracking-tight">
+             <h1 className="text-3xl xl:text-5xl font-bold leading-tight mb-4 xl:mb-6 text-white tracking-tight">
                Turn leads into bookings faster.
              </h1>
-             <ul className="space-y-4">
+             <ul className="space-y-3 xl:space-y-4">
                {[
                  'Capture leads from WhatsApp, website, and referrals',
                  'Track bookings, status, and assignments in one place',
                  'Manage your tour catalog and see simple revenue reports'
                ].map((item, i) => (
-                 <li key={i} className="flex items-start gap-3 text-indigo-100/90 text-sm lg:text-base font-medium">
+                 <li key={i} className="flex items-start gap-3 text-indigo-100/90 text-sm xl:text-base font-medium">
                    <div className="mt-1 p-0.5 bg-indigo-500/50 rounded-full">
                      <CheckCircle2 className="w-4 h-4 text-white" />
                    </div>
@@ -129,7 +130,7 @@ const AuthLayout: React.FC<AuthLayoutProps> = ({ children, title, subtitle }) =>
                     <div className="h-2 w-24 bg-white/20 rounded-full"></div>
                  </div>
                  {/* Fake Chart */}
-                 <div className="flex items-end justify-between h-36 gap-3 mb-6 px-2">
+                 <div className="flex items-end justify-between h-28 xl:h-36 gap-3 mb-6 px-2">
                     {[35, 60, 45, 85, 55, 95, 75].map((h, i) => (
                        <div key={i} className="w-full bg-gradient-to-t from-indigo-300/50 to-indigo-200/20 rounded-t-sm relative overflow-hidden" style={{ height: `${h}%` }}>
                           <div className="absolute top-0 left-0 right-0 h-1 bg-white/40"></div>
@@ -154,11 +155,11 @@ const AuthLayout: React.FC<AuthLayoutProps> = ({ children, title, subtitle }) =>
            </div>
 
            {/* Bottom: Testimonial Glass Card */}
-           <div className="bg-black/20 backdrop-blur-md rounded-xl p-5 border border-white/10 shadow-xl mb-4">
+           <div className="bg-black/20 backdrop-blur-md rounded-xl p-5 border border-white/10 shadow-xl">
              <div className="flex gap-1 mb-3">
                 {[1,2,3,4,5].map(i => <Star key={i} className="w-3.5 h-3.5 text-yellow-400 fill-yellow-400" />)}
              </div>
-             <p className="text-sm lg:text-base font-medium leading-relaxed text-white/95 mb-4">
+             <p className="text-sm xl:text-base font-medium leading-relaxed text-white/95 mb-4">
                "TourCRM completely streamlined our workflow. We save about 15 hours a week on admin tasks alone."
              </p>
              <div className="flex items-center gap-4">

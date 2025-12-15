@@ -16,7 +16,10 @@ import {
   X,
   Play,
   RefreshCw,
-  Search
+  Search,
+  GripVertical,
+  Table as TableIcon,
+  Columns
 } from 'lucide-react';
 
 // --- Types & Config ---
@@ -227,7 +230,7 @@ const ImportPage: React.FC = () => {
   const [validationResults, setValidationResults] = useState<{
     validCount: number;
     errorCount: number;
-    rows: { id: number, data: any, errors: string[], warnings: string[] }[];
+    rows: { id: number, data: Record<string, any>, errors: string[], warnings: string[] }[];
   } | null>(null);
   const [validationFilter, setValidationFilter] = useState<'all' | 'valid' | 'error'>('all');
   const [selectedErrorRow, setSelectedErrorRow] = useState<number | null>(null);
@@ -353,8 +356,10 @@ const ImportPage: React.FC = () => {
       });
 
       if (mode === 'upsert') {
-         const matchVal = mappedRow[matchKey];
-         if (!matchVal) errors.push(`Match Key (${matchKey}) is missing for upsert.`);
+         // Explicit string cast to prevent potential index type error
+         const key = matchKey as string;
+         const matchVal = mappedRow[key];
+         if (!matchVal) errors.push(`Match Key (${key}) is missing for upsert.`);
       }
 
       return { id: idx, data: mappedRow, errors, warnings };
@@ -726,7 +731,7 @@ const ImportPage: React.FC = () => {
                     <tr>
                       <th className="px-6 py-3 w-20">Row</th>
                       <th className="px-6 py-3 w-32">Status</th>
-                      {Object.keys(fieldMapping).slice(0, 3).map(key => (
+                      {Object.keys(fieldMapping).slice(0, 3).map((key: string) => (
                         <th key={key} className="px-6 py-3">{CRM_SCHEMA[objectType].find(f => f.key === key)?.label}</th>
                       ))}
                       <th className="px-6 py-3 text-right">Action</th>
