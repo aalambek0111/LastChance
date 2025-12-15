@@ -171,13 +171,13 @@ const ImportPage: React.FC = () => {
   const runValidation = () => {
     const schema = CRM_SCHEMA[objectType];
     const results = csvData.slice(0, 50).map((row: Record<string, string>) => { // Validate first 50 for preview
-      const mappedRow: Record<string, any> = {};
+      const mappedRow: Record<string, string | undefined> = {};
       const errors: string[] = [];
       const warnings: string[] = [];
 
       // Construct mapped object based on fieldMapping (CRM Key -> CSV Header)
       Object.entries(fieldMapping).forEach(([crmKey, csvHeader]) => {
-        if (csvHeader) {
+        if (csvHeader && typeof csvHeader === 'string') {
             mappedRow[crmKey] = row[csvHeader];
         }
       });
