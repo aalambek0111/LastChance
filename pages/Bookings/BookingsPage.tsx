@@ -59,7 +59,8 @@ const BookingsPage: React.FC<BookingsPageProps> = ({
       const matchesSearch =
         term.length === 0 ||
         b.clientName.toLowerCase().includes(term) ||
-        b.tourName.toLowerCase().includes(term);
+        b.tourName.toLowerCase().includes(term) ||
+        (b.bookingNo || '').toLowerCase().includes(term);
 
       const matchesStatus = statusFilter === 'All' || b.status === statusFilter;
       
@@ -160,12 +161,13 @@ const BookingsPage: React.FC<BookingsPageProps> = ({
   const handleExport = () => {
     if (sortedBookings.length === 0) return;
 
-    const headers = ['ID', 'Tour Name', 'Client', 'Assigned To', 'Date', 'Guests', 'Status', 'Notes', 'Pickup Location'];
+    const headers = ['ID', 'Ref No', 'Tour Name', 'Client', 'Assigned To', 'Date', 'Guests', 'Status', 'Notes', 'Pickup Location'];
 
     const csvContent = [
       headers.join(','),
       ...sortedBookings.map(booking => [
         booking.id,
+        booking.bookingNo || '',
         `"${(booking.tourName || '').replace(/"/g, '""')}"`,
         `"${(booking.clientName || '').replace(/"/g, '""')}"`,
         `"${(booking.assignedTo || '').replace(/"/g, '""')}"`,
@@ -311,6 +313,9 @@ const BookingsPage: React.FC<BookingsPageProps> = ({
         <table className="w-full text-left">
           <thead className="bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-10 backdrop-blur-sm">
             <tr>
+              <th className="px-6 py-4 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                ID
+              </th>
               <SortableHeader label="Tour Info" id="tourName" />
               <SortableHeader label="Client" id="clientName" />
               <SortableHeader label="Assigned To" id="assignedTo" />
@@ -327,6 +332,10 @@ const BookingsPage: React.FC<BookingsPageProps> = ({
                 onClick={() => openEditModal(booking)}
                 className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors group"
               >
+                <td className="px-6 py-4 text-xs font-mono text-gray-500 dark:text-gray-400">
+                  {booking.bookingNo || '-'}
+                </td>
+                
                 <td className="px-6 py-4">
                   <div className="font-semibold text-gray-900 dark:text-white text-sm">
                     {booking.tourName}
@@ -433,7 +442,7 @@ const BookingsPage: React.FC<BookingsPageProps> = ({
 
             {sortedBookings.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-6 py-12 text-center text-gray-500 dark:text-gray-400 text-sm">
+                <td colSpan={7} className="px-6 py-12 text-center text-gray-500 dark:text-gray-400 text-sm">
                   {!hasActiveFilters && searchTerm.trim().length === 0 ? (
                     <div>
                       <div className="font-semibold text-gray-900 dark:text-white">No bookings yet</div>

@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { 
   Users, 
@@ -9,8 +10,10 @@ import {
   Calendar
 } from 'lucide-react';
 import { KPI_DATA, RECENT_LEADS, UPCOMING_BOOKINGS } from '../../data/mockData';
-import { Booking } from '../../types';
+import { Booking, Lead } from '../../types';
 import AddLeadModal from '../../components/modals/AddLeadModal';
+import CreateBookingModal from '../../components/modals/CreateBookingModal';
+import LeadDetailPane from '../Leads/LeadDetailPane';
 import Avatar from '../../components/common/Avatar';
 import StatusBadge from '../../components/common/StatusBadge';
 
@@ -28,22 +31,31 @@ interface DashboardProps {
   bookings?: Booking[];
   searchTerm?: string;
   onNavigate?: (page: string) => void;
+  onUpdateBooking?: (booking: Booking) => void;
 }
 
 const DashboardPage: React.FC<DashboardProps> = ({ 
   bookings = UPCOMING_BOOKINGS, 
   searchTerm = '',
-  onNavigate 
+  onNavigate,
+  onUpdateBooking
 }) => {
+  // Local state for Leads to allow editing within Dashboard view
+  const [leads, setLeads] = useState<Lead[]>(RECENT_LEADS);
+  const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
+  
+  // Local state for Booking editing
+  const [editingBooking, setEditingBooking] = useState<Booking | null>(null);
+
   const [isLeadModalOpen, setIsLeadModalOpen] = useState(false);
   const [activeFilter, setActiveFilter] = useState<'All' | 'New' | 'Priority'>('All');
   const [activeBookingFilter, setActiveBookingFilter] = useState<'All' | 'Confirmed' | 'Pending'>('All');
 
   // Filter Logic (Leads)
-  const filteredLeads = RECENT_LEADS.filter((lead) => {
+  const filteredLeads = leads.filter((lead) => {
     if (activeFilter === 'All') return true;
     if (activeFilter === 'New') return lead.status === 'New';
-    if (activeFilter === 'Priority') return lead.status === 'Qualified'; // Assuming 'Qualified' implies Priority
+    if (activeFilter === 'Priority') return lead.status === 'Qualified'; 
     return true;
   });
 
@@ -53,9 +65,55 @@ const DashboardPage: React.FC<DashboardProps> = ({
     return booking.status === activeBookingFilter;
   });
 
+  // Handlers
+  const handleUpdateLead = (updatedLead: Lead) => {
+    setLeads(prev => prev.map(l => l.id === updatedLead.id ? updatedLead : l));
+    setSelectedLead(null);
+  };
+
+  const handleDeleteLead = (id: string) => {
+    setLeads(prev => prev.filter(l => l.id !== id));
+    setSelectedLead(null);
+  };
+
   return (
-    <div className="min-h-screen pb-10">
+    <div className="min-h-screen pb-10 relative">
       
+      {/* Lead Details Drawer (Same as LeadsPage) */}
+      {selectedLead && (
+        <>
+            <div 
+               className="fixed inset-0 z-[60] bg-gray-900/40 backdrop-blur-sm transition-opacity duration-300"
+               onClick={() => setSelectedLead(null)}
+            />
+            <div 
+               className="fixed inset-y-0 right-0 z-[70] h-full w-full sm:w-[520px] lg:w-[640px] bg-white dark:bg-gray-800 shadow-2xl transform transition-transform duration-300 ease-in-out border-l border-gray-200 dark:border-gray-700"
+            >
+               <LeadDetailPane 
+                  lead={selectedLead} 
+                  onClose={() => setSelectedLead(null)} 
+                  onSave={handleUpdateLead}
+                  onDelete={handleDeleteLead}
+                  // Optional: Wire up specific actions if needed, or leave generic
+                  relatedBookings={bookings.filter(b => b.clientName === selectedLead.name)}
+               />
+            </div>
+        </>
+      )}
+
+      {/* Booking Edit Modal */}
+      {editingBooking && (
+        <CreateBookingModal 
+          isOpen={true}
+          onClose={() => setEditingBooking(null)}
+          bookingToEdit={editingBooking}
+          onBookingUpdated={(updated) => {
+            if (onUpdateBooking) onUpdateBooking(updated);
+            setEditingBooking(null);
+          }}
+        />
+      )}
+
       <div className="max-w-7xl mx-auto px-6 py-8 space-y-8">
         
         {/* 2. Welcome & Actions */}
@@ -158,7 +216,11 @@ const DashboardPage: React.FC<DashboardProps> = ({
                 </thead>
                 <tbody className="divide-y divide-gray-50 dark:divide-gray-700/50">
                   {filteredLeads.map((lead) => (
-                    <tr key={lead.id} className="group hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors cursor-pointer">
+                    <tr 
+                      key={lead.id} 
+                      onClick={() => setSelectedLead(lead)}
+                      className="group hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors cursor-pointer"
+                    >
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
                           <Avatar name={lead.name} />
@@ -241,7 +303,11 @@ const DashboardPage: React.FC<DashboardProps> = ({
                 </thead>
                 <tbody className="divide-y divide-gray-50 dark:divide-gray-700/50">
                   {filteredBookings.map((booking) => (
-                    <tr key={booking.id} className="group hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors cursor-pointer">
+                    <tr 
+                      key={booking.id} 
+                      onClick={() => setEditingBooking(booking)}
+                      className="group hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors cursor-pointer"
+                    >
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 rounded-lg bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-gray-400 shrink-0">

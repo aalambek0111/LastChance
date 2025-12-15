@@ -383,8 +383,15 @@ const LeadDetailPane: React.FC<LeadDetailPaneProps> = ({
       {/* Header */}
       <div className="flex-none px-6 py-5 border-b border-gray-100 dark:border-gray-700 flex items-start justify-between bg-white dark:bg-gray-800 z-10">
         <div>
-          <div className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">
-            {t('lead_details_title') ?? 'Lead Details'}
+          <div className="flex items-center gap-2 mb-1">
+             <div className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+               {t('lead_details_title') ?? 'Lead Details'}
+             </div>
+             {lead.leadNo && (
+               <div className="text-xs font-mono text-gray-400 bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded">
+                 {lead.leadNo}
+               </div>
+             )}
           </div>
           <div className="text-xl font-bold text-gray-900 dark:text-white leading-tight">
             {form.name || 'New Lead'}
@@ -651,7 +658,7 @@ const LeadDetailPane: React.FC<LeadDetailPaneProps> = ({
                   {idx !== activities.length - 1 && (
                     <div className="absolute left-[9px] top-6 bottom-0 w-px bg-gray-200 dark:bg-gray-700" />
                   )}
-                  <div className="absolute left-0 top-1 w-5 h-5 rounded-full bg-gray-100 dark:bg-gray-800 border-2 border-white dark:border-gray-900 ring-1 ring-gray-200 dark:ring-gray-700 flex items-center justify-center">
+                  <div className="absolute left-0 top-1 w-5 h-5 rounded-full bg-white dark:bg-gray-800 border-2 border-white dark:border-gray-900 ring-1 ring-gray-200 dark:ring-gray-700 flex items-center justify-center">
                     <div className="w-1.5 h-1.5 rounded-full bg-gray-400"></div>
                   </div>
                   <div className="text-sm">

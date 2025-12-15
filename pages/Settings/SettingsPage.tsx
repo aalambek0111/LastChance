@@ -1,3 +1,4 @@
+
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Building,
@@ -15,6 +16,7 @@ import {
   Mail,
 } from 'lucide-react';
 import { useI18n } from '../../context/ThemeContext';
+import { TIMEZONES, CURRENCIES } from '../../constants';
 
 type Settings = {
   orgName: string;
@@ -43,59 +45,6 @@ const DEFAULT_SETTINGS: Settings = {
   logoDataUrl: null,
   language: 'en',
 };
-
-// Expanded Timezones with major cities (Focus: Europe & Asia)
-const TIMEZONES = [
-  'UTC-12:00 (Baker Island)',
-  'UTC-11:00 (Samoa)',
-  'UTC-10:00 (Hawaii)',
-  'UTC-09:00 (Alaska)',
-  'UTC-08:00 (Los Angeles, Vancouver)',
-  'UTC-07:00 (Denver, Edmonton)',
-  'UTC-06:00 (Mexico City, Chicago)',
-  'UTC-05:00 (New York, Toronto)',
-  'UTC-04:00 (Santiago, Santo Domingo)',
-  'UTC-03:00 (São Paulo, Buenos Aires)',
-  'UTC-02:00 (Mid-Atlantic)',
-  'UTC-01:00 (Azores)',
-  'UTC+00:00 (London, Dublin, Lisbon)',
-  'UTC+01:00 (Paris, Berlin, Rome, Madrid, Amsterdam)',
-  'UTC+02:00 (Athens, Bucharest, Helsinki, Kyiv, Cairo, Jerusalem)',
-  'UTC+03:00 (Moscow, Istanbul, Riyadh, Doha)',
-  'UTC+03:30 (Tehran)',
-  'UTC+04:00 (Dubai, Baku, Muscat)',
-  'UTC+04:30 (Kabul)',
-  'UTC+05:00 (Karachi, Tashkent, Male)',
-  'UTC+05:30 (Mumbai, New Delhi, Colombo)',
-  'UTC+05:45 (Kathmandu)',
-  'UTC+06:00 (Dhaka, Almaty)',
-  'UTC+06:30 (Yangon)',
-  'UTC+07:00 (Bangkok, Hanoi, Jakarta, Phnom Penh)',
-  'UTC+08:00 (Singapore, Hong Kong, Beijing, Kuala Lumpur, Taipei)',
-  'UTC+09:00 (Tokyo, Seoul)',
-  'UTC+09:30 (Adelaide, Darwin)',
-  'UTC+10:00 (Sydney, Melbourne, Vladivostok)',
-  'UTC+11:00 (Noumea)',
-  'UTC+12:00 (Auckland, Fiji)',
-];
-
-// Expanded Currencies (Focus: Europe & Asia)
-const CURRENCIES = [
-  // Major
-  'USD ($)', 'EUR (€)', 'GBP (£)', 
-  
-  // Europe
-  'CHF (Fr)', 'SEK (kr)', 'NOK (kr)', 'DKK (kr)', 'PLN (zł)', 'CZK (Kč)', 'HUF (Ft)', 'ISK (kr)',
-  
-  // Asia & Middle East
-  'JPY (¥)', 'CNY (¥)', 'INR (₹)', 'RUB (₽)', 
-  'AED (dh)', 'SAR (SR)', 'ILS (₪)', 'TRY (₺)', 'QAR (QR)',
-  'SGD ($)', 'HKD ($)', 'KRW (₩)', 'THB (฿)', 
-  'MYR (RM)', 'IDR (Rp)', 'PHP (₱)', 'VND (₫)', 'TWD (NT$)', 'PKR (₨)',
-  
-  // Americas & Others
-  'AUD (A$)', 'CAD (C$)', 'NZD ($)', 'BRL (R$)', 'MXN ($)', 'ZAR (R)'
-];
 
 function safeParseSettings(raw: string | null): Settings | null {
   if (!raw) return null;

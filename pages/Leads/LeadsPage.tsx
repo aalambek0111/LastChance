@@ -63,7 +63,10 @@ const LeadsPage: React.FC<LeadsPageProps> = ({
   }, []);
 
   const filteredLeads = leads.filter(lead => {
-    const matchesSearch = lead.name.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = 
+        lead.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+        (lead.leadNo || '').toLowerCase().includes(searchTerm.toLowerCase());
+        
     const matchesStatus = statusFilter === 'All' || lead.status === statusFilter;
     const matchesChannel = channelFilter === 'All' || lead.channel === channelFilter;
     const matchesAssigned = assignedFilter === 'All' || (assignedFilter === 'Mine' && lead.assignedTo === CURRENT_USER_NAME);
@@ -101,7 +104,7 @@ const LeadsPage: React.FC<LeadsPageProps> = ({
         leadId: targetLead.id,
         field: 'Booking',
         from: 'None',
-        to: `Created Booking ${newBooking.id}`,
+        to: `Created Booking ${newBooking.bookingNo || newBooking.id}`,
         actorName: CURRENT_USER_NAME,
         timestamp: Date.now()
       };
@@ -312,6 +315,7 @@ const LeadsPage: React.FC<LeadsPageProps> = ({
               <table className="w-full text-left">
               <thead className="bg-gray-50 dark:bg-gray-700/50 text-gray-500 dark:text-gray-400 text-xs uppercase font-medium">
                 <tr>
+                  <th className="px-6 py-3">ID</th>
                   <th className="px-6 py-3">Name</th>
                   <th className="px-6 py-3">Status</th>
                   <th className="px-6 py-3">Channel</th>
@@ -327,6 +331,7 @@ const LeadsPage: React.FC<LeadsPageProps> = ({
                       onClick={() => openLeadDrawer(lead.id)}
                       className={`hover:bg-gray-50 dark:hover:bg-gray-700/30 cursor-pointer transition-colors ${selectedLeadId === lead.id ? 'bg-indigo-50 dark:bg-indigo-900/10' : ''}`}
                     >
+                        <td className="px-6 py-4 text-xs font-mono text-gray-500 dark:text-gray-400">{lead.leadNo || '-'}</td>
                         <td className="px-6 py-4 text-sm font-medium text-gray-900 dark:text-white">{lead.name}</td>
                         <td className="px-6 py-4">
                           <span className={`px-2 py-1 rounded-full text-xs font-medium ${
@@ -413,7 +418,7 @@ const LeadsPage: React.FC<LeadsPageProps> = ({
                   ))}
                   {filteredLeads.length === 0 && (
                       <tr>
-                        <td colSpan={6} className="px-6 py-8 text-center text-gray-500 text-sm">
+                        <td colSpan={7} className="px-6 py-8 text-center text-gray-500 text-sm">
                           {searchTerm 
                             ? `No leads found matching "${searchTerm}".` 
                             : "No leads found for the selected filters."}
@@ -463,6 +468,7 @@ const LeadsPage: React.FC<LeadsPageProps> = ({
                             >
                               <div className="flex justify-between items-start mb-2">
                                 <h4 className="font-semibold text-gray-900 dark:text-white text-sm">{lead.name}</h4>
+                                <span className="text-[10px] text-gray-400 font-mono bg-gray-50 dark:bg-gray-900 px-1.5 py-0.5 rounded border border-gray-100 dark:border-gray-600">{lead.leadNo || '---'}</span>
                               </div>
                               
                               <div className="space-y-2">

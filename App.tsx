@@ -13,12 +13,20 @@ import ToursPage from './pages/Tours/ToursPage';
 import ReportsPage from './pages/Reports/ReportsPage';
 import ImportPage from './pages/Import/ImportPage';
 import SupportPage from './pages/Support/SupportPage';
+import LoginPage from './pages/Auth/LoginPage';
+import SignupPage from './pages/Auth/SignupPage';
+import OnboardingPage from './pages/Auth/OnboardingPage';
+import ForgotPasswordPage from './pages/Auth/ForgotPasswordPage';
 import Toast from './components/Toast';
 import { ThemeProvider } from './context/ThemeContext';
 import { UPCOMING_BOOKINGS } from './data/mockData';
 import { Booking } from './types';
 
+// Types of view states for the App router
+type AuthState = 'login' | 'signup' | 'forgot' | 'onboarding' | 'authenticated';
+
 function App() {
+  const [authState, setAuthState] = useState<AuthState>('login');
   const [activePage, setActivePage] = useState('dashboard');
   const [bookings, setBookings] = useState<Booking[]>(UPCOMING_BOOKINGS);
   const [toast, setToast] = useState({ message: '', visible: false });
@@ -54,71 +62,106 @@ function App() {
     setActivePage('inbox');
   };
 
+  const handleLogout = () => {
+    // TODO: Clear Supabase session
+    setAuthState('login');
+  };
+
   return (
     <ThemeProvider>
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex font-sans text-gray-900 dark:text-white transition-colors duration-200">
-        <Sidebar activePage={activePage} onNavigate={setActivePage} />
+      {authState !== 'authenticated' ? (
+        // --- AUTHENTICATION FLOW ---
+        <>
+          {authState === 'login' && (
+            <LoginPage 
+              onLoginSuccess={() => setAuthState('authenticated')} 
+              onNavigate={(page) => setAuthState(page as AuthState)} 
+            />
+          )}
+          {authState === 'signup' && (
+            <SignupPage 
+              onSignupSuccess={() => setAuthState('onboarding')} 
+              onNavigate={(page) => setAuthState(page as AuthState)} 
+            />
+          )}
+          {authState === 'forgot' && (
+            <ForgotPasswordPage 
+              onNavigate={(page) => setAuthState(page as AuthState)} 
+            />
+          )}
+          {authState === 'onboarding' && (
+            <OnboardingPage 
+              onComplete={() => setAuthState('authenticated')} 
+            />
+          )}
+        </>
+      ) : (
+        // --- MAIN APP DASHBOARD ---
+        <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex font-sans text-gray-900 dark:text-white transition-colors duration-200">
+          <Sidebar activePage={activePage} onNavigate={setActivePage} />
 
-        {/* 
-          Main Content Wrapper
-          - md:ml-64: Pushes content right on desktop to accommodate Sidebar
-          - pb-20: Adds bottom padding on mobile so content isn't hidden behind MobileNav
-          - md:pb-0: Removes bottom padding on desktop
-        */}
-        <main className="flex-1 md:ml-64 min-h-screen flex flex-col relative overflow-x-hidden pb-20 md:pb-0">
-          <Header searchTerm={searchTerm} setSearchTerm={setSearchTerm} />
+          {/* 
+            Main Content Wrapper
+            - md:ml-64: Pushes content right on desktop to accommodate Sidebar
+            - pb-20: Adds bottom padding on mobile so content isn't hidden behind MobileNav
+            - md:pb-0: Removes bottom padding on desktop
+          */}
+          <main className="flex-1 md:ml-64 min-h-screen flex flex-col relative overflow-x-hidden pb-20 md:pb-0">
+            <Header searchTerm={searchTerm} setSearchTerm={setSearchTerm} />
 
-          <div className="flex-1 overflow-hidden flex flex-col">
-            {activePage === 'dashboard' && (
-              <DashboardPage 
-                bookings={bookings} 
-                searchTerm={searchTerm} 
-                onNavigate={setActivePage}
-              />
-            )}
-            {activePage === 'inbox' && (
-              <InboxPage 
-                bookings={bookings}
-                onAddBooking={addBooking} 
-                showToast={showToast} 
-                searchTerm={searchTerm}
-                initialLeadName={initialLeadForInbox}
-              />
-            )}
-            {activePage === 'leads' && (
-              <LeadsPage 
-                bookings={bookings}
-                onAddBooking={addBooking}
-                searchTerm={searchTerm} 
-                onOpenConversation={handleOpenConversation}
-              />
-            )}
-            {activePage === 'bookings' && (
-              <BookingsPage 
-                bookings={bookings} 
-                searchTerm={searchTerm} 
-                onUpdateBooking={updateBooking}
-                onDeleteBooking={deleteBooking}
-              />
-            )}
-            {activePage === 'team' && <TeamPage />}
-            {activePage === 'settings' && <SettingsPage />}
-            {activePage === 'tours' && <ToursPage searchTerm={searchTerm} />}
-            {activePage === 'reports' && <ReportsPage />}
-            {activePage === 'import' && <ImportPage />}
-            {activePage === 'support' && <SupportPage />}
-          </div>
-        </main>
-        
-        {/* Mobile Navigation - Visible only on small screens */}
-        <MobileNav activePage={activePage} onNavigate={setActivePage} />
+            <div className="flex-1 overflow-hidden flex flex-col">
+              {activePage === 'dashboard' && (
+                <DashboardPage 
+                  bookings={bookings} 
+                  searchTerm={searchTerm} 
+                  onNavigate={setActivePage}
+                  onUpdateBooking={updateBooking}
+                />
+              )}
+              {activePage === 'inbox' && (
+                <InboxPage 
+                  bookings={bookings}
+                  onAddBooking={addBooking} 
+                  showToast={showToast} 
+                  searchTerm={searchTerm}
+                  initialLeadName={initialLeadForInbox}
+                />
+              )}
+              {activePage === 'leads' && (
+                <LeadsPage 
+                  bookings={bookings}
+                  onAddBooking={addBooking}
+                  searchTerm={searchTerm} 
+                  onOpenConversation={handleOpenConversation}
+                />
+              )}
+              {activePage === 'bookings' && (
+                <BookingsPage 
+                  bookings={bookings} 
+                  searchTerm={searchTerm} 
+                  onUpdateBooking={updateBooking}
+                  onDeleteBooking={deleteBooking}
+                />
+              )}
+              {activePage === 'team' && <TeamPage />}
+              {activePage === 'settings' && <SettingsPage />}
+              {activePage === 'tours' && <ToursPage searchTerm={searchTerm} />}
+              {activePage === 'reports' && <ReportsPage />}
+              {activePage === 'import' && <ImportPage />}
+              {activePage === 'support' && <SupportPage />}
+            </div>
+          </main>
+          
+          {/* Mobile Navigation - Visible only on small screens */}
+          <MobileNav activePage={activePage} onNavigate={setActivePage} />
 
-        <Toast 
-          message={toast.message} 
-          isVisible={toast.visible} 
-          onClose={hideToast} 
-        />
-      </div>
+          <Toast 
+            message={toast.message} 
+            isVisible={toast.visible} 
+            onClose={hideToast} 
+          />
+        </div>
+      )}
     </ThemeProvider>
   );
 }

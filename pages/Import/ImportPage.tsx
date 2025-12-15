@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { 
   UploadCloud, 
@@ -13,7 +12,9 @@ import {
   Database,
   Link,
   RefreshCw,
-  File
+  File,
+  ArrowLeftRight,
+  HelpCircle
 } from 'lucide-react';
 
 // --- Types & Config ---
@@ -36,36 +37,53 @@ const CRM_SCHEMA: Record<ImportObject, CrmField[]> = {
     { key: 'name', label: 'Full Name', required: true, type: 'text' },
     { key: 'email', label: 'Email', required: true, type: 'email' },
     { key: 'phone', label: 'Phone', type: 'phone' },
-    { key: 'channel', label: 'Channel', type: 'select', options: ['Website', 'Referral', 'Social'] },
-    { key: 'status', label: 'Status', type: 'select', options: ['New', 'Contacted', 'Qualified', 'Lost'] },
+    { key: 'channel', label: 'Channel', type: 'select', options: ['Website', 'Referral', 'Social', 'WhatsApp', 'Email'] },
+    { key: 'status', label: 'Status', type: 'select', options: ['New', 'Contacted', 'Qualified', 'Booked', 'Lost'] },
     { key: 'notes', label: 'Notes', type: 'text' },
+    { key: 'company', label: 'Company', type: 'text' },
+    { key: 'value', label: 'Deal Value', type: 'number' },
   ],
   bookings: [
     { key: 'clientName', label: 'Client Name', required: true, type: 'text' },
     { key: 'tourName', label: 'Tour Name', required: true, type: 'text', description: 'Must match an existing tour' },
     { key: 'date', label: 'Date', required: true, type: 'date' },
     { key: 'pax', label: 'Pax', required: true, type: 'number' },
-    { key: 'status', label: 'Status', type: 'select', options: ['Confirmed', 'Pending', 'Cancelled'] },
+    { key: 'status', label: 'Status', type: 'select', options: ['Confirmed', 'Pending', 'Cancelled', 'Completed'] },
     { key: 'amount', label: 'Total Amount', type: 'number' },
+    { key: 'paymentStatus', label: 'Payment Status', type: 'select', options: ['Paid', 'Unpaid', 'Partially Paid', 'Refunded'] },
   ],
   tours: [
     { key: 'name', label: 'Tour Name', required: true, type: 'text' },
     { key: 'price', label: 'Price', required: true, type: 'number' },
     { key: 'duration', label: 'Duration', type: 'text' },
-    { key: 'difficulty', label: 'Difficulty', type: 'select', options: ['Easy', 'Moderate', 'Hard'] },
+    { key: 'difficulty', label: 'Difficulty', type: 'select', options: ['Easy', 'Moderate', 'Hard', 'Expert'] },
     { key: 'active', label: 'Active', type: 'select', options: ['true', 'false'] },
+    { key: 'maxPeople', label: 'Max People', type: 'number' },
+    { key: 'location', label: 'Location', type: 'text' },
   ]
 };
 
 // --- Mock CSV Parser (Simple implementation for demo) ---
 // In production, use PapaParse
-const parseCSV = (content: string) => {
+const parseCSV = (content: string): { headers: string[], data: Record<string, string>[] } => {
   const lines = content.trim().split('\n');
   if (lines.length < 2) return { headers: [], data: [] };
   
+  // Simple CSV split (doesn't handle commas inside quotes perfectly, but good for demo)
   const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
   const data = lines.slice(1).map(line => {
-    const values = line.split(',').map(v => v.trim().replace(/^"|"$/g, ''));
+    // Handle quotes roughly
+    const values: string[] = [];
+    let inQuote = false;
+    let current = '';
+    for(let i = 0; i < line.length; i++) {
+        const char = line[i];
+        if(char === '"') { inQuote = !inQuote; continue; }
+        if(char === ',' && !inQuote) { values.push(current.trim()); current = ''; continue; }
+        current += char;
+    }
+    values.push(current.trim());
+
     const row: Record<string, string> = {};
     headers.forEach((h, i) => {
       row[h] = values[i] || '';
@@ -91,7 +109,7 @@ const ImportPage: React.FC = () => {
   const [isProcessingFile, setIsProcessingFile] = useState(false);
 
   // Mapping State
-  // Map CSV Header (key) -> CRM Field Key (value)
+  // Map CRM Field Key (key) -> CSV Header (value)
   const [fieldMapping, setFieldMapping] = useState<Record<string, string>>({});
 
   // Validation State
@@ -116,26 +134,30 @@ const ImportPage: React.FC = () => {
 
     const reader = new FileReader();
     reader.onload = (event) => {
-      const text = event.target?.result as string;
+      const target = event.target as FileReader;
+      const text = target?.result as string;
       // Simulate delay for realism
       setTimeout(() => {
         const { headers, data } = parseCSV(text);
         setCsvHeaders(headers);
         setCsvData(data);
         
-        // Auto-Map Logic
+        // Auto-Map Logic: Try to match CSV Headers to CRM Fields
         const newMapping: Record<string, string> = {};
         const crmFields = CRM_SCHEMA[objectType];
         
-        headers.forEach(header => {
-          const normalizedHeader = header.toLowerCase().replace(/_/g, '').replace(/ /g, '');
-          const match = crmFields.find(f => {
-            const normalizedField = f.key.toLowerCase();
-            const normalizedLabel = f.label.toLowerCase().replace(/ /g, '');
-            return normalizedField === normalizedHeader || normalizedLabel === normalizedHeader;
+        crmFields.forEach(field => {
+          const normFieldLabel = field.label.toLowerCase().replace(/[^a-z0-9]/g, '');
+          const normFieldKey = field.key.toLowerCase().replace(/[^a-z0-9]/g, '');
+          
+          // Find best match in CSV headers
+          const match = headers.find(h => {
+            const normHeader = h.toLowerCase().replace(/[^a-z0-9]/g, '');
+            return normHeader === normFieldLabel || normHeader === normFieldKey;
           });
+          
           if (match) {
-            newMapping[header] = match.key;
+            newMapping[field.key] = match;
           }
         });
         
@@ -148,14 +170,16 @@ const ImportPage: React.FC = () => {
 
   const runValidation = () => {
     const schema = CRM_SCHEMA[objectType];
-    const results = csvData.slice(0, 50).map((row) => { // Validate first 50 for preview
+    const results = csvData.slice(0, 50).map((row: Record<string, string>) => { // Validate first 50 for preview
       const mappedRow: Record<string, any> = {};
       const errors: string[] = [];
       const warnings: string[] = [];
 
-      // Construct mapped object
-      Object.entries(fieldMapping).forEach(([csvHeader, crmKey]) => {
-        if (crmKey) mappedRow[crmKey] = row[csvHeader];
+      // Construct mapped object based on fieldMapping (CRM Key -> CSV Header)
+      Object.entries(fieldMapping).forEach(([crmKey, csvHeader]) => {
+        if (csvHeader) {
+            mappedRow[crmKey] = row[csvHeader];
+        }
       });
 
       // Validate against Schema
@@ -163,7 +187,7 @@ const ImportPage: React.FC = () => {
         const value = mappedRow[field.key];
 
         // 1. Required Check
-        if (field.required && !value) {
+        if (field.required && (!value || value.trim() === '')) {
           errors.push(`${field.label} is required.`);
         }
 
@@ -184,7 +208,7 @@ const ImportPage: React.FC = () => {
             // Case-insensitive match check
             const match = field.options.some(opt => opt.toLowerCase() === value.toLowerCase());
             if (!match) {
-              warnings.push(`Value "${value}" not in list. Will default or create new.`);
+              warnings.push(`"${value}" not in list for ${field.label}.`);
             }
           }
         }
@@ -392,16 +416,16 @@ const ImportPage: React.FC = () => {
           </div>
         )}
 
-        {/* --- STEP 3: MAPPING --- */}
+        {/* --- STEP 3: MAPPING (REFACTORED) --- */}
         {step === 3 && (
           <div className="flex flex-col h-full animate-in fade-in">
             <div className="p-6 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 flex justify-between items-center">
               <div>
                 <h2 className="text-lg font-bold text-gray-900 dark:text-white">Map Columns</h2>
-                <p className="text-sm text-gray-500">Match your CSV headers to {objectType} fields.</p>
+                <p className="text-sm text-gray-500">Map your {objectType} fields (left) to the CSV columns (right).</p>
               </div>
               <div className="text-sm text-gray-500">
-                <span className="font-semibold text-indigo-600">{Object.keys(fieldMapping).length}</span> of {csvHeaders.length} columns mapped
+                <span className="font-semibold text-indigo-600">{Object.keys(fieldMapping).length}</span> of {CRM_SCHEMA[objectType].length} fields mapped
               </div>
             </div>
 
@@ -409,43 +433,72 @@ const ImportPage: React.FC = () => {
               <table className="w-full text-left border-separate border-spacing-y-3">
                 <thead>
                   <tr className="text-xs font-bold text-gray-500 uppercase tracking-wider">
-                    <th className="px-4 pb-2">CSV Header (From File)</th>
-                    <th className="px-4 pb-2">Sample Value (Row 1)</th>
-                    <th className="px-4 pb-2 text-center"></th>
-                    <th className="px-4 pb-2">CRM Field (Target)</th>
+                    <th className="px-4 pb-2 w-1/3">CRM Field (Target)</th>
+                    <th className="px-4 pb-2 text-center w-12"></th>
+                    <th className="px-4 pb-2 w-1/3">CSV Column (Source)</th>
+                    <th className="px-4 pb-2 w-1/3">Sample Data</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {csvHeaders.map((header, idx) => {
-                    const sampleVal = csvData[0]?.[header] || '';
+                  {CRM_SCHEMA[objectType].map((field) => {
+                    const selectedHeader = fieldMapping[field.key] || '';
+                    const sampleValue = selectedHeader && csvData.length > 0 ? csvData[0][selectedHeader] : '-';
+                    const isMapped = !!selectedHeader;
+
                     return (
-                      <tr key={idx} className="bg-white dark:bg-gray-800 shadow-sm rounded-lg group hover:ring-1 hover:ring-indigo-500 transition-shadow">
-                        <td className="px-4 py-3 border border-r-0 border-gray-200 dark:border-gray-700 rounded-l-lg font-medium text-gray-900 dark:text-white">
-                          {header}
+                      <tr key={field.key} className={`bg-white dark:bg-gray-800 shadow-sm rounded-lg group ${isMapped ? 'border-l-4 border-indigo-500' : 'border-l-4 border-transparent'}`}>
+                        {/* CRM Field (Fixed) */}
+                        <td className="px-4 py-3 border-y border-r border-gray-200 dark:border-gray-700 rounded-l-lg font-medium text-gray-900 dark:text-white align-middle">
+                          <div className="flex flex-col">
+                            <span className="flex items-center gap-1.5">
+                              {field.label}
+                              {field.required && <span className="text-red-500 text-xs font-bold" title="Required">*</span>}
+                              {field.description && (
+                                <span title={field.description} className="cursor-help flex items-center">
+                                  <HelpCircle className="w-3 h-3 text-gray-400" />
+                                </span>
+                              )}
+                            </span>
+                            <span className="text-[10px] text-gray-400 font-mono">{field.key}</span>
+                          </div>
                         </td>
-                        <td className="px-4 py-3 border-y border-gray-200 dark:border-gray-700 text-sm text-gray-500 font-mono truncate max-w-xs">
-                          {sampleVal}
+
+                        {/* Icon */}
+                        <td className="px-2 py-3 border-y border-gray-200 dark:border-gray-700 text-center align-middle">
+                          <ArrowLeftRight className={`w-4 h-4 mx-auto ${isMapped ? 'text-indigo-500' : 'text-gray-300 dark:text-gray-600'}`} />
                         </td>
-                        <td className="px-2 py-3 border-y border-gray-200 dark:border-gray-700 text-center">
-                          <ArrowRight className="w-4 h-4 text-gray-400 mx-auto" />
-                        </td>
-                        <td className="px-4 py-3 border border-l-0 border-gray-200 dark:border-gray-700 rounded-r-lg">
+
+                        {/* CSV Column (Dropdown) */}
+                        <td className="px-4 py-3 border-y border-l border-gray-200 dark:border-gray-700 align-middle">
                           <select 
-                            value={fieldMapping[header] || ''}
-                            onChange={(e) => setFieldMapping({...fieldMapping, [header]: e.target.value})}
-                            className={`w-full p-2 rounded-md border text-sm ${
-                              fieldMapping[header] 
+                            value={selectedHeader}
+                            onChange={(e) => {
+                                const val = e.target.value;
+                                setFieldMapping(prev => {
+                                    const next = { ...prev };
+                                    if (val) next[field.key] = val;
+                                    else delete next[field.key];
+                                    return next;
+                                });
+                            }}
+                            className={`w-full p-2.5 rounded-lg border text-sm transition-colors cursor-pointer outline-none focus:ring-2 focus:ring-indigo-500 ${
+                              isMapped
                                 ? 'border-indigo-300 bg-indigo-50 text-indigo-900 dark:bg-indigo-900/30 dark:text-indigo-200 dark:border-indigo-700' 
                                 : 'border-gray-300 text-gray-500 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-300'
                             }`}
                           >
-                            <option value="">-- Ignore Column --</option>
-                            {CRM_SCHEMA[objectType].map(f => (
-                              <option key={f.key} value={f.key}>
-                                {f.label} {f.required ? '*' : ''}
-                              </option>
+                            <option value="">-- Select Column --</option>
+                            {csvHeaders.map(h => (
+                              <option key={h} value={h}>{h}</option>
                             ))}
                           </select>
+                        </td>
+
+                        {/* Sample Data Preview */}
+                        <td className="px-4 py-3 border-y border-l border-gray-200 dark:border-gray-700 rounded-r-lg align-middle">
+                           <div className={`text-sm font-mono truncate max-w-xs px-2 py-1 rounded ${isMapped ? 'bg-gray-100 dark:bg-gray-900 text-gray-700 dark:text-gray-300' : 'text-gray-400 italic'}`}>
+                              {sampleValue}
+                           </div>
                         </td>
                       </tr>
                     );
@@ -498,11 +551,15 @@ const ImportPage: React.FC = () => {
                   <tr>
                     <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase">Row</th>
                     <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase">Status</th>
-                    {Object.values(fieldMapping).filter(Boolean).map(key => (
-                      <th key={key} className="px-4 py-3 text-xs font-bold text-gray-500 uppercase">
-                        {CRM_SCHEMA[objectType].find(f => f.key === key)?.label}
-                      </th>
-                    ))}
+                    {/* Show only mapped CRM columns */}
+                    {Object.keys(fieldMapping).map(key => {
+                        const field = CRM_SCHEMA[objectType].find(f => f.key === key);
+                        return (
+                            <th key={key} className="px-4 py-3 text-xs font-bold text-gray-500 uppercase whitespace-nowrap">
+                                {field?.label || key}
+                            </th>
+                        );
+                    })}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
@@ -532,7 +589,7 @@ const ImportPage: React.FC = () => {
                           <span className="text-green-600 dark:text-green-400 text-xs font-medium">Valid</span>
                         )}
                       </td>
-                      {Object.values(fieldMapping).filter(Boolean).map((key, i) => (
+                      {Object.keys(fieldMapping).map((key, i) => (
                         <td key={i} className="px-4 py-3 text-sm text-gray-700 dark:text-gray-300 truncate max-w-[150px]">
                           {row.data[key]}
                         </td>
@@ -553,7 +610,7 @@ const ImportPage: React.FC = () => {
                   onClick={executeImport}
                   className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium flex items-center gap-2 shadow-lg shadow-indigo-500/30"
                 >
-                  Start Import <ArrowRight className="w-4 h-4" />
+                  Start {mode === 'create' ? 'Import' : 'Upsert'} <ArrowRight className="w-4 h-4" />
                 </button>
               </div>
             </div>
@@ -594,7 +651,9 @@ const ImportPage: React.FC = () => {
                 <div className="grid grid-cols-3 gap-4 w-full max-w-lg mt-8">
                   <div className="p-4 bg-gray-50 dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-700">
                     <div className="text-2xl font-bold text-green-600">{validationResults?.validCount}</div>
-                    <div className="text-xs text-gray-500 uppercase font-bold tracking-wider">Created</div>
+                    <div className="text-xs text-gray-500 uppercase font-bold tracking-wider">
+                      {mode === 'create' ? 'Created' : 'Processed'}
+                    </div>
                   </div>
                   <div className="p-4 bg-gray-50 dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-700">
                     <div className="text-2xl font-bold text-gray-900 dark:text-white">0</div>

@@ -5,7 +5,8 @@ export type Channel = 'Website' | 'WhatsApp' | 'Email' | 'Referral';
 export type PaymentStatus = 'Unpaid' | 'Waiting' | 'Partially Paid' | 'Paid' | 'Refunded';
 
 export interface Lead {
-  id: string;
+  id: string; // Internal UUID
+  leadNo?: string; // Human Readable (e.g. LD-0001)
   name: string;
   lastMessageTime: string; // ISO string or relative time string
   status: LeadStatus;
@@ -20,7 +21,8 @@ export interface Lead {
 }
 
 export interface Booking {
-  id: string;
+  id: string; // Internal UUID
+  bookingNo?: string; // Human Readable (e.g. BR-0001)
   leadId?: string; // Reference to the origin lead
   date: string;
   tourName: string;

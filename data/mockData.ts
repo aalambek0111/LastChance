@@ -1,3 +1,4 @@
+
 import { Booking, KPIMetric, Lead } from '../types';
 
 // Team Members for assignment
@@ -41,7 +42,8 @@ export const KPI_DATA: KPIMetric[] = [
 // Mock Leads Data
 export const RECENT_LEADS: Lead[] = [
   {
-    id: 'L001',
+    id: '111',
+    leadNo: 'LD-001024',
     name: 'Sarah Jenkins',
     lastMessageTime: '10 mins ago',
     status: 'New',
@@ -49,7 +51,8 @@ export const RECENT_LEADS: Lead[] = [
     assignedTo: 'Alex Walker',
   },
   {
-    id: 'L002',
+    id: '222',
+    leadNo: 'LD-001023',
     name: 'Marco Rossi',
     lastMessageTime: '45 mins ago',
     status: 'Contacted',
@@ -57,7 +60,8 @@ export const RECENT_LEADS: Lead[] = [
     assignedTo: 'Sarah Miller',
   },
   {
-    id: 'L003',
+    id: '333',
+    leadNo: 'LD-001022',
     name: 'Emily Chen',
     lastMessageTime: '2 hours ago',
     status: 'New',
@@ -65,7 +69,8 @@ export const RECENT_LEADS: Lead[] = [
     assignedTo: 'Alex Walker',
   },
   {
-    id: 'L004',
+    id: '444',
+    leadNo: 'LD-001021',
     name: 'David Smith',
     lastMessageTime: '5 hours ago',
     status: 'Qualified',
@@ -73,7 +78,8 @@ export const RECENT_LEADS: Lead[] = [
     assignedTo: 'Emily Davis',
   },
   {
-    id: 'L005',
+    id: '555',
+    leadNo: 'LD-001020',
     name: 'Anita Patel',
     lastMessageTime: '1 day ago',
     status: 'Contacted',
@@ -85,7 +91,8 @@ export const RECENT_LEADS: Lead[] = [
 // Mock Bookings Data
 export const UPCOMING_BOOKINGS: Booking[] = [
   {
-    id: 'B001',
+    id: 'b1',
+    bookingNo: 'BR-005120',
     date: 'Oct 24, 2023',
     tourName: 'Sunset City Bike Tour',
     clientName: 'John Doe',
@@ -99,7 +106,8 @@ export const UPCOMING_BOOKINGS: Booking[] = [
     isAmountOverridden: false
   },
   {
-    id: 'B002',
+    id: 'b2',
+    bookingNo: 'BR-005121',
     date: 'Oct 25, 2023',
     tourName: 'Historical Walk',
     clientName: 'Alice Cooper',
@@ -113,7 +121,8 @@ export const UPCOMING_BOOKINGS: Booking[] = [
     isAmountOverridden: false
   },
   {
-    id: 'B003',
+    id: 'b3',
+    bookingNo: 'BR-005122',
     date: 'Oct 25, 2023',
     tourName: 'Food & Wine Tasting',
     clientName: 'Robert Langdon',
@@ -127,7 +136,8 @@ export const UPCOMING_BOOKINGS: Booking[] = [
     isAmountOverridden: false
   },
   {
-    id: 'B004',
+    id: 'b4',
+    bookingNo: 'BR-005123',
     date: 'Oct 26, 2023',
     tourName: 'Mountain Hike Level 2',
     clientName: 'Team Alpha',
@@ -141,7 +151,8 @@ export const UPCOMING_BOOKINGS: Booking[] = [
     isAmountOverridden: false
   },
   {
-    id: 'B005',
+    id: 'b5',
+    bookingNo: 'BR-005124',
     date: 'Oct 27, 2023',
     tourName: 'Private Boat Charter',
     clientName: 'The Kardashians',
@@ -160,6 +171,7 @@ export const UPCOMING_BOOKINGS: Booking[] = [
 export const TOURS = [
    { 
       id: 1, 
+      tourNo: 'TR-000001',
       name: 'Sunset City Bike Tour', 
       price: 85, 
       duration: '3h', 
@@ -175,6 +187,7 @@ export const TOURS = [
    },
    { 
       id: 2, 
+      tourNo: 'TR-000002',
       name: 'Historical Walk', 
       price: 45, 
       duration: '2h', 
@@ -190,6 +203,7 @@ export const TOURS = [
    },
    { 
       id: 3, 
+      tourNo: 'TR-000003',
       name: 'Food & Wine Tasting', 
       price: 120, 
       duration: '4h', 
@@ -205,6 +219,7 @@ export const TOURS = [
    },
    { 
       id: 4, 
+      tourNo: 'TR-000004',
       name: 'Mountain Hike Level 2', 
       price: 95, 
       duration: '6h', 

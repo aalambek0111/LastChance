@@ -78,7 +78,8 @@ const ToursPage: React.FC<ToursPageProps> = ({ searchTerm = '' }) => {
       // Search Text
       const matchesSearch = 
         (tour.name || '').toLowerCase().includes(q) || 
-        (tour.location || '').toLowerCase().includes(q);
+        (tour.location || '').toLowerCase().includes(q) ||
+        (tour.tourNo || '').toLowerCase().includes(q);
 
       // Status Filter
       const matchesStatus = 
@@ -313,6 +314,9 @@ const ToursPage: React.FC<ToursPageProps> = ({ searchTerm = '' }) => {
           <table className="w-full text-left border-collapse">
             <thead className="bg-gray-50 dark:bg-gray-700/50 border-b border-gray-100 dark:border-gray-700 sticky top-0 z-10 backdrop-blur-sm">
               <tr>
+                <th className="px-6 py-4 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  ID
+                </th>
                 <th 
                   className="px-6 py-4 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:text-gray-700 dark:hover:text-gray-200"
                   onClick={() => handleSort('name')}
@@ -350,6 +354,10 @@ const ToursPage: React.FC<ToursPageProps> = ({ searchTerm = '' }) => {
                   onClick={() => openDrawer(tour)}
                   className="group cursor-pointer transition-colors hover:bg-gray-50 dark:hover:bg-gray-700/30"
                 >
+                  <td className="px-6 py-4 text-xs font-mono text-gray-500 dark:text-gray-400">
+                    {tour.tourNo || '-'}
+                  </td>
+                  
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-4 min-w-0">
                       <div className="w-12 h-12 rounded-xl bg-gray-200 dark:bg-gray-700 overflow-hidden shrink-0 border border-gray-100 dark:border-gray-600 relative">
@@ -468,7 +476,7 @@ const ToursPage: React.FC<ToursPageProps> = ({ searchTerm = '' }) => {
               {filteredTours.length === 0 && (
                 <tr>
                   <td
-                    colSpan={5}
+                    colSpan={6}
                     className="px-6 py-12 text-center text-gray-500 dark:text-gray-400 text-sm"
                   >
                     No tours found matching your filters.
