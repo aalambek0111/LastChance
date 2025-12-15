@@ -80,7 +80,11 @@ function safeParseSettings(raw: string | null): SettingsState {
 
 // --- Main Component ---
 
-const SettingsPage: React.FC = () => {
+interface SettingsPageProps {
+  onNavigate?: (page: string) => void;
+}
+
+const SettingsPage: React.FC<SettingsPageProps> = ({ onNavigate }) => {
   const { language: ctxLang, setLanguage, t } = useI18n();
 
   // Global State
@@ -364,7 +368,7 @@ const SettingsPage: React.FC = () => {
                     <p className="text-sm text-gray-500 dark:text-gray-400">Manage subscription and invoices.</p>
                   </div>
                 </div>
-                <BillingSettings settings={settings} onChange={handleChange} />
+                <BillingSettings settings={settings} onChange={handleChange} onNavigate={onNavigate} />
               </section>
             )}
 

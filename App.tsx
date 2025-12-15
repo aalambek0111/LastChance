@@ -9,6 +9,7 @@ import LeadsPage from './pages/Leads/LeadsPage';
 import BookingsPage from './pages/Bookings/BookingsPage';
 import TeamPage from './pages/Team/TeamPage';
 import SettingsPage from './pages/Settings/SettingsPage';
+import UpgradePage from './pages/Upgrade/UpgradePage';
 import ToursPage from './pages/Tours/ToursPage';
 import ReportsPage from './pages/Reports/ReportsPage';
 import ImportPage from './pages/Import/ImportPage';
@@ -98,16 +99,23 @@ function App() {
       ) : (
         // --- MAIN APP DASHBOARD ---
         <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex font-sans text-gray-900 dark:text-white transition-colors duration-200">
-          <Sidebar activePage={activePage} onNavigate={setActivePage} />
+          
+          {/* Hide Sidebar for full-page views like Upgrade */}
+          {activePage !== 'upgrade' && (
+            <Sidebar activePage={activePage} onNavigate={setActivePage} />
+          )}
 
           {/* 
             Main Content Wrapper
-            - md:ml-64: Pushes content right on desktop to accommodate Sidebar
+            - md:ml-64: Pushes content right on desktop to accommodate Sidebar (only if sidebar visible)
             - pb-20: Adds bottom padding on mobile so content isn't hidden behind MobileNav
             - md:pb-0: Removes bottom padding on desktop
           */}
-          <main className="flex-1 md:ml-64 min-h-screen flex flex-col relative overflow-x-hidden pb-20 md:pb-0">
-            <Header searchTerm={searchTerm} setSearchTerm={setSearchTerm} />
+          <main className={`flex-1 ${activePage !== 'upgrade' ? 'md:ml-64' : ''} min-h-screen flex flex-col relative overflow-x-hidden pb-20 md:pb-0`}>
+            
+            {activePage !== 'upgrade' && (
+              <Header searchTerm={searchTerm} setSearchTerm={setSearchTerm} />
+            )}
 
             <div className="flex-1 overflow-hidden flex flex-col">
               {activePage === 'dashboard' && (
@@ -144,7 +152,8 @@ function App() {
                 />
               )}
               {activePage === 'team' && <TeamPage />}
-              {activePage === 'settings' && <SettingsPage />}
+              {activePage === 'settings' && <SettingsPage onNavigate={setActivePage} />}
+              {activePage === 'upgrade' && <UpgradePage onBack={() => setActivePage('settings')} />}
               {activePage === 'tours' && <ToursPage searchTerm={searchTerm} />}
               {activePage === 'reports' && <ReportsPage />}
               {activePage === 'import' && <ImportPage />}
@@ -152,8 +161,10 @@ function App() {
             </div>
           </main>
           
-          {/* Mobile Navigation - Visible only on small screens */}
-          <MobileNav activePage={activePage} onNavigate={setActivePage} />
+          {/* Mobile Navigation - Visible only on small screens and not on upgrade page */}
+          {activePage !== 'upgrade' && (
+            <MobileNav activePage={activePage} onNavigate={setActivePage} />
+          )}
 
           <Toast 
             message={toast.message} 

@@ -5,9 +5,10 @@ import { CreditCard, Check, Zap, Download, Users, MessageSquare, Database } from
 interface BillingSettingsProps {
   settings: any;
   onChange: (key: string, value: any) => void;
+  onNavigate?: (page: string) => void;
 }
 
-const BillingSettings: React.FC<BillingSettingsProps> = ({ settings, onChange }) => {
+const BillingSettings: React.FC<BillingSettingsProps> = ({ settings, onChange, onNavigate }) => {
   
   const handleDownloadInvoice = (invoice: { id: string, date: string, amount: string }) => {
     // Mock PDF generation - creates a text file for the MVP
@@ -57,7 +58,10 @@ TourCRM`;
               Your 14-day trial expires in <span className="font-bold text-amber-600 dark:text-amber-400">12 days</span>.
             </p>
           </div>
-          <button className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-semibold shadow-md transition-all active:scale-95 flex items-center gap-2">
+          <button 
+            onClick={() => onNavigate && onNavigate('upgrade')}
+            className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-semibold shadow-md transition-all active:scale-95 flex items-center gap-2"
+          >
             <Zap className="w-4 h-4 fill-current" />
             Upgrade Now
           </button>
