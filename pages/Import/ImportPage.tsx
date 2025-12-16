@@ -358,7 +358,7 @@ const ImportPage: React.FC = () => {
       if (mode === 'upsert') {
          // Explicit string cast to prevent potential index type error
          const key = matchKey as string;
-         const matchVal = mappedRow[key];
+         const matchVal = (mappedRow as any)[key]; // Explicitly cast mappedRow to any for dynamic key access
          if (!matchVal) errors.push(`Match Key (${key}) is missing for upsert.`);
       }
 

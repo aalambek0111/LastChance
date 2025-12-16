@@ -32,13 +32,15 @@ interface DashboardProps {
   searchTerm?: string;
   onNavigate?: (page: string) => void;
   onUpdateBooking?: (booking: Booking) => void;
+  onAddBooking?: (booking: Booking) => void;
 }
 
 const DashboardPage: React.FC<DashboardProps> = ({ 
   bookings = UPCOMING_BOOKINGS, 
   searchTerm = '',
   onNavigate,
-  onUpdateBooking
+  onUpdateBooking,
+  onAddBooking
 }) => {
   // Local state for Leads to allow editing within Dashboard view
   const [leads, setLeads] = useState<Lead[]>(RECENT_LEADS);
@@ -46,6 +48,8 @@ const DashboardPage: React.FC<DashboardProps> = ({
   
   // Local state for Booking editing
   const [editingBooking, setEditingBooking] = useState<Booking | null>(null);
+  const [isCreateBookingOpen, setIsCreateBookingOpen] = useState(false);
+  const [leadForBooking, setLeadForBooking] = useState<Lead | null>(null);
 
   const [isLeadModalOpen, setIsLeadModalOpen] = useState(false);
   const [activeFilter, setActiveFilter] = useState<'All' | 'New' | 'Priority'>('All');
@@ -94,19 +98,33 @@ const DashboardPage: React.FC<DashboardProps> = ({
                   onClose={() => setSelectedLead(null)} 
                   onSave={handleUpdateLead}
                   onDelete={handleDeleteLead}
-                  // Optional: Wire up specific actions if needed, or leave generic
+                  // Wire up specific actions
+                  onCreateBooking={() => {
+                    setLeadForBooking(selectedLead);
+                    setIsCreateBookingOpen(true);
+                  }}
                   relatedBookings={bookings.filter(b => b.clientName === selectedLead.name)}
                />
             </div>
         </>
       )}
 
-      {/* Booking Edit Modal */}
-      {editingBooking && (
+      {/* Booking Create/Edit Modal */}
+      {(editingBooking || isCreateBookingOpen) && (
         <CreateBookingModal 
           isOpen={true}
-          onClose={() => setEditingBooking(null)}
+          onClose={() => {
+            setEditingBooking(null);
+            setIsCreateBookingOpen(false);
+            setLeadForBooking(null);
+          }}
           bookingToEdit={editingBooking}
+          lead={leadForBooking}
+          onBookingCreated={(b) => {
+            if (onAddBooking) onAddBooking(b);
+            setIsCreateBookingOpen(false);
+            setLeadForBooking(null);
+          }}
           onBookingUpdated={(updated) => {
             if (onUpdateBooking) onUpdateBooking(updated);
             setEditingBooking(null);

@@ -124,6 +124,7 @@ function App() {
                   searchTerm={searchTerm} 
                   onNavigate={setActivePage}
                   onUpdateBooking={updateBooking}
+                  onAddBooking={addBooking}
                 />
               )}
               {activePage === 'inbox' && (

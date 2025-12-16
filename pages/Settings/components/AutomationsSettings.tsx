@@ -59,7 +59,14 @@ const FIELDS_BY_CONTEXT: Record<string, string[]> = {
 
 // --- Components ---
 
-const ConditionBuilder = ({ condition, onChange, onDelete, context }: { condition: RuleCondition, onChange: (c: RuleCondition) => void, onDelete: () => void, context: 'lead' | 'booking' }) => {
+interface ConditionBuilderProps {
+  condition: RuleCondition;
+  onChange: (c: RuleCondition) => void;
+  onDelete: () => void;
+  context: 'lead' | 'booking';
+}
+
+const ConditionBuilder: React.FC<ConditionBuilderProps> = ({ condition, onChange, onDelete, context }) => {
   const fields = FIELDS_BY_CONTEXT[context] || [];
   
   return (
@@ -100,7 +107,13 @@ const ConditionBuilder = ({ condition, onChange, onDelete, context }: { conditio
   );
 };
 
-const ActionBuilder = ({ action, onChange, onDelete }: { action: RuleAction, onChange: (a: RuleAction) => void, onDelete: () => void }) => {
+interface ActionBuilderProps {
+  action: RuleAction;
+  onChange: (a: RuleAction) => void;
+  onDelete: () => void;
+}
+
+const ActionBuilder: React.FC<ActionBuilderProps> = ({ action, onChange, onDelete }) => {
   return (
     <div className="flex flex-col gap-2 p-3 bg-gray-50 dark:bg-gray-700/30 rounded-lg border border-gray-100 dark:border-gray-700">
       <div className="flex justify-between items-center">
