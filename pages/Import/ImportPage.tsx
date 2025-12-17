@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
   UploadCloud, 
@@ -9,7 +8,7 @@ import {
   AlertTriangle, 
   ChevronRight, 
   Download, 
-  Trash2,
+  Trash2, 
   File,
   HelpCircle,
   Check,
@@ -281,16 +280,18 @@ const ImportPage: React.FC = () => {
     setIsProcessingFile(true);
 
     const reader = new FileReader();
-    reader.onload = (event) => {
-      const text = event.target?.result as string;
+    reader.onload = (event: ProgressEvent<FileReader>) => {
+      const text = (event.target?.result as string) || '';
       setTimeout(() => {
         // Simple CSV parse
         const lines = text.trim().split('\n');
-        const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
-        const data = lines.slice(1).map(line => {
+        if (lines.length === 0) return;
+
+        const headers = lines[0].split(',').map((h: string) => h.trim().replace(/^"|"$/g, ''));
+        const data = lines.slice(1).map((line: string) => {
           const values = line.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g) || [];
           const row: Record<string, string> = {};
-          headers.forEach((h, i) => {
+          headers.forEach((h: string, i: number) => {
             row[h] = (values[i] || '').replace(/^"|"$/g, '').trim();
           });
           return row;
@@ -324,13 +325,13 @@ const ImportPage: React.FC = () => {
 
   const handleValidate = () => {
     const schema = CRM_SCHEMA[objectType];
-    const results = csvData.map((row, idx) => {
+    const results = csvData.map((row: Record<string, string>, idx) => {
       const mappedRow: Record<string, any> = {};
       const errors: string[] = [];
       const warnings: string[] = [];
 
       Object.entries(fieldMapping).forEach(([crmKey, csvHeader]) => {
-        if (csvHeader) mappedRow[crmKey] = row[csvHeader];
+        if (csvHeader) mappedRow[crmKey] = row[csvHeader as string];
       });
 
       schema.forEach(field => {
@@ -356,9 +357,8 @@ const ImportPage: React.FC = () => {
       });
 
       if (mode === 'upsert') {
-         // Explicit string cast to prevent potential index type error
-         const key = matchKey as string;
-         const matchVal = (mappedRow as any)[key]; // Explicitly cast mappedRow to any for dynamic key access
+         const key = String(matchKey);
+         const matchVal = mappedRow[key];
          if (!matchVal) errors.push(`Match Key (${key}) is missing for upsert.`);
       }
 

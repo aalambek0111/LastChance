@@ -347,6 +347,8 @@ const CreateBookingModal: React.FC<CreateBookingModalProps> = ({
     tourName: '',
     clientName: '',
     date: '',
+    startTime: '09:00',
+    endTime: '12:00',
     pax: 2,
     status: 'Pending' as BookingStatus,
     paymentStatus: 'Unpaid' as PaymentStatus,
@@ -434,6 +436,8 @@ const CreateBookingModal: React.FC<CreateBookingModalProps> = ({
         tourName: bookingToEdit.tourName,
         clientName: bookingToEdit.clientName,
         date: formatDateForInput(bookingToEdit.date),
+        startTime: bookingToEdit.startTime || '09:00',
+        endTime: bookingToEdit.endTime || '12:00',
         pax: bookingToEdit.people,
         status: bookingToEdit.status,
         paymentStatus: bookingToEdit.paymentStatus || 'Unpaid',
@@ -465,6 +469,8 @@ const CreateBookingModal: React.FC<CreateBookingModalProps> = ({
         tourName: '',
         clientName: defaultClientName,
         date: new Date().toISOString().split('T')[0],
+        startTime: '09:00',
+        endTime: '12:00',
         pax: 2,
         status: 'Pending',
         paymentStatus: 'Unpaid',
@@ -595,6 +601,8 @@ const CreateBookingModal: React.FC<CreateBookingModalProps> = ({
           tourName: bookingToEdit.tourName,
           clientName: bookingToEdit.clientName,
           date: formatDateForInput(bookingToEdit.date),
+          startTime: bookingToEdit.startTime,
+          endTime: bookingToEdit.endTime,
           pax: bookingToEdit.people,
           status: bookingToEdit.status,
           paymentStatus: bookingToEdit.paymentStatus || 'Unpaid',
@@ -637,6 +645,8 @@ const CreateBookingModal: React.FC<CreateBookingModalProps> = ({
           tourName: formData.tourName,
           clientName: formData.clientName || 'Unknown Client',
           date: formData.date,
+          startTime: formData.startTime,
+          endTime: formData.endTime,
           people: formData.pax,
           status: formData.status,
           paymentStatus: formData.paymentStatus,
@@ -674,6 +684,8 @@ const CreateBookingModal: React.FC<CreateBookingModalProps> = ({
           leadId: lead?.id, // Link the lead ID if available
           tourName: formData.tourName,
           date: formData.date,
+          startTime: formData.startTime,
+          endTime: formData.endTime,
           clientName: formData.clientName || 'Unknown Client',
           people: formData.pax,
           status: formData.status,
@@ -781,7 +793,7 @@ const CreateBookingModal: React.FC<CreateBookingModalProps> = ({
                     />
                   </div>
 
-                  {/* Row 2: Date & Pax */}
+                  {/* Row 2: Date, Time & Pax */}
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase mb-1.5">Date</label>
@@ -798,21 +810,43 @@ const CreateBookingModal: React.FC<CreateBookingModalProps> = ({
                         />
                       </div>
                     </div>
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase mb-1.5">Pax</label>
-                      <div className="relative">
-                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                           <Users className="w-4 h-4 text-gray-400" />
-                        </div>
+                    <div className="flex gap-2">
+                      <div className="flex-1">
+                        <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase mb-1.5">Start</label>
                         <input 
-                          type="number" 
-                          min="1"
-                          required
-                          className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white bg-white dark:bg-gray-700/50 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                          value={formData.pax}
-                          onChange={e => setFormData({...formData, pax: parseInt(e.target.value)})}
+                          type="time" 
+                          className="block w-full px-2 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white bg-white dark:bg-gray-700/50 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                          value={formData.startTime}
+                          onChange={e => setFormData({...formData, startTime: e.target.value})}
                         />
                       </div>
+                      <div className="flex-1">
+                        <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase mb-1.5">End</label>
+                        <input 
+                          type="time" 
+                          className="block w-full px-2 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white bg-white dark:bg-gray-700/50 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                          value={formData.endTime}
+                          onChange={e => setFormData({...formData, endTime: e.target.value})}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Pax Row */}
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase mb-1.5">Pax</label>
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                          <Users className="w-4 h-4 text-gray-400" />
+                      </div>
+                      <input 
+                        type="number" 
+                        min="1"
+                        required
+                        className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white bg-white dark:bg-gray-700/50 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                        value={formData.pax}
+                        onChange={e => setFormData({...formData, pax: parseInt(e.target.value)})}
+                      />
                     </div>
                   </div>
 

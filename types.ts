@@ -25,6 +25,10 @@ export interface Booking {
   bookingNo?: string; // Human Readable (e.g. BR-0001)
   leadId?: string; // Reference to the origin lead
   date: string;
+  // Time fields for Calendar
+  startTime?: string; // "HH:mm" 24h format
+  endTime?: string;   // "HH:mm" 24h format
+  
   tourName: string;
   clientName: string;
   people: number;

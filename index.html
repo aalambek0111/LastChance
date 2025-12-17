@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -42,9 +43,9 @@
         margin: 0;
         padding: 0;
         width: 100%;
+        height: 100%; /* Critical for h-screen layouts */
         max-width: 100vw;
-        overflow-x: hidden;
-        /* Ensure background matches dark theme to avoid white strips */
+        overflow: hidden; /* Prevent body scroll, handle in app */
         background-color: #0f172a; 
       }
     </style>

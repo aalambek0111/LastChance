@@ -7,6 +7,7 @@ import DashboardPage from './pages/Dashboard/DashboardPage';
 import InboxPage from './pages/Inbox/InboxPage';
 import LeadsPage from './pages/Leads/LeadsPage';
 import BookingsPage from './pages/Bookings/BookingsPage';
+import CalendarPage from './pages/Calendar/CalendarPage';
 import TeamPage from './pages/Team/TeamPage';
 import SettingsPage from './pages/Settings/SettingsPage';
 import UpgradePage from './pages/Upgrade/UpgradePage';
@@ -98,7 +99,7 @@ function App() {
         </>
       ) : (
         // --- MAIN APP DASHBOARD ---
-        <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex font-sans text-gray-900 dark:text-white transition-colors duration-200">
+        <div className="h-screen bg-gray-50 dark:bg-gray-900 flex font-sans text-gray-900 dark:text-white transition-colors duration-200 overflow-hidden">
           
           {/* Hide Sidebar for full-page views like Upgrade */}
           {activePage !== 'upgrade' && (
@@ -107,17 +108,21 @@ function App() {
 
           {/* 
             Main Content Wrapper
-            - md:ml-64: Pushes content right on desktop to accommodate Sidebar (only if sidebar visible)
-            - pb-20: Adds bottom padding on mobile so content isn't hidden behind MobileNav
-            - md:pb-0: Removes bottom padding on desktop
+            - h-full: Uses full height of screen
+            - overflow-hidden: Prevents body scroll, forces internal scroll within pages
           */}
-          <main className={`flex-1 ${activePage !== 'upgrade' ? 'md:ml-64' : ''} min-h-screen flex flex-col relative overflow-x-hidden pb-20 md:pb-0`}>
+          <main className={`flex-1 ${activePage !== 'upgrade' ? 'md:ml-64' : ''} h-full flex flex-col relative overflow-hidden pb-20 md:pb-0`}>
             
             {activePage !== 'upgrade' && (
               <Header searchTerm={searchTerm} setSearchTerm={setSearchTerm} />
             )}
 
-            <div className="flex-1 overflow-hidden flex flex-col">
+            {/* 
+               Scrollable Area Container
+               - pt-[72px]: Pushes content down below fixed header
+               - flex-1 overflow-hidden: Constrains height to remaining space, allowing children to manage scroll
+            */}
+            <div className={`flex-1 overflow-hidden flex flex-col ${activePage !== 'upgrade' ? 'pt-[72px]' : ''}`}>
               {activePage === 'dashboard' && (
                 <DashboardPage 
                   bookings={bookings} 
@@ -150,6 +155,14 @@ function App() {
                   searchTerm={searchTerm} 
                   onUpdateBooking={updateBooking}
                   onDeleteBooking={deleteBooking}
+                />
+              )}
+              {activePage === 'calendar' && (
+                <CalendarPage 
+                  bookings={bookings} 
+                  searchTerm={searchTerm} 
+                  onUpdateBooking={updateBooking}
+                  onAddBooking={addBooking}
                 />
               )}
               {activePage === 'team' && <TeamPage />}

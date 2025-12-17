@@ -11,7 +11,8 @@ import {
   Map,
   BarChart3,
   LifeBuoy,
-  UploadCloud
+  UploadCloud,
+  CalendarDays
 } from 'lucide-react';
 import { useI18n } from '../context/ThemeContext';
 
@@ -25,6 +26,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activePage, onNavigate }) => {
 
   const mainNav = [
     { name: t('nav_dashboard'), icon: LayoutDashboard, id: 'dashboard' },
+    { name: 'Calendar', icon: CalendarDays, id: 'calendar' }, // Added Calendar
     { name: t('nav_inbox'), icon: Inbox, badge: 5, id: 'inbox' },
     { name: t('nav_leads'), icon: Users, id: 'leads' },
     { name: t('nav_bookings'), icon: CalendarCheck, id: 'bookings' },

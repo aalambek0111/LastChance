@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Search, Bell, Moon, Sun, UserPlus, CalendarCheck, AlertCircle } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
@@ -49,7 +50,7 @@ const Header: React.FC<HeaderProps> = ({ searchTerm, setSearchTerm }) => {
   };
 
   return (
-    <header className="sticky top-0 z-40 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md border-b border-gray-200 dark:border-gray-800 px-6 py-4 transition-colors duration-200">
+    <header className="fixed top-0 right-0 left-0 md:left-64 z-30 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md border-b border-gray-200 dark:border-gray-800 px-6 py-4 transition-colors duration-200">
       <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
         {/* Search Bar */}
         <div className="flex-1 max-w-lg">

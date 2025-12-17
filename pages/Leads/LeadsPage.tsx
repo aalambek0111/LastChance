@@ -185,62 +185,62 @@ const LeadsPage: React.FC<LeadsPageProps> = ({
         </>
       )}
 
-      {/* Header Section */}
-      <div className="flex-none p-6 lg:p-8 pb-4">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-          <h2 className="text-3xl font-bold text-gray-900 dark:text-white">{t('page_leads_title')}</h2>
+      {/* Header Section - Tightened padding and margins */}
+      <div className="flex-none px-6 py-4 lg:px-8 pb-3">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{t('page_leads_title')}</h2>
           
           <div className="flex items-center gap-3 w-full sm:w-auto">
             {/* View Switcher */}
-            <div className="flex bg-gray-100 dark:bg-gray-800 p-1 rounded-lg border border-gray-200 dark:border-gray-700">
+            <div className="flex bg-gray-100 dark:bg-gray-800 p-1 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
               <button
                 onClick={() => setViewMode('table')}
-                className={`p-2 rounded-md flex items-center gap-2 text-sm font-medium transition-all ${
+                className={`p-1.5 rounded-md flex items-center gap-2 text-xs font-medium transition-all ${
                   viewMode === 'table' 
                     ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm' 
-                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+                    : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-200'
                 }`}
               >
-                <List className="w-4 h-4" />
+                <List className="w-3.5 h-3.5" />
                 <span className="hidden sm:inline">Table</span>
               </button>
               <button
                 onClick={() => setViewMode('kanban')}
-                className={`p-2 rounded-md flex items-center gap-2 text-sm font-medium transition-all ${
+                className={`p-1.5 rounded-md flex items-center gap-2 text-xs font-medium transition-all ${
                   viewMode === 'kanban' 
                     ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm' 
-                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+                    : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-200'
                 }`}
               >
-                <LayoutGrid className="w-4 h-4" />
+                <LayoutGrid className="w-3.5 h-3.5" />
                 <span className="hidden sm:inline">Kanban</span>
               </button>
             </div>
 
             <button 
               onClick={() => setIsAddLeadModalOpen(true)}
-              className="flex-1 sm:flex-none px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors shadow-sm whitespace-nowrap"
+              className="flex-1 sm:flex-none px-4 py-1.5 bg-indigo-600 text-white rounded-lg text-sm font-semibold hover:bg-indigo-700 transition-all shadow-sm active:scale-95 whitespace-nowrap"
             >
               Add Lead
             </button>
           </div>
         </div>
 
-        {/* Filter Bar */}
-        <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
-          <div className="flex flex-col lg:flex-row lg:items-center gap-4">
+        {/* Filter Bar - Tightened layout */}
+        <div className="bg-white dark:bg-gray-800 p-2.5 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
+          <div className="flex flex-col lg:flex-row lg:items-center gap-3">
             
             {/* Left: Filter Label + Toggle */}
-            <div className="flex items-center gap-3 flex-none">
-              <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400">
-                <Filter className="w-4 h-4" />
-                <span className="text-sm font-medium">Filter:</span>
+            <div className="flex items-center gap-2.5 flex-none">
+              <div className="flex items-center gap-1.5 text-gray-400 dark:text-gray-500">
+                <Filter className="w-3.5 h-3.5" />
+                <span className="text-xs font-bold uppercase tracking-wider">Filter:</span>
               </div>
 
-              <div className="flex bg-gray-100 dark:bg-gray-700/50 p-1 rounded-lg">
+              <div className="flex bg-gray-100 dark:bg-gray-700/50 p-0.5 rounded-lg">
                 <button
                   onClick={() => setAssignedFilter('All')}
-                  className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${
+                  className={`px-3 py-1 text-[11px] font-bold rounded-md transition-all ${
                     assignedFilter === 'All'
                       ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow-sm'
                       : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
@@ -250,7 +250,7 @@ const LeadsPage: React.FC<LeadsPageProps> = ({
                 </button>
                 <button
                   onClick={() => setAssignedFilter('Mine')}
-                  className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all flex items-center gap-1.5 ${
+                  className={`px-3 py-1 text-[11px] font-bold rounded-md transition-all flex items-center gap-1.5 ${
                     assignedFilter === 'Mine'
                       ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow-sm'
                       : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
@@ -262,13 +262,13 @@ const LeadsPage: React.FC<LeadsPageProps> = ({
               </div>
             </div>
 
-            {/* Middle: Dropdowns */}
-            <div className="flex flex-col sm:flex-row gap-3 flex-1 min-w-0">
-              <div className="w-full sm:w-48">
+            {/* Middle: Dropdowns - Slimmer heights */}
+            <div className="flex flex-col sm:flex-row gap-2 flex-1 min-w-0">
+              <div className="w-full sm:w-44">
                 <select
                   value={statusFilter}
                   onChange={(e) => setStatusFilter(e.target.value)}
-                  className="w-full bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-200 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2.5 outline-none"
+                  className="w-full bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-200 text-xs font-medium rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-1.5 outline-none"
                 >
                   <option value="All">All Status</option>
                   <option value="New">New</option>
@@ -279,11 +279,11 @@ const LeadsPage: React.FC<LeadsPageProps> = ({
                 </select>
               </div>
 
-              <div className="w-full sm:w-48">
+              <div className="w-full sm:w-44">
                 <select
                   value={channelFilter}
                   onChange={(e) => setChannelFilter(e.target.value)}
-                  className="w-full bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-200 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2.5 outline-none"
+                  className="w-full bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-200 text-xs font-medium rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-1.5 outline-none"
                 >
                   <option value="All">All Channels</option>
                   <option value="Website">Website</option>
@@ -298,7 +298,7 @@ const LeadsPage: React.FC<LeadsPageProps> = ({
             {hasActiveFilters && (
               <button
                 onClick={clearFilters}
-                className="flex-none text-sm text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 font-medium transition-colors"
+                className="flex-none text-xs text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 font-bold transition-colors"
               >
                 Clear Filters
               </button>
@@ -313,28 +313,28 @@ const LeadsPage: React.FC<LeadsPageProps> = ({
           <div className="h-full overflow-y-auto px-6 lg:px-8 pb-6">
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
               <table className="w-full text-left">
-              <thead className="bg-gray-50 dark:bg-gray-700/50 text-gray-500 dark:text-gray-400 text-xs uppercase font-medium">
+              <thead className="bg-gray-50 dark:bg-gray-700/50 text-gray-500 dark:text-gray-400 text-[10px] uppercase font-bold tracking-wider">
                 <tr>
-                  <th className="px-6 py-3">ID</th>
-                  <th className="px-6 py-3">Name</th>
-                  <th className="px-6 py-3">Status</th>
-                  <th className="px-6 py-3">Channel</th>
-                  <th className="px-6 py-3">Assigned To</th>
-                  <th className="px-6 py-3">Last Active</th>
-                  <th className="px-6 py-3 text-right">Actions</th>
+                  <th className="px-6 py-2.5">ID</th>
+                  <th className="px-6 py-2.5">Name</th>
+                  <th className="px-6 py-2.5">Status</th>
+                  <th className="px-6 py-2.5">Channel</th>
+                  <th className="px-6 py-2.5">Assigned To</th>
+                  <th className="px-6 py-2.5">Last Active</th>
+                  <th className="px-6 py-2.5 text-right">Actions</th>
                 </tr>
               </thead>
-                <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
                   {filteredLeads.map((lead) => (
                     <tr 
                       key={lead.id} 
                       onClick={() => openLeadDrawer(lead.id)}
                       className={`hover:bg-gray-50 dark:hover:bg-gray-700/30 cursor-pointer transition-colors ${selectedLeadId === lead.id ? 'bg-indigo-50 dark:bg-indigo-900/10' : ''}`}
                     >
-                        <td className="px-6 py-4 text-xs font-mono text-gray-500 dark:text-gray-400">{lead.leadNo || '-'}</td>
-                        <td className="px-6 py-4 text-sm font-medium text-gray-900 dark:text-white">{lead.name}</td>
-                        <td className="px-6 py-4">
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                        <td className="px-6 py-3.5 text-xs font-mono text-gray-500 dark:text-gray-400">{lead.leadNo || '-'}</td>
+                        <td className="px-6 py-3.5 text-sm font-semibold text-gray-900 dark:text-white">{lead.name}</td>
+                        <td className="px-6 py-3.5">
+                          <span className={`px-2 py-0.5 rounded-full text-[11px] font-bold ${
                             lead.status === 'New' ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400' :
                             lead.status === 'Contacted' ? 'bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-400' :
                             lead.status === 'Qualified' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400' :
@@ -344,8 +344,8 @@ const LeadsPage: React.FC<LeadsPageProps> = ({
                             {lead.status}
                           </span>
                         </td>
-                        <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">{lead.channel}</td>
-                        <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
+                        <td className="px-6 py-3.5 text-sm text-gray-500 dark:text-gray-400">{lead.channel}</td>
+                        <td className="px-6 py-3.5 text-sm text-gray-500 dark:text-gray-400">
                           {lead.assignedTo ? (
                             <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-gray-50 dark:bg-gray-700/50 text-xs">
                               {lead.assignedTo}
@@ -354,28 +354,28 @@ const LeadsPage: React.FC<LeadsPageProps> = ({
                             <span className="text-gray-400 italic text-xs">Unassigned</span>
                           )}
                         </td>
-                        <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">{lead.lastMessageTime}</td>
-                        <td className="px-6 py-4 text-right">
+                        <td className="px-6 py-3.5 text-sm text-gray-500 dark:text-gray-400">{lead.lastMessageTime}</td>
+                        <td className="px-6 py-3.5 text-right">
                           <div className="relative inline-block" data-lead-menu="true">
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setMenuOpenId(prev => (prev === lead.id ? null : lead.id));
                               }}
-                              className="p-2 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                              className="p-1.5 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                               aria-label="Actions"
                             >
-                              <MoreHorizontal className="w-5 h-5" />
+                              <MoreHorizontal className="w-4.5 h-4.5" />
                             </button>
 
                             {menuOpenId === lead.id && (
                               <div
                                 onClick={(e) => e.stopPropagation()}
-                                className="absolute right-0 mt-2 w-48 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-lg overflow-hidden z-20"
+                                className="absolute right-0 mt-1 w-44 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-xl overflow-hidden z-20"
                               >
                                 <button
                                   onClick={() => openLeadDrawer(lead.id, 'details')}
-                                  className="w-full px-4 py-2.5 text-sm text-left text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700/40 flex items-center gap-2"
+                                  className="w-full px-4 py-2 text-sm text-left text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700/40 flex items-center gap-2"
                                 >
                                   <Pencil className="w-4 h-4" />
                                   Edit Details
@@ -383,7 +383,7 @@ const LeadsPage: React.FC<LeadsPageProps> = ({
 
                                 <button
                                   onClick={() => openLeadDrawer(lead.id, 'comments')}
-                                  className="w-full px-4 py-2.5 text-sm text-left text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700/40 flex items-center gap-2"
+                                  className="w-full px-4 py-2 text-sm text-left text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700/40 flex items-center gap-2"
                                 >
                                   <MessageSquare className="w-4 h-4" />
                                   Open Activity
@@ -395,7 +395,7 @@ const LeadsPage: React.FC<LeadsPageProps> = ({
                                     setLeadForBooking(lead);
                                     setIsBookingModalOpen(true);
                                   }}
-                                  className="w-full px-4 py-2.5 text-sm text-left text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700/40 flex items-center gap-2"
+                                  className="w-full px-4 py-2 text-sm text-left text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700/40 flex items-center gap-2"
                                 >
                                   <CalendarPlus className="w-4 h-4" />
                                   Create Booking
@@ -405,7 +405,7 @@ const LeadsPage: React.FC<LeadsPageProps> = ({
 
                                 <button
                                   onClick={() => handleDeleteLead(lead.id)}
-                                  className="w-full px-4 py-2.5 text-sm text-left text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-2"
+                                  className="w-full px-4 py-2 text-sm text-left text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-2"
                                 >
                                   <Trash2 className="w-4 h-4" />
                                   Delete

@@ -88,12 +88,14 @@ export const RECENT_LEADS: Lead[] = [
   },
 ];
 
-// Mock Bookings Data
+// Mock Bookings Data with Times
 export const UPCOMING_BOOKINGS: Booking[] = [
   {
     id: 'b1',
     bookingNo: 'BR-005120',
-    date: 'Oct 24, 2023',
+    date: '2023-10-24', // ISO Date for Calendar
+    startTime: '09:00',
+    endTime: '12:00',
     tourName: 'Sunset City Bike Tour',
     clientName: 'John Doe',
     people: 2,
@@ -108,7 +110,9 @@ export const UPCOMING_BOOKINGS: Booking[] = [
   {
     id: 'b2',
     bookingNo: 'BR-005121',
-    date: 'Oct 25, 2023',
+    date: '2023-10-25',
+    startTime: '14:00',
+    endTime: '16:00',
     tourName: 'Historical Walk',
     clientName: 'Alice Cooper',
     people: 4,
@@ -123,7 +127,9 @@ export const UPCOMING_BOOKINGS: Booking[] = [
   {
     id: 'b3',
     bookingNo: 'BR-005122',
-    date: 'Oct 25, 2023',
+    date: '2023-10-25',
+    startTime: '18:00',
+    endTime: '22:00',
     tourName: 'Food & Wine Tasting',
     clientName: 'Robert Langdon',
     people: 1,
@@ -138,7 +144,9 @@ export const UPCOMING_BOOKINGS: Booking[] = [
   {
     id: 'b4',
     bookingNo: 'BR-005123',
-    date: 'Oct 26, 2023',
+    date: '2023-10-26',
+    startTime: '08:00',
+    endTime: '14:00',
     tourName: 'Mountain Hike Level 2',
     clientName: 'Team Alpha',
     people: 8,
@@ -153,7 +161,9 @@ export const UPCOMING_BOOKINGS: Booking[] = [
   {
     id: 'b5',
     bookingNo: 'BR-005124',
-    date: 'Oct 27, 2023',
+    date: '2023-10-27',
+    startTime: '10:00',
+    endTime: '16:00',
     tourName: 'Private Boat Charter',
     clientName: 'The Kardashians',
     people: 6,

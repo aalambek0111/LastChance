@@ -18,7 +18,8 @@ import {
   CreditCard,
   Search,
   CheckCircle2,
-  ChevronRight
+  ChevronRight,
+  Share2
 } from 'lucide-react';
 import { useI18n } from '../../context/ThemeContext';
 import { TIMEZONES, CURRENCIES } from '../../constants';
@@ -28,10 +29,11 @@ import { EmailTemplate } from '../../types';
 import AutomationsSettings from './components/AutomationsSettings';
 import BillingSettings from './components/BillingSettings';
 import NotificationSettings from './components/NotificationSettings';
+import IntegrationsSettings from './components/IntegrationsSettings';
 
 // --- Types ---
 
-type SettingsState = {
+export type SettingsState = {
   // General
   orgName: string;
   contactEmail: string;
@@ -48,6 +50,25 @@ type SettingsState = {
   
   // Billing
   billingEmail: string;
+
+  // Integrations
+  telegramEnabled: boolean;
+  telegramBotToken: string;
+  
+  whatsappEnabled: boolean;
+  whatsappToken: string;
+  whatsappPhoneId: string;
+  whatsappBusinessId: string;
+
+  instagramEnabled: boolean;
+  instagramToken: string;
+  instagramPageId: string;
+
+  emailIntegrationEnabled: boolean;
+  emailSmtpHost: string;
+  emailSmtpPort: string;
+  emailSmtpUser: string;
+  emailSmtpPass: string;
 };
 
 const STORAGE_KEY = 'tourcrm_settings_v2';
@@ -63,7 +84,22 @@ const DEFAULT_SETTINGS: SettingsState = {
   emailLeads: true,
   emailBookings: true,
   emailTemplates: {},
-  billingEmail: 'accounts@wanderlust.com'
+  billingEmail: 'accounts@wanderlust.com',
+  // Integrations
+  telegramEnabled: false,
+  telegramBotToken: '',
+  whatsappEnabled: false,
+  whatsappToken: '',
+  whatsappPhoneId: '',
+  whatsappBusinessId: '',
+  instagramEnabled: false,
+  instagramToken: '',
+  instagramPageId: '',
+  emailIntegrationEnabled: false,
+  emailSmtpHost: 'smtp.gmail.com',
+  emailSmtpPort: '587',
+  emailSmtpUser: '',
+  emailSmtpPass: ''
 };
 
 // --- Helper Functions ---
@@ -106,7 +142,6 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ onNavigate }) => {
     const loaded = safeParseSettings(localStorage.getItem(STORAGE_KEY));
     // Sync language if needed
     if (loaded.language !== ctxLang) {
-      // Ensure we respect context if it was changed outside (e.g. Onboarding)
       loaded.language = ctxLang === 'ru' ? 'ru' : 'en'; 
     }
     setSettings(loaded);
@@ -124,7 +159,6 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ onNavigate }) => {
   useEffect(() => {
     const handleScroll = () => {
       const scrollPos = document.getElementById('settings-scroll-container')?.scrollTop || 0;
-      // Simple offset logic
       for (const [id, el] of Object.entries(sectionsRef.current)) {
         if (el && (el as HTMLElement).offsetTop - 200 <= scrollPos) {
           setActiveSection(id);
@@ -156,7 +190,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ onNavigate }) => {
 
   const handleSave = async () => {
     setIsSaving(true);
-    await new Promise(r => setTimeout(r, 800)); // Mock API delay
+    await new Promise(r => setTimeout(r, 800)); 
     localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
     setLastSaved(settings);
     setIsSaving(false);
@@ -326,6 +360,21 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ onNavigate }) => {
               </section>
             )}
 
+            {shouldShowSection('integrations', ['telegram', 'whatsapp', 'instagram', 'external', 'connection']) && (
+              <section ref={(el) => { sectionsRef.current['integrations'] = el; }} id="integrations" className="scroll-mt-6">
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="p-2 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-lg text-white shadow-sm">
+                    <Share2 className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-gray-900 dark:text-white">Integrations</h3>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">Connect external apps to your CRM workflow.</p>
+                  </div>
+                </div>
+                <IntegrationsSettings settings={settings} onChange={handleChange} />
+              </section>
+            )}
+
             {shouldShowSection('automations', ['rules', 'triggers', 'workflow']) && (
               <section ref={(el) => { sectionsRef.current['automations'] = el; }} id="automations" className="scroll-mt-6">
                 <div className="flex items-center gap-3 mb-6">
@@ -337,7 +386,6 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ onNavigate }) => {
                     <p className="text-sm text-gray-500 dark:text-gray-400">Automate workflows and tasks.</p>
                   </div>
                 </div>
-                {/* AutomationsSettings now manages its own data via Service */}
                 <AutomationsSettings />
               </section>
             )}
@@ -381,6 +429,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ onNavigate }) => {
           <nav className="space-y-1">
             {[
               { id: 'general', label: 'General', icon: Building },
+              { id: 'integrations', label: 'Integrations', icon: Share2 },
               { id: 'automations', label: 'Automations', icon: Zap },
               { id: 'notifications', label: 'Notifications', icon: Bell },
               { id: 'billing', label: 'Billing & Plan', icon: CreditCard },
