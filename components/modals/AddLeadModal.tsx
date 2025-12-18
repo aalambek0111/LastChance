@@ -1,14 +1,16 @@
+
 import React, { useState } from 'react';
 import { X, User, Mail, Phone, Tag, FileText, UserPlus } from 'lucide-react';
-import { LeadStatus } from '../../types';
+import { LeadStatus, NotificationType } from '../../types';
 import { MOCK_TEAM_MEMBERS } from '../../data/mockData';
 
 interface AddLeadModalProps {
   isOpen: boolean;
   onClose: () => void;
+  addNotification?: (payload: { title: string; description?: string; type: NotificationType; actionLink?: string }) => void;
 }
 
-const AddLeadModal: React.FC<AddLeadModalProps> = ({ isOpen, onClose }) => {
+const AddLeadModal: React.FC<AddLeadModalProps> = ({ isOpen, onClose, addNotification }) => {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -24,6 +26,16 @@ const AddLeadModal: React.FC<AddLeadModalProps> = ({ isOpen, onClose }) => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     console.log('New Lead Submitted:', formData);
+    
+    // Trigger notification for the team
+    if (addNotification) {
+        addNotification({
+            title: 'New Lead Inquired',
+            description: `${formData.name} reached out via ${formData.channel}.`,
+            type: 'lead'
+        });
+    }
+
     setFormData({ 
         name: '', 
         email: '', 

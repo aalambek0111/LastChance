@@ -1,5 +1,5 @@
 
-import { Booking, KPIMetric, Lead } from '../types';
+import { Booking, KPIMetric, Lead, AppNotification } from '../types';
 
 // Team Members for assignment
 export const MOCK_TEAM_MEMBERS = [
@@ -7,6 +7,41 @@ export const MOCK_TEAM_MEMBERS = [
   { id: '2', name: 'Sarah Miller' },
   { id: '3', name: 'Mike Johnson' },
   { id: '4', name: 'Emily Davis' },
+];
+
+export const INITIAL_NOTIFICATIONS: AppNotification[] = [
+  { 
+    id: 'n1', 
+    title: 'New inquiry from WhatsApp', 
+    description: 'Sarah Jenkins is interested in Sunset City Bike Tour.', 
+    type: 'lead', 
+    timestamp: Date.now() - 1000 * 60 * 10, // 10 mins ago
+    unread: true 
+  },
+  { 
+    id: 'n2', 
+    title: 'Payment Received: $450', 
+    description: 'Transaction from Marco Rossi was successful.', 
+    type: 'payment', 
+    timestamp: Date.now() - 1000 * 60 * 120, // 2 hours ago
+    unread: true 
+  },
+  { 
+    id: 'n3', 
+    title: 'Booking Cancelled', 
+    description: 'Private Boat Charter (Oct 27). 6 spots released.', 
+    type: 'booking', 
+    timestamp: Date.now() - 1000 * 60 * 60 * 24, // 1 day ago
+    unread: false 
+  },
+  { 
+    id: 'n4', 
+    title: '@Sarah Miller mentioned you', 
+    description: 'Check the pickup notes for Booking #BR-5120.', 
+    type: 'team', 
+    timestamp: Date.now() - 1000 * 60 * 60 * 3, // 3 hours ago
+    unread: false 
+  }
 ];
 
 // Mock KPI Data

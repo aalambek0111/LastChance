@@ -1,33 +1,14 @@
-
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { 
-  X, Calendar, MapPin, Users, FileText, Flag, User, CheckCircle, CreditCard, 
-  MessageSquare, Activity, Send, Clock, History, ChevronRight, UserPlus, Info,
-  RotateCcw, AlertCircle
+  X, Calendar, MapPin, Users, FileText, Flag, User, MessageSquare, Activity, 
+  ShieldCheck, Download, Trash2, Plus, PieChart, Percent, DollarSign, 
+  AlertTriangle, Save, CheckCircle2, RotateCcw, Info, File, UserPlus, Clock,
+  CreditCard, Wallet
 } from 'lucide-react';
 import { Booking, BookingStatus, PaymentStatus, Lead } from '../../types';
-import { TOURS, RECENT_LEADS } from '../../data/mockData';
+import { TOURS, RECENT_LEADS, UPCOMING_BOOKINGS } from '../../data/mockData';
 
-// --- Types for New Features ---
-
-interface ActivityLogItem {
-  id: string;
-  bookingId: string;
-  field: string;
-  from: string | number | undefined;
-  to: string | number | undefined;
-  actorName: string;
-  timestamp: number;
-}
-
-interface CommentItem {
-  id: string;
-  bookingId: string;
-  text: string;
-  authorName: string;
-  timestamp: number;
-  mentions: string[];
-}
+// --- Types for Internal Details ---
 
 interface TeamUser {
   id: string;
@@ -43,24 +24,9 @@ const TEAM_USERS: TeamUser[] = [
   { id: '4', name: 'Emily Davis', role: 'Support', email: 'emily@wanderlust.com' },
 ];
 
-const CURRENT_USER_NAME = 'Alex Walker'; // Mock current user
+const CURRENT_USER_NAME = 'Alex Walker';
 
 // --- Helper Components ---
-
-// Local Toast Component
-const ModalToast = ({ message, onClose }: { message: string; onClose: () => void }) => {
-  useEffect(() => {
-    const timer = setTimeout(onClose, 2500);
-    return () => clearTimeout(timer);
-  }, [onClose]);
-
-  return (
-    <div className="absolute top-6 left-1/2 -translate-x-1/2 z-[100] bg-gray-900/90 text-white px-4 py-2.5 rounded-full shadow-xl text-sm font-medium flex items-center gap-2 animate-in fade-in zoom-in duration-300 backdrop-blur-sm border border-gray-700/50">
-      <CheckCircle className="w-4 h-4 text-emerald-400" />
-      {message}
-    </div>
-  );
-};
 
 interface SearchableSelectProps {
   label: string;
@@ -113,7 +79,7 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
         </div>
         <input 
           type="text" 
-          className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white bg-white dark:bg-gray-700/50 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+          className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white bg-white dark:bg-gray-700/50 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-all"
           placeholder={placeholder}
           value={searchTerm}
           onChange={(e) => {
@@ -123,7 +89,7 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
           onFocus={() => setIsOpen(true)}
         />
         {isOpen && (
-          <div className="absolute z-20 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl max-h-60 overflow-y-auto">
+          <div className="absolute z-[100] w-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl max-h-60 overflow-y-auto">
             {filteredOptions.length > 0 ? (
               filteredOptions.map((opt) => (
                 <button
@@ -151,185 +117,17 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
   );
 };
 
-// Specialized Lookup for Assignee
-interface AssigneeLookupProps {
-  label: string;
-  users: TeamUser[];
-  selectedUserName: string;
-  onSelect: (userName: string) => void;
-}
-
-const AssigneeLookup: React.FC<AssigneeLookupProps> = ({ label, users, selectedUserName, onSelect }) => {
-  const [isOpen, setIsOpen] = useState(false);
-  const [search, setSearch] = useState('');
-  const [highlightedIndex, setHighlightedIndex] = useState(0);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  // Filter users based on search
-  const filteredUsers = useMemo(() => {
-    const term = search.toLowerCase();
-    return users.filter(u => 
-      u.name.toLowerCase().includes(term) || 
-      u.role.toLowerCase().includes(term)
-    );
-  }, [users, search]);
-
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
-        setSearch(''); // Reset search on close
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  // Keyboard navigation
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (!isOpen) {
-      if (e.key === 'ArrowDown' || e.key === 'Enter') {
-        setIsOpen(true);
-        setHighlightedIndex(0);
-        e.preventDefault();
-      }
-      return;
-    }
-
-    switch (e.key) {
-      case 'ArrowDown':
-        e.preventDefault();
-        setHighlightedIndex(prev => (prev + 1) % filteredUsers.length);
-        break;
-      case 'ArrowUp':
-        e.preventDefault();
-        setHighlightedIndex(prev => (prev - 1 + filteredUsers.length) % filteredUsers.length);
-        break;
-      case 'Enter':
-        e.preventDefault();
-        if (filteredUsers[highlightedIndex]) {
-          onSelect(filteredUsers[highlightedIndex].name);
-          setIsOpen(false);
-          setSearch('');
-        }
-        break;
-      case 'Escape':
-        setIsOpen(false);
-        inputRef.current?.blur();
-        break;
-    }
-  };
-
-  const handleClear = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    onSelect('');
-    setSearch('');
-    setTimeout(() => inputRef.current?.focus(), 0);
-  };
-
-  const selectedUser = users.find(u => u.name === selectedUserName);
-
-  return (
-    <div ref={containerRef} className="relative w-full">
-      <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase mb-1.5">
-        {label}
-      </label>
-      
-      <div 
-        className={`relative flex items-center w-full border rounded-lg bg-white dark:bg-gray-700/50 transition-shadow ${
-          isOpen ? 'ring-2 ring-indigo-500 border-indigo-500' : 'border-gray-300 dark:border-gray-600'
-        }`}
-        onClick={() => {
-          if (!isOpen) {
-            setIsOpen(true);
-            setTimeout(() => inputRef.current?.focus(), 0);
-          }
-        }}
-      >
-        <div className="pl-3 flex items-center pointer-events-none">
-          <UserPlus className="w-4 h-4 text-gray-400" />
-        </div>
-
-        {selectedUserName && !isOpen ? (
-          <div className="flex-1 flex items-center justify-between py-2.5 px-3">
-            <span className="text-sm font-medium text-gray-900 dark:text-white flex items-center gap-2">
-              {selectedUserName}
-              {selectedUser && <span className="text-xs text-gray-500 dark:text-gray-400 font-normal">({selectedUser.role})</span>}
-            </span>
-            <button 
-              type="button"
-              onClick={handleClear}
-              className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-0.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-        ) : (
-          <input
-            ref={inputRef}
-            type="text"
-            className="block w-full px-3 py-2.5 bg-transparent border-none focus:ring-0 text-gray-900 dark:text-white sm:text-sm placeholder-gray-400"
-            placeholder="Search team members..."
-            value={search}
-            onChange={(e) => {
-              setSearch(e.target.value);
-              setIsOpen(true);
-              setHighlightedIndex(0);
-            }}
-            onFocus={() => setIsOpen(true)}
-            onKeyDown={handleKeyDown}
-          />
-        )}
-      </div>
-
-      {isOpen && (
-        <div className="absolute z-20 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl max-h-60 overflow-y-auto">
-          {filteredUsers.length > 0 ? (
-            filteredUsers.map((user, idx) => (
-              <button
-                key={user.id}
-                type="button"
-                className={`w-full text-left px-4 py-2.5 text-sm transition-colors flex flex-col border-b border-gray-50 dark:border-gray-700 last:border-0 ${
-                  idx === highlightedIndex 
-                    ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-900 dark:text-white' 
-                    : 'text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700'
-                }`}
-                onMouseEnter={() => setHighlightedIndex(idx)}
-                onClick={() => {
-                  onSelect(user.name);
-                  setIsOpen(false);
-                  setSearch('');
-                }}
-              >
-                <span className="font-medium">{user.name}</span>
-                <span className={`text-xs ${idx === highlightedIndex ? 'text-indigo-700 dark:text-indigo-300' : 'text-gray-500 dark:text-gray-400'}`}>
-                  {user.role} • {user.email}
-                </span>
-              </button>
-            ))
-          ) : (
-            <div className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400 text-center">
-              No matching members
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
-};
-
 // --- Main Modal Component ---
 
 interface CreateBookingModalProps {
   isOpen: boolean;
   onClose: () => void;
   lead?: Lead | null;
-  leadName?: string; // Fallback for simple name passing
+  leadName?: string;
   onBookingCreated?: (booking: Booking) => void;
   bookingToEdit?: Booking | null;
   onBookingUpdated?: (booking: Booking) => void;
-  initialTab?: 'comments' | 'activity';
+  initialTab?: 'comments' | 'activity' | 'documents';
 }
 
 const CreateBookingModal: React.FC<CreateBookingModalProps> = ({ 
@@ -342,7 +140,6 @@ const CreateBookingModal: React.FC<CreateBookingModalProps> = ({
   onBookingUpdated,
   initialTab = 'comments'
 }) => {
-  // Form State
   const [formData, setFormData] = useState({
     tourName: '',
     clientName: '',
@@ -354,88 +151,56 @@ const CreateBookingModal: React.FC<CreateBookingModalProps> = ({
     paymentStatus: 'Unpaid' as PaymentStatus,
     pickupLocation: '',
     notes: '',
-    assignedTo: ''
+    assignedTo: '',
+    partnerSource: '',
+    commissionRate: '' as string | number,
+    totalAmount: '' as string | number,
+    amountPaid: '' as string | number
   });
 
-  // New Payment Fields State
-  const [totalAmount, setTotalAmount] = useState(0);
-  const [amountPaid, setAmountPaid] = useState(0);
-  const [isAmountOverridden, setIsAmountOverridden] = useState(false);
+  const [activeTab, setActiveTab] = useState<'comments' | 'activity' | 'documents'>(initialTab);
+  const [isManualAmount, setIsManualAmount] = useState(false);
 
-  // Right Panel State (Edit Mode Only)
-  const [activeTab, setActiveTab] = useState<'comments' | 'activity'>(initialTab);
-  const [activities, setActivities] = useState<ActivityLogItem[]>([]);
-  const [comments, setComments] = useState<CommentItem[]>([]);
-  const [showToast, setShowToast] = useState(false);
-  const [toastMessage, setToastMessage] = useState('');
-  
-  // Comment Composer State
-  const [commentText, setCommentText] = useState('');
-  const [showMentionList, setShowMentionList] = useState(false);
-  const [mentionQuery, setMentionQuery] = useState('');
-  const commentInputRef = useRef<HTMLTextAreaElement>(null);
+  // --- Capacity Logic ---
+  const activeTour = useMemo(() => TOURS.find(t => t.name === formData.tourName), [formData.tourName]);
+  const availability = useMemo(() => {
+    if (!formData.tourName || !formData.date) return null;
+    const existingBookedCount = UPCOMING_BOOKINGS
+      .filter(b => b.tourName === formData.tourName && b.date === formData.date && b.id !== bookingToEdit?.id)
+      .reduce((acc, curr) => acc + curr.people, 0);
+    const max = activeTour?.maxPeople || 20;
+    return { left: max - existingBookedCount, max };
+  }, [formData.tourName, formData.date, activeTour, bookingToEdit]);
 
-  // Metadata State
-  const metadata = useMemo(() => {
-    if (!bookingToEdit) return null;
-    return {
-      createdAt: 'Oct 12, 2023 09:30 AM', // Mock
-      updatedAt: 'Oct 24, 2023 04:15 PM', // Mock
-      updatedBy: 'Alex Walker'
-    };
-  }, [bookingToEdit]);
-
-  // Helper to format date for input (YYYY-MM-DD)
-  const formatDateForInput = (dateString: string) => {
-    if (!dateString) return '';
-    const date = new Date(dateString);
-    if (isNaN(date.getTime())) return '';
-    if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) return dateString;
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  };
-
-  // --- Style Helpers for Payment Status ---
-  const getPaymentColorClass = (status: PaymentStatus) => {
-    switch (status) {
-      case 'Paid':
-        return 'text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800';
-      case 'Partially Paid':
-        return 'text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800';
-      case 'Unpaid':
-        return 'text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800';
-      case 'Refunded':
-        return 'text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700';
-      case 'Waiting':
-        return 'text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800';
-      default:
-        return 'text-gray-900 dark:text-white bg-white dark:bg-gray-700/50 border-gray-300 dark:border-gray-600';
-    }
-  };
-
-  const getPaymentIconColorClass = (status: PaymentStatus) => {
-    switch (status) {
-      case 'Paid': return 'text-emerald-500 dark:text-emerald-400';
-      case 'Partially Paid': return 'text-amber-500 dark:text-amber-400';
-      case 'Unpaid': return 'text-red-500 dark:text-red-400';
-      case 'Refunded': return 'text-gray-500 dark:text-gray-400';
-      case 'Waiting': return 'text-blue-500 dark:text-blue-400';
-      default: return 'text-gray-400';
-    }
-  };
-
-  // --- Effects ---
-
-  // 1. Initialize Form & Load Data
+  // --- Auto-calculation logic for Tour Price ---
   useEffect(() => {
-    setActiveTab(initialTab);
+    if (!isManualAmount && activeTour && !bookingToEdit) {
+      setFormData(prev => ({
+        ...prev,
+        totalAmount: activeTour.price * (prev.pax || 0)
+      }));
+    }
+  }, [activeTour, formData.pax, isManualAmount, bookingToEdit]);
+
+  // --- Financial Formulas ---
+  const totals = useMemo(() => {
+    const total = typeof formData.totalAmount === 'string' ? parseFloat(formData.totalAmount) || 0 : formData.totalAmount || 0;
+    const paid = typeof formData.amountPaid === 'string' ? parseFloat(formData.amountPaid) || 0 : formData.amountPaid || 0;
+    const rate = typeof formData.commissionRate === 'string' ? parseFloat(formData.commissionRate) || 0 : formData.commissionRate || 0;
+    
+    const due = total - paid;
+    const commission = (total * (rate / 100));
+    const net = total - commission;
+    
+    return { total, paid, due, commission, net };
+  }, [formData.totalAmount, formData.amountPaid, formData.commissionRate]);
+
+  useEffect(() => {
     if (bookingToEdit) {
       setFormData({
         tourName: bookingToEdit.tourName,
         clientName: bookingToEdit.clientName,
-        date: formatDateForInput(bookingToEdit.date),
+        date: bookingToEdit.date,
         startTime: bookingToEdit.startTime || '09:00',
         endTime: bookingToEdit.endTime || '12:00',
         pax: bookingToEdit.people,
@@ -443,31 +208,17 @@ const CreateBookingModal: React.FC<CreateBookingModalProps> = ({
         paymentStatus: bookingToEdit.paymentStatus || 'Unpaid',
         pickupLocation: bookingToEdit.pickupLocation || '',
         notes: bookingToEdit.notes || '',
-        assignedTo: bookingToEdit.assignedTo || ''
+        assignedTo: bookingToEdit.assignedTo || '',
+        partnerSource: (bookingToEdit as any).partnerSource || '',
+        commissionRate: (bookingToEdit as any).commissionRate ?? 0,
+        totalAmount: bookingToEdit.totalAmount ?? 0,
+        amountPaid: bookingToEdit.amountPaid ?? 0
       });
-
-      // Load Payment Details
-      setTotalAmount(bookingToEdit.totalAmount ?? 0);
-      setAmountPaid(bookingToEdit.amountPaid ?? 0);
-      setIsAmountOverridden(bookingToEdit.isAmountOverridden ?? false);
-
-      // Load Activities
-      const storedActivities = localStorage.getItem(`booking_activities_${bookingToEdit.id}`);
-      if (storedActivities) setActivities(JSON.parse(storedActivities));
-      else setActivities([]);
-
-      // Load Comments
-      const storedComments = localStorage.getItem(`booking_comments_${bookingToEdit.id}`);
-      if (storedComments) setComments(JSON.parse(storedComments));
-      else setComments([]);
-
+      setIsManualAmount(true);
     } else {
-      // Create Mode Reset
-      const defaultClientName = lead ? lead.name : (leadName && leadName !== 'New Client' ? leadName : '');
-      
       setFormData({
         tourName: '',
-        clientName: defaultClientName,
+        clientName: lead?.name || leadName || '',
         date: new Date().toISOString().split('T')[0],
         startTime: '09:00',
         endTime: '12:00',
@@ -475,765 +226,393 @@ const CreateBookingModal: React.FC<CreateBookingModalProps> = ({
         status: 'Pending',
         paymentStatus: 'Unpaid',
         pickupLocation: '',
-        notes: lead ? `Source: ${lead.channel}. ${lead.notes || ''}` : '',
-        assignedTo: lead?.assignedTo || ''
+        notes: '',
+        assignedTo: '',
+        partnerSource: '',
+        commissionRate: 0,
+        totalAmount: 0,
+        amountPaid: 0
       });
-      setTotalAmount(0);
-      setAmountPaid(0);
-      setIsAmountOverridden(false);
-      setActivities([]);
-      setComments([]);
+      setIsManualAmount(false);
     }
-  }, [bookingToEdit, isOpen, lead, leadName, initialTab]);
+  }, [bookingToEdit, isOpen, lead, leadName]);
 
-  // 2. Auto-calculate Total Amount based on Tour & Pax
-  useEffect(() => {
-    if (isAmountOverridden) return;
-
-    const tour = TOURS.find(t => t.name === formData.tourName);
-    const price = tour ? tour.price : 0;
-    const pax = formData.pax || 0;
-    const newTotal = price * pax;
-
-    setTotalAmount(newTotal);
-  }, [formData.tourName, formData.pax, isAmountOverridden]);
-
-  // Derived Financials
-  const amountDue = formData.paymentStatus === 'Refunded' ? 0 : Math.max(totalAmount - amountPaid, 0);
-
-  // --- Handlers ---
-
-  const handleTotalChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const rawValue = e.target.value;
-    if (rawValue === '') {
-      setTotalAmount(0);
-      setIsAmountOverridden(true);
-      return;
-    }
-    const val = parseFloat(rawValue);
-    if (!isNaN(val) && val >= 0) {
-      setTotalAmount(val);
-      setIsAmountOverridden(true);
-    }
-  };
-
-  const handleResetTotal = () => {
-    const tour = TOURS.find(t => t.name === formData.tourName);
-    const price = tour ? tour.price : 0;
-    const pax = formData.pax || 0;
-    setTotalAmount(price * pax);
-    setIsAmountOverridden(false);
-  };
-
-  const handleAmountPaidChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const rawValue = e.target.value;
-    if (rawValue === '') {
-      setAmountPaid(0);
-      return;
-    }
-    const val = parseFloat(rawValue);
-    if (!isNaN(val) && val >= 0) {
-      setAmountPaid(val);
-    }
-  };
-
-  const handleCommentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const val = e.target.value;
-    setCommentText(val);
-
-    // Simple mention detection
-    const cursorIndex = e.target.selectionStart;
-    const textBeforeCursor = val.slice(0, cursorIndex);
-    const words = textBeforeCursor.split(/\s/);
-    const currentWord = words[words.length - 1];
-
-    if (currentWord.startsWith('@')) {
-      setShowMentionList(true);
-      setMentionQuery(currentWord.slice(1));
-    } else {
-      setShowMentionList(false);
-    }
-  };
-
-  const insertMention = (userName: string) => {
-    const cursorIndex = commentInputRef.current?.selectionStart || 0;
-    const textBeforeCursor = commentText.slice(0, cursorIndex);
-    const textAfterCursor = commentText.slice(cursorIndex);
-    const lastAtIndex = textBeforeCursor.lastIndexOf('@');
-    const newTextBefore = textBeforeCursor.slice(0, lastAtIndex) + `@${userName} `;
-    
-    setCommentText(newTextBefore + textAfterCursor);
-    setShowMentionList(false);
-    commentInputRef.current?.focus();
-  };
-
-  const postComment = (e?: React.FormEvent) => {
-    e?.preventDefault();
-    if (!commentText.trim() || !bookingToEdit) return;
-
-    const mentionsFound = TEAM_USERS
-        .filter(u => commentText.includes(`@${u.name}`))
-        .map(u => u.name);
-
-    const newComment: CommentItem = {
-      id: `c_${Date.now()}`,
-      bookingId: bookingToEdit.id,
-      text: commentText,
-      authorName: CURRENT_USER_NAME,
-      timestamp: Date.now(),
-      mentions: mentionsFound
-    };
-
-    const updatedComments = [newComment, ...comments];
-    setComments(updatedComments);
-    localStorage.setItem(`booking_comments_${bookingToEdit.id}`, JSON.stringify(updatedComments));
-    setCommentText('');
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
-    
-    try {
-      if (bookingToEdit && onBookingUpdated) {
-        // 1. Detect Changes for Activity Log
-        const changes: ActivityLogItem[] = [];
-        const original = {
-          tourName: bookingToEdit.tourName,
-          clientName: bookingToEdit.clientName,
-          date: formatDateForInput(bookingToEdit.date),
-          startTime: bookingToEdit.startTime,
-          endTime: bookingToEdit.endTime,
-          pax: bookingToEdit.people,
-          status: bookingToEdit.status,
-          paymentStatus: bookingToEdit.paymentStatus || 'Unpaid',
-          pickupLocation: bookingToEdit.pickupLocation || '',
-          notes: bookingToEdit.notes || '',
-          assignedTo: bookingToEdit.assignedTo || '',
-          totalAmount: bookingToEdit.totalAmount,
-          amountPaid: bookingToEdit.amountPaid
-        };
+    const finalBooking: Booking = {
+      ...bookingToEdit,
+      id: bookingToEdit?.id || `B${Date.now()}`,
+      ...formData,
+      commissionRate: typeof formData.commissionRate === 'string' ? parseFloat(formData.commissionRate) || 0 : formData.commissionRate,
+      totalAmount: totals.total,
+      amountPaid: totals.paid,
+      amountDue: totals.due,
+      people: formData.pax,
+    } as any;
 
-        const hasChanged = (a: any, b: any) => String(a) !== String(b);
-
-        if (hasChanged(original.tourName, formData.tourName)) 
-          changes.push({ id: `a_${Date.now()}_1`, bookingId: bookingToEdit.id, field: 'Tour', from: original.tourName, to: formData.tourName, actorName: CURRENT_USER_NAME, timestamp: Date.now() });
-        if (hasChanged(original.status, formData.status)) 
-          changes.push({ id: `a_${Date.now()}_2`, bookingId: bookingToEdit.id, field: 'Status', from: original.status, to: formData.status, actorName: CURRENT_USER_NAME, timestamp: Date.now() });
-        if (hasChanged(original.paymentStatus, formData.paymentStatus)) 
-          changes.push({ id: `a_${Date.now()}_3`, bookingId: bookingToEdit.id, field: 'Payment Status', from: original.paymentStatus, to: formData.paymentStatus, actorName: CURRENT_USER_NAME, timestamp: Date.now() });
-        if (hasChanged(original.date, formData.date)) 
-          changes.push({ id: `a_${Date.now()}_4`, bookingId: bookingToEdit.id, field: 'Date', from: original.date, to: formData.date, actorName: CURRENT_USER_NAME, timestamp: Date.now() });
-        if (hasChanged(original.pax, formData.pax)) 
-          changes.push({ id: `a_${Date.now()}_5`, bookingId: bookingToEdit.id, field: 'Pax', from: original.pax, to: formData.pax, actorName: CURRENT_USER_NAME, timestamp: Date.now() });
-        if (hasChanged(original.pickupLocation, formData.pickupLocation)) 
-          changes.push({ id: `a_${Date.now()}_6`, bookingId: bookingToEdit.id, field: 'Pickup', from: original.pickupLocation, to: formData.pickupLocation, actorName: CURRENT_USER_NAME, timestamp: Date.now() });
-        if (hasChanged(original.assignedTo, formData.assignedTo)) 
-          changes.push({ id: `a_${Date.now()}_7`, bookingId: bookingToEdit.id, field: 'Assigned To', from: original.assignedTo || 'Unassigned', to: formData.assignedTo, actorName: CURRENT_USER_NAME, timestamp: Date.now() });
-        if (original.totalAmount !== totalAmount)
-          changes.push({ id: `a_${Date.now()}_8`, bookingId: bookingToEdit.id, field: 'Total Amount', from: original.totalAmount, to: totalAmount, actorName: CURRENT_USER_NAME, timestamp: Date.now() });
-        if (original.amountPaid !== amountPaid)
-          changes.push({ id: `a_${Date.now()}_9`, bookingId: bookingToEdit.id, field: 'Amount Paid', from: original.amountPaid, to: amountPaid, actorName: CURRENT_USER_NAME, timestamp: Date.now() });
-
-        if (changes.length > 0) {
-          const updatedActivities = [...changes, ...activities];
-          setActivities(updatedActivities);
-          localStorage.setItem(`booking_activities_${bookingToEdit.id}`, JSON.stringify(updatedActivities));
-        }
-
-        const updatedBooking: Booking = {
-          ...bookingToEdit,
-          tourName: formData.tourName,
-          clientName: formData.clientName || 'Unknown Client',
-          date: formData.date,
-          startTime: formData.startTime,
-          endTime: formData.endTime,
-          people: formData.pax,
-          status: formData.status,
-          paymentStatus: formData.paymentStatus,
-          pickupLocation: formData.pickupLocation,
-          notes: formData.notes,
-          assignedTo: formData.assignedTo,
-          totalAmount: totalAmount,
-          amountPaid: amountPaid,
-          amountDue: amountDue,
-          isAmountOverridden: isAmountOverridden
-        };
-        onBookingUpdated(updatedBooking);
-
-      } else {
-        // Create Mode
-        const newBookingId = `B${Date.now()}`;
-        
-        // Initial Activity Log for creation from Lead
-        const initialActivities: ActivityLogItem[] = [];
-        if (lead) {
-           initialActivities.push({
-             id: `a_${Date.now()}_init`, 
-             bookingId: newBookingId, 
-             field: 'Origin', 
-             from: 'Lead', 
-             to: `Created from Lead: ${lead.name}`, 
-             actorName: CURRENT_USER_NAME, 
-             timestamp: Date.now() 
-           });
-           localStorage.setItem(`booking_activities_${newBookingId}`, JSON.stringify(initialActivities));
-        }
-
-        const newBooking: Booking = {
-          id: newBookingId,
-          leadId: lead?.id, // Link the lead ID if available
-          tourName: formData.tourName,
-          date: formData.date,
-          startTime: formData.startTime,
-          endTime: formData.endTime,
-          clientName: formData.clientName || 'Unknown Client',
-          people: formData.pax,
-          status: formData.status,
-          paymentStatus: formData.paymentStatus,
-          pickupLocation: formData.pickupLocation,
-          notes: formData.notes,
-          assignedTo: formData.assignedTo,
-          totalAmount: totalAmount,
-          amountPaid: amountPaid,
-          amountDue: amountDue,
-          isAmountOverridden: isAmountOverridden
-        };
-
-        if (onBookingCreated) {
-          onBookingCreated(newBooking);
-        }
-      }
-
-      setToastMessage('Saved successfully');
-      setShowToast(true);
-      
-      setTimeout(() => {
-        onClose();
-      }, 1500);
-
-    } catch (error) {
-      setToastMessage('Save failed. Try again.');
-      setShowToast(true);
-    }
+    if (bookingToEdit) onBookingUpdated?.(finalBooking);
+    else onBookingCreated?.(finalBooking);
+    onClose();
   };
-
-  const clientOptions = [
-    ...RECENT_LEADS.map(lead => ({ id: lead.id, label: lead.name, subLabel: `${lead.channel} • ${lead.status}` })),
-    { id: 'walk-in', label: 'Walk-in Client', subLabel: 'Direct Booking' }
-  ];
-
-  const tourOptions = TOURS.map(tour => ({ 
-    id: tour.id, 
-    label: tour.name, 
-    subLabel: `${tour.duration} • $${tour.price}` 
-  }));
-
-  const mentionFilteredUsers = TEAM_USERS.filter(u => 
-    u.name.toLowerCase().includes(mentionQuery.toLowerCase())
-  );
 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[70] overflow-y-auto" role="dialog" aria-modal="true">
-      <div 
-        className="fixed inset-0 bg-gray-900/50 backdrop-blur-sm transition-opacity" 
-        onClick={onClose}
-      ></div>
+    <div className="fixed inset-0 z-[1000] overflow-y-auto" role="dialog" aria-modal="true">
+      <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm transition-opacity" onClick={onClose} />
 
       <div className="flex items-center justify-center min-h-screen p-4">
-        {/* Modal Container: wider if editing */}
-        <div className={`relative bg-white dark:bg-gray-800 rounded-2xl w-full border border-gray-100 dark:border-gray-700 shadow-2xl transform transition-all flex flex-col ${bookingToEdit ? 'max-w-[95vw] lg:max-w-[1300px] h-[90vh]' : 'max-w-lg max-h-[90vh]'}`}>
+        <div className={`relative bg-white dark:bg-gray-800 rounded-3xl w-full shadow-2xl transform transition-all flex flex-col border border-gray-100 dark:border-gray-700 overflow-hidden ${bookingToEdit ? 'max-w-6xl h-[85vh]' : 'max-w-lg'}`}>
           
-          {showToast && <ModalToast message={toastMessage} onClose={() => setShowToast(false)} />}
-
           {/* Header */}
-          <div className="flex-none flex justify-between items-center px-6 py-4 border-b border-gray-100 dark:border-gray-700">
+          <div className="flex-none flex justify-between items-center px-8 py-6 border-b border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800">
             <div>
-              <h3 className="text-lg font-bold text-gray-900 dark:text-white">
-                {bookingToEdit ? `Edit Booking ${bookingToEdit.id}` : 'Create New Booking'}
+              <h3 className="text-xl font-bold text-gray-900 dark:text-white">
+                {bookingToEdit ? `Edit Booking: ${bookingToEdit.bookingNo || bookingToEdit.id}` : 'New Booking'}
               </h3>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                {bookingToEdit ? 'Update details, track activity, and collaborate.' : 'Enter details below to create a new record.'}
-              </p>
+              <p className="text-xs text-gray-500 font-medium tracking-wide uppercase mt-1 opacity-70">Operations & Inventory Control</p>
             </div>
-            <button 
-              onClick={onClose} 
-              className="text-gray-400 hover:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 p-2 rounded-full transition-colors"
-            >
-              <X className="w-5 h-5" />
+            <button onClick={onClose} className="p-2.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full text-gray-400 transition-colors">
+              <X className="w-6 h-6" />
             </button>
           </div>
 
-          {/* Body Content */}
           <div className="flex-1 overflow-hidden flex flex-col lg:flex-row">
             
-            {/* LEFT COLUMN: FORM */}
-            <div className={`flex-1 flex flex-col min-w-0 ${bookingToEdit ? 'lg:border-r border-gray-100 dark:border-gray-700' : ''}`}>
-              <div className="flex-1 overflow-y-auto p-6 lg:p-8">
-                <form id="booking-form" onSubmit={handleSubmit} className="space-y-4">
-                  {/* Row 1: Client & Tour */}
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                    <SearchableSelect 
-                      label="Client"
-                      icon={<User className="w-4 h-4 text-gray-400" />}
-                      options={clientOptions}
-                      value={formData.clientName}
-                      onChange={(val) => setFormData({ ...formData, clientName: val })}
-                      placeholder="Select a lead..."
-                    />
+            {/* LEFT SIDE: MAIN FORM */}
+            <div className={`flex-1 overflow-y-auto p-8 space-y-8 custom-scrollbar ${bookingToEdit ? 'lg:border-r border-gray-100 dark:border-gray-700' : ''}`}>
+              
+              {/* Entity Selections */}
+              <div className="grid grid-cols-1 gap-6">
+                <SearchableSelect 
+                  label="Client"
+                  icon={<User className="w-4 h-4 text-gray-400" />}
+                  options={RECENT_LEADS.map(l => ({ id: l.id, label: l.name, subLabel: l.channel }))}
+                  value={formData.clientName}
+                  onChange={(val) => setFormData(p => ({ ...p, clientName: val }))}
+                  placeholder="Find a lead..."
+                />
 
-                    <SearchableSelect 
-                      label="Tour Name"
-                      icon={<Flag className="w-4 h-4 text-gray-400" />}
-                      options={tourOptions}
-                      value={formData.tourName}
-                      onChange={(val) => setFormData({ ...formData, tourName: val })}
-                      placeholder="Select a tour..."
-                    />
-                  </div>
+                <SearchableSelect 
+                  label="Tour Catalog Item"
+                  icon={<Flag className="w-4 h-4 text-gray-400" />}
+                  options={TOURS.map(t => ({ id: t.id, label: t.name, subLabel: `$${t.price} / pax` }))}
+                  value={formData.tourName}
+                  onChange={(val) => setFormData(p => ({ ...p, tourName: val }))}
+                  placeholder="Select a tour..."
+                />
+              </div>
 
-                  {/* Row 2: Date, Time & Pax */}
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase mb-1.5">Date</label>
-                      <div className="relative">
-                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                           <Calendar className="w-4 h-4 text-gray-400" />
-                        </div>
-                        <input 
-                          type="date" 
-                          required
-                          className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white bg-white dark:bg-gray-700/50 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                          value={formData.date}
-                          onChange={e => setFormData({...formData, date: e.target.value})}
-                        />
-                      </div>
-                    </div>
-                    <div className="flex gap-2">
-                      <div className="flex-1">
-                        <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase mb-1.5">Start</label>
-                        <input 
-                          type="time" 
-                          className="block w-full px-2 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white bg-white dark:bg-gray-700/50 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                          value={formData.startTime}
-                          onChange={e => setFormData({...formData, startTime: e.target.value})}
-                        />
-                      </div>
-                      <div className="flex-1">
-                        <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase mb-1.5">End</label>
-                        <input 
-                          type="time" 
-                          className="block w-full px-2 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white bg-white dark:bg-gray-700/50 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                          value={formData.endTime}
-                          onChange={e => setFormData({...formData, endTime: e.target.value})}
-                        />
-                      </div>
-                    </div>
+              {/* Date & Pax */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase">Date</label>
+                  <div className="relative">
+                     <Calendar className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
+                     <input 
+                        type="date"
+                        value={formData.date}
+                        onChange={e => setFormData(p => ({ ...p, date: e.target.value }))}
+                        className="w-full pl-10 p-2.5 border rounded-xl dark:bg-gray-700/50 text-sm border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                     />
                   </div>
-                  
-                  {/* Pax Row */}
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase mb-1.5">Pax</label>
-                    <div className="relative">
-                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                          <Users className="w-4 h-4 text-gray-400" />
-                      </div>
-                      <input 
-                        type="number" 
+                </div>
+
+                <div className="space-y-1.5 relative">
+                  <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase">Pax (Guests)</label>
+                  <div className="relative">
+                    <Users className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
+                    <input 
+                        type="number"
                         min="1"
-                        required
-                        className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white bg-white dark:bg-gray-700/50 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                         value={formData.pax}
-                        onChange={e => setFormData({...formData, pax: parseInt(e.target.value)})}
-                      />
-                    </div>
+                        onChange={e => setFormData(p => ({ ...p, pax: parseInt(e.target.value) || 0 }))}
+                        className={`w-full pl-10 p-2.5 border rounded-xl dark:bg-gray-700/50 text-sm outline-none focus:ring-2 focus:ring-indigo-500 transition-all ${availability && formData.pax > availability.left ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-300 dark:border-gray-600'}`}
+                    />
                   </div>
-
-                  {/* Row 3: Status & Payment Status */}
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase mb-1.5">Status</label>
-                      <div className="relative">
-                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                           <CheckCircle className="w-4 h-4 text-gray-400" />
-                        </div>
-                        <select
-                          className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white bg-white dark:bg-gray-700/50 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm appearance-none"
-                          value={formData.status}
-                          onChange={e => setFormData({...formData, status: e.target.value as BookingStatus})}
-                        >
-                          <option value="Pending">Pending</option>
-                          <option value="Confirmed">Confirmed</option>
-                          <option value="Completed">Completed</option>
-                          <option value="Cancelled">Cancelled</option>
-                        </select>
-                      </div>
+                  {availability && (
+                    <div className="absolute -bottom-6 left-0 right-0 flex justify-between items-center px-1">
+                       <span className={`text-[10px] font-bold uppercase tracking-tight ${availability.left <= 2 ? 'text-orange-600' : 'text-emerald-600'}`}>
+                         {availability.left}/{availability.max} spots left
+                       </span>
+                       {formData.pax > availability.left && (
+                         <span className="text-[9px] text-red-600 font-bold flex items-center gap-0.5 animate-pulse"><AlertTriangle className="w-2.5 h-2.5" /> OVERBOOKED</span>
+                       )}
                     </div>
+                  )}
+                </div>
+              </div>
 
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase mb-1.5">Payment Status</label>
+              {/* CORE PRICING SECTION (Restored) */}
+              <div className="pt-6 border-t border-gray-100 dark:border-gray-700 space-y-4">
+                <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                   <CreditCard className="w-3.5 h-3.5" /> Pricing & Payment
+                </h4>
+                <div className="bg-white dark:bg-gray-800 p-5 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm grid grid-cols-1 md:grid-cols-3 gap-6">
+                   <div>
+                      <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1.5">Total Amount</label>
                       <div className="relative">
-                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                           <CreditCard className={`w-4 h-4 ${getPaymentIconColorClass(formData.paymentStatus)}`} />
-                        </div>
-                        <select
-                          className={`block w-full pl-10 pr-3 py-2.5 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm appearance-none font-medium transition-colors ${getPaymentColorClass(formData.paymentStatus)}`}
-                          value={formData.paymentStatus}
-                          onChange={e => setFormData({...formData, paymentStatus: e.target.value as PaymentStatus})}
-                        >
-                          <option value="Unpaid">Unpaid</option>
-                          <option value="Waiting">Waiting</option>
-                          <option value="Partially Paid">Partially Paid</option>
-                          <option value="Paid">Paid</option>
-                          <option value="Refunded">Refunded</option>
-                        </select>
+                        <DollarSign className="absolute left-3 top-2.5 w-3.5 h-3.5 text-gray-400" />
+                        <input 
+                          type="number"
+                          value={formData.totalAmount}
+                          onChange={(e) => {
+                            setFormData(p => ({ ...p, totalAmount: e.target.value }));
+                            setIsManualAmount(true);
+                          }}
+                          className="w-full pl-9 p-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg text-sm font-bold text-gray-900 dark:text-white"
+                        />
                       </div>
-                    </div>
-                  </div>
-
-                  {/* Payment Details Card */}
-                  <div className="p-4 bg-gray-50/50 dark:bg-gray-700/30 rounded-xl border border-gray-200 dark:border-gray-700 space-y-3">
-                    <div className="flex items-center justify-between">
-                      <h4 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Payment Details</h4>
-                      {amountPaid > totalAmount && (
-                        <div className="flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400">
-                          <AlertCircle className="w-3 h-3" />
-                          <span>Paid exceeds total</span>
-                        </div>
+                      {activeTour && !isManualAmount && (
+                         <div className="mt-1 text-[9px] text-indigo-500 font-bold italic uppercase tracking-tighter flex items-center gap-1">
+                           <RotateCcw className="w-2 h-2" /> Calculated from catalog
+                         </div>
                       )}
+                   </div>
+                   <div>
+                      <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1.5">Amount Paid</label>
+                      <div className="relative">
+                        <Wallet className="absolute left-3 top-2.5 w-3.5 h-3.5 text-gray-400" />
+                        <input 
+                          type="number"
+                          value={formData.amountPaid}
+                          onChange={(e) => setFormData(p => ({ ...p, amountPaid: e.target.value }))}
+                          className="w-full pl-9 p-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg text-sm font-bold text-emerald-600"
+                        />
+                      </div>
+                   </div>
+                   <div className="bg-indigo-50 dark:bg-indigo-900/20 p-2.5 rounded-xl border border-indigo-100 dark:border-indigo-800 flex flex-col justify-center items-center">
+                      <div className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-widest mb-1">Amount Due</div>
+                      <div className={`text-xl font-black ${totals.due > 0 ? 'text-red-500' : 'text-emerald-500'}`}>
+                        ${totals.due.toFixed(2)}
+                      </div>
+                   </div>
+                </div>
+              </div>
+
+              {/* Statuses */}
+              <div className="grid grid-cols-2 gap-6 pt-2">
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase">Tour Status</label>
+                  <select
+                    value={formData.status}
+                    onChange={e => setFormData(p => ({ ...p, status: e.target.value as BookingStatus }))}
+                    className="w-full p-2.5 border border-gray-300 dark:border-gray-600 rounded-xl dark:bg-gray-700/50 text-sm font-semibold outline-none"
+                  >
+                    <option value="Pending">Pending</option>
+                    <option value="Confirmed">Confirmed</option>
+                    <option value="Completed">Completed</option>
+                    <option value="Cancelled">Cancelled</option>
+                  </select>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase">Payment Status</label>
+                  <select
+                    value={formData.paymentStatus}
+                    onChange={e => setFormData(p => ({ ...p, paymentStatus: e.target.value as PaymentStatus }))}
+                    className={`w-full p-2.5 border rounded-xl dark:bg-gray-700/50 text-sm font-bold ${formData.paymentStatus === 'Paid' ? 'border-emerald-500 text-emerald-600' : 'border-red-300 text-red-600'}`}
+                  >
+                    <option value="Unpaid">Unpaid</option>
+                    <option value="Waiting">Waiting</option>
+                    <option value="Paid">Paid</option>
+                    <option value="Partially Paid">Partially Paid</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Financial Extras Section */}
+              <div className="pt-6 border-t border-gray-100 dark:border-gray-700 space-y-4">
+                 <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                   <PieChart className="w-3.5 h-3.5" /> Partner Commission
+                 </h4>
+                 <div className="bg-gray-50 dark:bg-gray-900/40 p-5 rounded-2xl border border-gray-200 dark:border-gray-700 grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-4">
+                       <div>
+                          <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1.5">Referral Partner</label>
+                          <input 
+                            placeholder="e.g. Hotel Marriott, Booking.com"
+                            value={formData.partnerSource}
+                            onChange={e => setFormData(p => ({ ...p, partnerSource: e.target.value }))}
+                            className="w-full p-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm"
+                          />
+                       </div>
+                       <div>
+                          <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1.5">Comm. %</label>
+                          <div className="relative">
+                            <Percent className="absolute right-3 top-2.5 w-3.5 h-3.5 text-gray-400" />
+                            <input 
+                              type="number"
+                              value={formData.commissionRate}
+                              onChange={e => setFormData(p => ({ ...p, commissionRate: e.target.value }))}
+                              className="w-full p-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-indigo-500"
+                            />
+                          </div>
+                       </div>
                     </div>
                     
-                    <div className="grid grid-cols-2 gap-4">
-                      {/* Total Amount */}
-                      <div>
-                        <div className="flex items-center justify-between mb-1.5">
-                          <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase">
-                            Total
-                          </label>
-                          {isAmountOverridden && (
-                            <button 
-                              type="button" 
-                              onClick={handleResetTotal}
-                              className="text-[10px] flex items-center gap-1 text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300 transition-colors"
-                            >
-                              <RotateCcw className="w-3 h-3" /> Reset
-                            </button>
-                          )}
-                        </div>
-                        <div className="relative">
-                          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-500 dark:text-gray-400 text-sm font-semibold">
-                             $
-                          </div>
-                          <input 
-                            type="number" 
-                            min="0"
-                            step="0.01"
-                            className={`block w-full pl-8 pr-3 py-2.5 border rounded-lg text-gray-900 dark:text-white bg-white dark:bg-gray-800 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm ${
-                              isAmountOverridden 
-                                ? 'border-indigo-300 dark:border-indigo-500/50 bg-indigo-50/20 dark:bg-indigo-900/10' 
-                                : 'border-gray-300 dark:border-gray-600'
-                            }`}
-                            value={totalAmount === 0 ? '' : totalAmount}
-                            onChange={handleTotalChange}
-                          />
-                          {isAmountOverridden && (
-                            <span className="absolute inset-y-0 right-2 flex items-center pointer-events-none">
-                              <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-100 dark:bg-indigo-900/50 px-1.5 py-0.5 rounded">Manual</span>
-                            </span>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Amount Paid */}
-                      <div>
-                        <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase mb-1.5">
-                          Paid
-                        </label>
-                        <div className="relative">
-                          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-500 dark:text-gray-400 text-sm font-semibold">
-                             $
-                          </div>
-                          <input 
-                            type="number" 
-                            min="0"
-                            step="0.01"
-                            className="block w-full pl-8 pr-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white bg-white dark:bg-gray-800 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                            value={amountPaid === 0 ? '' : amountPaid}
-                            onChange={handleAmountPaidChange}
-                          />
-                        </div>
-                      </div>
+                    <div className="flex flex-col justify-center px-4">
+                       <div className="flex justify-between text-xs text-gray-500 mb-1">
+                          <span>Partner Payout</span>
+                          <span className="font-bold text-red-500">-${totals.commission.toFixed(2)}</span>
+                       </div>
+                       <div className="h-px bg-gray-200 dark:bg-gray-700 my-2" />
+                       <div className="flex justify-between items-center">
+                          <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase">Net Revenue</span>
+                          <span className="text-xl font-extrabold text-indigo-600 dark:text-indigo-400">${totals.net.toFixed(2)}</span>
+                       </div>
                     </div>
+                 </div>
+              </div>
 
-                    {/* Amount Due & Hints */}
-                    <div className="flex flex-col gap-2">
-                      <div className="flex items-center justify-between bg-white dark:bg-gray-800 p-2.5 rounded-lg border border-gray-200 dark:border-gray-600">
-                        <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Amount Due</span>
-                        <span className={`text-base font-bold ${amountDue > 0 ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`}>
-                          ${amountDue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                        </span>
-                      </div>
-                      
-                      {/* Hint Logic */}
-                      {formData.paymentStatus === 'Paid' && amountPaid < totalAmount && (
-                        <div className="flex items-center justify-between text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 px-3 py-2 rounded-lg">
-                          <span>"Paid" usually means Amount Paid equals Total.</span>
-                          <button 
-                            type="button"
-                            onClick={() => setAmountPaid(totalAmount)}
-                            className="text-amber-700 dark:text-amber-300 font-bold hover:underline"
-                          >
-                            Set to Total
-                          </button>
-                        </div>
-                      )}
-                      {amountPaid > 0 && amountDue === 0 && formData.paymentStatus !== 'Paid' && formData.paymentStatus !== 'Refunded' && (
-                        <div className="flex items-center text-xs text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 px-3 py-2 rounded-lg">
-                          <Info className="w-3 h-3 mr-1.5" />
-                          <span>Amount fully paid. Consider changing status to <b>Paid</b>.</span>
-                        </div>
-                      )}
-                    </div>
+              {/* Logistics */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase">Pickup Location</label>
+                  <div className="relative">
+                     <MapPin className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
+                     <input 
+                        value={formData.pickupLocation}
+                        onChange={e => setFormData(p => ({ ...p, pickupLocation: e.target.value }))}
+                        className="w-full pl-10 p-2.5 border border-gray-300 dark:border-gray-600 rounded-xl dark:bg-gray-700/50 text-sm"
+                        placeholder="Hotel, Pier, or Airport"
+                     />
                   </div>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase">Assign Guide</label>
+                  <select
+                    value={formData.assignedTo}
+                    onChange={e => setFormData(p => ({ ...p, assignedTo: e.target.value }))}
+                    className="w-full p-2.5 border border-gray-300 dark:border-gray-600 rounded-xl dark:bg-gray-700/50 text-sm font-semibold"
+                  >
+                    <option value="">Unassigned</option>
+                    {TEAM_USERS.map(u => <option key={u.id} value={u.name}>{u.name} ({u.role})</option>)}
+                  </select>
+                </div>
+              </div>
 
-                  {/* Row 4: Assigned To & Pickup */}
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                    <AssigneeLookup 
-                      label="Assigned To"
-                      users={TEAM_USERS}
-                      selectedUserName={formData.assignedTo}
-                      onSelect={(name) => setFormData({ ...formData, assignedTo: name })}
-                    />
-
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase mb-1.5">Pickup Location</label>
-                      <div className="relative">
-                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                           <MapPin className="w-4 h-4 text-gray-400" />
-                        </div>
-                        <input 
-                          type="text" 
-                          className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white bg-white dark:bg-gray-700/50 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                          placeholder="e.g. Hotel Grand Central"
-                          value={formData.pickupLocation}
-                          onChange={e => setFormData({...formData, pickupLocation: e.target.value})}
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase mb-1.5">Notes</label>
-                    <div className="relative">
-                      <div className="absolute left-3 top-3 pointer-events-none">
-                         <FileText className="w-4 h-4 text-gray-400" />
-                      </div>
-                      <textarea 
-                        className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white bg-white dark:bg-gray-700/50 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm resize-none"
-                        rows={3}
-                        placeholder="Dietary requirements, special requests..."
-                        value={formData.notes}
-                        onChange={e => setFormData({...formData, notes: e.target.value})}
-                      />
-                    </div>
-                  </div>
-                </form>
-                
-                {/* Metadata Footer (Inline for left col) */}
-                {bookingToEdit && metadata && (
-                  <div className="mt-8 pt-6 border-t border-gray-100 dark:border-gray-700 text-xs text-gray-400 dark:text-gray-500 grid grid-cols-2 gap-y-1">
-                    <div>
-                      <span className="block text-gray-300 dark:text-gray-600 uppercase text-[10px] tracking-wider mb-0.5">Created</span>
-                      {metadata.createdAt}
-                    </div>
-                    <div>
-                      <span className="block text-gray-300 dark:text-gray-600 uppercase text-[10px] tracking-wider mb-0.5">Last Modified</span>
-                      {metadata.updatedAt} by {metadata.updatedBy}
-                    </div>
-                  </div>
-                )}
+              {/* Notes */}
+              <div className="space-y-1.5">
+                <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase">Internal Notes</label>
+                <textarea 
+                  rows={3}
+                  value={formData.notes}
+                  onChange={e => setFormData(p => ({ ...p, notes: e.target.value }))}
+                  placeholder="Dietary requirements, special equipment, etc."
+                  className="w-full p-4 border border-gray-300 dark:border-gray-600 rounded-2xl dark:bg-gray-700/50 text-sm resize-none focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                />
               </div>
             </div>
 
-            {/* RIGHT COLUMN: TABS (Only visible when editing) */}
+            {/* RIGHT SIDE: TABBED DETAILS (Chat, Vault, Log) */}
             {bookingToEdit && (
-              <div className="flex-none w-full lg:w-[400px] flex flex-col bg-gray-50/50 dark:bg-gray-900/30 border-t lg:border-t-0 lg:border-l border-gray-200 dark:border-gray-700">
-                {/* Tab Headers */}
-                <div className="flex border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-6 sticky top-0 z-10">
-                  <button
-                    onClick={() => setActiveTab('comments')}
-                    className={`py-4 text-sm font-medium mr-6 border-b-2 transition-colors flex items-center gap-2 ${
-                      activeTab === 'comments'
-                        ? 'border-indigo-600 text-indigo-600 dark:text-indigo-400'
-                        : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
-                    }`}
-                  >
-                    <MessageSquare className="w-4 h-4" />
-                    Comments
-                    <span className="ml-1 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 py-0.5 px-2 rounded-full text-xs">
-                      {comments.length}
-                    </span>
-                  </button>
-                  <button
-                    onClick={() => setActiveTab('activity')}
-                    className={`py-4 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${
-                      activeTab === 'activity'
-                        ? 'border-indigo-600 text-indigo-600 dark:text-indigo-400'
-                        : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
-                    }`}
-                  >
-                    <Activity className="w-4 h-4" />
-                    Activity
-                  </button>
+              <div className="w-full lg:w-[420px] flex flex-col bg-gray-50/50 dark:bg-gray-900/20 border-t lg:border-t-0 lg:border-l border-gray-100 dark:border-gray-700">
+                <div className="flex border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-4">
+                   {[
+                     { id: 'comments', label: 'Chat', icon: MessageSquare },
+                     { id: 'documents', label: 'Vault', icon: ShieldCheck },
+                     { id: 'activity', label: 'Log', icon: Activity },
+                   ].map(t => (
+                     <button
+                        key={t.id}
+                        onClick={() => setActiveTab(t.id as any)}
+                        className={`flex-1 py-5 text-xs font-bold uppercase tracking-wider border-b-2 flex items-center justify-center gap-2 transition-all ${
+                          activeTab === t.id ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-400'
+                        }`}
+                     >
+                        <t.icon className="w-4 h-4" /> {t.label}
+                     </button>
+                   ))}
                 </div>
 
-                {/* Tab Content */}
-                <div className="flex-1 overflow-y-auto p-6 relative">
-                  {/* ... same content as before ... */}
-                  {/* COMMENTS TAB */}
-                  {activeTab === 'comments' && (
-                    <div className="flex flex-col h-full">
-                      <div className="flex-1 space-y-4 mb-4">
-                        {comments.length === 0 ? (
-                          <div className="text-center py-10 text-gray-400 dark:text-gray-500">
-                            <MessageSquare className="w-10 h-10 mx-auto mb-3 opacity-50" />
-                            <p className="text-sm">No comments yet.</p>
-                            <p className="text-xs">Start the conversation!</p>
-                          </div>
-                        ) : (
-                          comments.map((comment) => (
-                            <div key={comment.id} className="flex gap-3 animate-in fade-in slide-in-from-bottom-2">
-                              <div className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center text-xs font-bold text-indigo-700 dark:text-indigo-300 shrink-0">
-                                {comment.authorName.charAt(0)}
-                              </div>
-                              <div className="bg-white dark:bg-gray-800 p-3 rounded-lg rounded-tl-none border border-gray-200 dark:border-gray-700 shadow-sm flex-1">
-                                <div className="flex justify-between items-baseline mb-1">
-                                  <span className="text-xs font-bold text-gray-900 dark:text-white">{comment.authorName}</span>
-                                  <span className="text-[10px] text-gray-400">{new Date(comment.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
-                                </div>
-                                <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
-                                  {comment.text.split(/(@\w+(?:\s\w+)?)/g).map((part, i) => 
-                                    part.startsWith('@') ? <span key={i} className="text-indigo-600 dark:text-indigo-400 font-medium">{part}</span> : part
-                                  )}
-                                </p>
-                              </div>
-                            </div>
-                          ))
-                        )}
-                      </div>
-
-                      {/* Comment Input */}
-                      <div className="relative mt-auto">
-                        {showMentionList && (
-                          <div className="absolute bottom-full left-0 mb-2 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 max-h-40 overflow-y-auto z-10">
-                            {mentionFilteredUsers.map(user => (
-                              <button
-                                key={user.id}
-                                onClick={() => insertMention(user.name)}
-                                className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 flex flex-col"
-                              >
-                                <span className="font-medium text-gray-900 dark:text-white">{user.name}</span>
-                                <span className="text-xs text-gray-500">{user.role}</span>
-                              </button>
-                            ))}
-                          </div>
-                        )}
-                        <div className="relative">
-                          <textarea
-                            ref={commentInputRef}
-                            value={commentText}
-                            onChange={handleCommentChange}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter' && !e.shiftKey) {
-                                e.preventDefault();
-                                postComment();
-                              }
-                            }}
-                            placeholder="Write a comment... use @ to mention"
-                            className="w-full pl-3 pr-10 py-3 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm resize-none"
-                            rows={2}
-                          />
-                          <button 
-                            onClick={() => postComment()}
-                            disabled={!commentText.trim()}
-                            className="absolute right-2 bottom-2 p-1.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                          >
-                            <Send className="w-4 h-4" />
-                          </button>
+                <div className="flex-1 overflow-y-auto p-6 relative custom-scrollbar">
+                   {activeTab === 'comments' && (
+                     <div className="flex flex-col h-full">
+                        <div className="flex-1 space-y-4 mb-20">
+                           <div className="text-center py-12 opacity-30">
+                              <MessageSquare className="w-12 h-12 mx-auto mb-3" />
+                              <p className="text-sm font-bold uppercase tracking-widest">Team Chat</p>
+                              <p className="text-xs mt-1">Start internal discussion about this booking.</p>
+                           </div>
                         </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* ACTIVITY TAB */}
-                  {activeTab === 'activity' && (
-                    <div className="space-y-0 relative">
-                      {activities.length === 0 ? (
-                        <div className="text-center py-10 text-gray-400 dark:text-gray-500">
-                          <History className="w-10 h-10 mx-auto mb-3 opacity-50" />
-                          <p className="text-sm">No activity recorded yet.</p>
+                        <div className="absolute bottom-6 left-6 right-6">
+                           <div className="relative group">
+                              <input placeholder="Mention team with @..." className="w-full pl-4 pr-12 py-3 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm shadow-sm focus:ring-2 focus:ring-indigo-500/20 outline-none transition-all" />
+                              <button className="absolute right-2 top-2 p-1.5 bg-indigo-600 text-white rounded-xl shadow-md"><Save className="w-4 h-4"/></button>
+                           </div>
                         </div>
-                      ) : (
-                        activities.slice().reverse().map((activity, idx) => (
-                          <div key={activity.id} className="relative pl-6 pb-6 last:pb-0">
-                            {/* Timeline Line */}
-                            {idx !== activities.length - 1 && (
-                              <div className="absolute left-[9px] top-6 bottom-0 w-px bg-gray-200 dark:bg-gray-700" />
-                            )}
-                            
-                            <div className="absolute left-0 top-1 w-5 h-5 rounded-full bg-gray-100 dark:bg-gray-800 border-2 border-white dark:border-gray-900 ring-1 ring-gray-200 dark:ring-gray-700 flex items-center justify-center">
-                              <div className="w-1.5 h-1.5 rounded-full bg-gray-400"></div>
-                            </div>
+                     </div>
+                   )}
 
-                            <div className="text-sm">
-                              <span className="font-semibold text-gray-900 dark:text-white">{activity.actorName}</span>
-                              <span className="text-gray-500 dark:text-gray-400"> changed </span>
-                              <span className="font-medium text-gray-700 dark:text-gray-300">{activity.field}</span>
-                            </div>
-                            
-                            <div className="mt-1.5 flex items-center gap-2 text-xs">
-                              <span className="bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400 px-1.5 py-0.5 rounded line-through">
-                                {String(activity.from || 'Empty')}
-                              </span>
-                              <ChevronRight className="w-3 h-3 text-gray-400" />
-                              <span className="bg-green-50 text-green-600 dark:bg-green-900/20 dark:text-green-400 px-1.5 py-0.5 rounded">
-                                {String(activity.to || 'Empty')}
-                              </span>
-                            </div>
-                            
-                            <div className="mt-1 text-[10px] text-gray-400 flex items-center gap-1">
-                              <Clock className="w-3 h-3" />
-                              {new Date(activity.timestamp).toLocaleString()}
-                            </div>
-                          </div>
-                        ))
-                      )}
-                    </div>
-                  )}
+                   {activeTab === 'documents' && (
+                     <div className="space-y-6">
+                        <div className="border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-3xl p-10 text-center hover:bg-gray-100 dark:hover:bg-gray-700/50 transition-all cursor-pointer group">
+                           <div className="w-14 h-14 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform">
+                              <Plus className="w-8 h-8" />
+                           </div>
+                           <p className="text-sm font-bold text-gray-700 dark:text-gray-300">Upload Files</p>
+                           <p className="text-xs text-gray-500 mt-1">Passport scans, waivers, or permits.</p>
+                        </div>
+
+                        <div className="space-y-3">
+                           <div className="flex items-center justify-between p-4 bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm group">
+                              <div className="flex items-center gap-4 min-w-0">
+                                 <div className="p-2.5 bg-red-50 dark:bg-red-900/30 text-red-600 rounded-xl"><File className="w-5 h-5" /></div>
+                                 <div className="min-w-0">
+                                    <p className="text-sm font-bold truncate text-gray-900 dark:text-white">Passport_Scan_Doe.pdf</p>
+                                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">1.2 MB • OCT 24</p>
+                                 </div>
+                              </div>
+                              <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                 <button className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg text-gray-400"><Download className="w-4 h-4" /></button>
+                                 <button className="p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg text-red-500"><Trash2 className="w-4 h-4" /></button>
+                              </div>
+                           </div>
+                        </div>
+                     </div>
+                   )}
+
+                   {activeTab === 'activity' && (
+                     <div className="space-y-8">
+                        <div className="relative pl-8 border-l-2 border-gray-100 dark:border-gray-700 ml-2">
+                           <div className="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-white dark:bg-gray-800 border-4 border-indigo-500" />
+                           <div className="text-sm">
+                              <span className="font-bold text-gray-900 dark:text-white">Alex Walker</span>
+                              <span className="text-gray-500"> changed status to </span>
+                              <span className="font-bold text-emerald-600">Confirmed</span>
+                           </div>
+                           <div className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-1.5 flex items-center gap-1.5">
+                              <Clock className="w-3 h-3" /> 2 hours ago
+                           </div>
+                        </div>
+                        <div className="relative pl-8 border-l-2 border-gray-100 dark:border-gray-700 ml-2">
+                           <div className="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-white dark:bg-gray-800 border-4 border-gray-200 dark:border-gray-600" />
+                           <div className="text-sm">
+                              <span className="font-bold text-gray-900 dark:text-white">Sarah Miller</span>
+                              <span className="text-gray-500"> updated Pickup Location </span>
+                           </div>
+                           <div className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-1.5 flex items-center gap-1.5">
+                              <Clock className="w-3 h-3" /> Yesterday, 4:30 PM
+                           </div>
+                        </div>
+                     </div>
+                   )}
                 </div>
               </div>
             )}
           </div>
 
           {/* Footer Actions */}
-          <div className="flex-none px-6 py-4 border-t border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800 flex justify-end gap-3 rounded-b-2xl sticky bottom-0 z-20">
-            <button 
-              type="button" 
-              onClick={onClose} 
-              className="px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 rounded-lg text-sm font-semibold transition-colors"
-            >
-              Cancel
-            </button>
-            <button 
-              type="submit" 
-              form="booking-form"
-              className="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-semibold transition-colors shadow-sm active:scale-95"
-            >
-              {bookingToEdit ? 'Save Changes' : 'Create Booking'}
-            </button>
+          <div className="flex-none px-8 py-6 border-t border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800 flex justify-end gap-3 rounded-b-3xl">
+             <button type="button" onClick={onClose} className="px-6 py-2.5 text-sm font-bold text-gray-500 hover:text-gray-700 transition-colors">Cancel</button>
+             <button 
+                onClick={handleSave}
+                className="px-10 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl text-sm font-extrabold shadow-xl shadow-indigo-500/20 transition-all active:scale-95 flex items-center justify-center gap-2"
+             >
+                {bookingToEdit ? <Save className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+                {bookingToEdit ? 'Update Booking' : 'Confirm Reservation'}
+             </button>
           </div>
-
         </div>
       </div>
     </div>

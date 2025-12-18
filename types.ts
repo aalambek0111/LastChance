@@ -53,6 +53,20 @@ export interface KPIMetric {
   trendUp?: boolean;
 }
 
+// --- Notification Types ---
+
+export type NotificationType = 'lead' | 'booking' | 'payment' | 'team' | 'system';
+
+export interface AppNotification {
+  id: string;
+  title: string;
+  description?: string;
+  type: NotificationType;
+  timestamp: number;
+  unread: boolean;
+  actionLink?: string; // e.g., page ID or record ID
+}
+
 // --- Automation Types ---
 
 export type TriggerType = 

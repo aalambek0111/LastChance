@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
 import MobileNav from './components/MobileNav';
@@ -21,28 +21,79 @@ import OnboardingPage from './pages/Auth/OnboardingPage';
 import ForgotPasswordPage from './pages/Auth/ForgotPasswordPage';
 import Toast from './components/Toast';
 import { ThemeProvider } from './context/ThemeContext';
-import { UPCOMING_BOOKINGS } from './data/mockData';
-import { Booking } from './types';
+import { UPCOMING_BOOKINGS, INITIAL_NOTIFICATIONS } from './data/mockData';
+import { Booking, AppNotification, NotificationType } from './types';
 
 // Types of view states for the App router
 type AuthState = 'login' | 'signup' | 'forgot' | 'onboarding' | 'authenticated';
 
 function App() {
-  const [authState, setAuthState] = useState<AuthState>('login');
+  // SET TO 'login' SO YOU CAN SEE THE LOGIN PAGE AGAIN
+  const [authState, setAuthState] = useState<AuthState>('login'); 
   const [activePage, setActivePage] = useState('dashboard');
+  const [activeSettingsSection, setActiveSettingsSection] = useState<string | undefined>(undefined);
   const [bookings, setBookings] = useState<Booking[]>(UPCOMING_BOOKINGS);
+  const [notifications, setNotifications] = useState<AppNotification[]>(INITIAL_NOTIFICATIONS);
   const [toast, setToast] = useState({ message: '', visible: false });
   const [searchTerm, setSearchTerm] = useState('');
   const [initialLeadForInbox, setInitialLeadForInbox] = useState<string | null>(null);
 
+  const handleNavigate = (page: string, section?: string) => {
+    setActivePage(page);
+    if (page === 'settings' && section) {
+        setActiveSettingsSection(section);
+    } else {
+        setActiveSettingsSection(undefined);
+    }
+  };
+
+  const handleLogout = () => {
+    setAuthState('login');
+    setActivePage('dashboard'); // Reset to default for next login
+  };
+
+  // --- Notification System ---
+  const addNotification = useCallback((payload: { title: string; description?: string; type: NotificationType; actionLink?: string }) => {
+    const newNotif: AppNotification = {
+      id: `n_${Date.now()}`,
+      unread: true,
+      timestamp: Date.now(),
+      ...payload
+    };
+    setNotifications(prev => [newNotif, ...prev]);
+  }, []);
+
   const addBooking = (booking: Booking) => {
     setBookings(prev => [booking, ...prev]);
-    showToast(`Booking ${booking.id} created successfully`);
+    showToast(`Booking created successfully`);
+    addNotification({
+      title: 'New Booking Created',
+      description: `${booking.clientName} booked ${booking.tourName} for ${booking.date}.`,
+      type: 'booking'
+    });
   };
 
   const updateBooking = (updatedBooking: Booking) => {
+    const original = bookings.find(b => b.id === updatedBooking.id);
     setBookings(prev => prev.map(b => b.id === updatedBooking.id ? updatedBooking : b));
     showToast('Booking updated successfully');
+
+    // Trigger specific operational notifications
+    if (original && original.status !== 'Cancelled' && updatedBooking.status === 'Cancelled') {
+        addNotification({
+            title: '⚠️ Booking Cancelled',
+            description: `${updatedBooking.clientName} cancelled their ${updatedBooking.tourName} tour.`,
+            type: 'booking'
+        });
+    }
+
+    if (original && original.paymentStatus !== 'Paid' && updatedBooking.paymentStatus === 'Paid') {
+        addNotification({
+            title: 'Payment Received',
+            description: `$${updatedBooking.totalAmount} successfully received from ${updatedBooking.clientName}.`,
+            type: 'payment'
+        });
+    }
   };
 
   const deleteBooking = (bookingId: string) => {
@@ -64,15 +115,9 @@ function App() {
     setActivePage('inbox');
   };
 
-  const handleLogout = () => {
-    // TODO: Clear Supabase session
-    setAuthState('login');
-  };
-
   return (
     <ThemeProvider>
       {authState !== 'authenticated' ? (
-        // --- AUTHENTICATION FLOW ---
         <>
           {authState === 'login' && (
             <LoginPage 
@@ -98,38 +143,33 @@ function App() {
           )}
         </>
       ) : (
-        // --- MAIN APP DASHBOARD ---
         <div className="h-screen bg-gray-50 dark:bg-gray-900 flex font-sans text-gray-900 dark:text-white transition-colors duration-200 overflow-hidden">
           
-          {/* Hide Sidebar for full-page views like Upgrade */}
           {activePage !== 'upgrade' && (
-            <Sidebar activePage={activePage} onNavigate={setActivePage} />
+            <Sidebar activePage={activePage} onNavigate={handleNavigate} onLogout={handleLogout} />
           )}
 
-          {/* 
-            Main Content Wrapper
-            - h-full: Uses full height of screen
-            - overflow-hidden: Prevents body scroll, forces internal scroll within pages
-          */}
           <main className={`flex-1 ${activePage !== 'upgrade' ? 'md:ml-64' : ''} h-full flex flex-col relative overflow-hidden pb-20 md:pb-0`}>
             
             {activePage !== 'upgrade' && (
-              <Header searchTerm={searchTerm} setSearchTerm={setSearchTerm} />
+              <Header 
+                searchTerm={searchTerm} 
+                setSearchTerm={setSearchTerm} 
+                notifications={notifications}
+                setNotifications={setNotifications}
+                onNavigate={handleNavigate}
+              />
             )}
 
-            {/* 
-               Scrollable Area Container
-               - pt-[72px]: Pushes content down below fixed header
-               - flex-1 overflow-hidden: Constrains height to remaining space, allowing children to manage scroll
-            */}
             <div className={`flex-1 overflow-hidden flex flex-col ${activePage !== 'upgrade' ? 'pt-[72px]' : ''}`}>
               {activePage === 'dashboard' && (
                 <DashboardPage 
                   bookings={bookings} 
                   searchTerm={searchTerm} 
-                  onNavigate={setActivePage}
+                  onNavigate={handleNavigate}
                   onUpdateBooking={updateBooking}
                   onAddBooking={addBooking}
+                  addNotification={addNotification}
                 />
               )}
               {activePage === 'inbox' && (
@@ -147,6 +187,7 @@ function App() {
                   onAddBooking={addBooking}
                   searchTerm={searchTerm} 
                   onOpenConversation={handleOpenConversation}
+                  addNotification={addNotification}
                 />
               )}
               {activePage === 'bookings' && (
@@ -166,18 +207,22 @@ function App() {
                 />
               )}
               {activePage === 'team' && <TeamPage />}
-              {activePage === 'settings' && <SettingsPage onNavigate={setActivePage} />}
+              {activePage === 'settings' && (
+                <SettingsPage 
+                    onNavigate={handleNavigate} 
+                    initialSection={activeSettingsSection} 
+                />
+              )}
               {activePage === 'upgrade' && <UpgradePage onBack={() => setActivePage('settings')} />}
               {activePage === 'tours' && <ToursPage searchTerm={searchTerm} />}
-              {activePage === 'reports' && <ReportsPage />}
+              {activePage === 'reports' && <ReportsPage bookings={bookings} />}
               {activePage === 'import' && <ImportPage />}
               {activePage === 'support' && <SupportPage />}
             </div>
           </main>
           
-          {/* Mobile Navigation - Visible only on small screens and not on upgrade page */}
           {activePage !== 'upgrade' && (
-            <MobileNav activePage={activePage} onNavigate={setActivePage} />
+            <MobileNav activePage={activePage} onNavigate={handleNavigate} />
           )}
 
           <Toast 

@@ -46,7 +46,7 @@ const DashboardPage: React.FC<DashboardProps> = ({
   const [leads, setLeads] = useState<Lead[]>(RECENT_LEADS);
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   
-  // Local state for Booking editing
+  // Local state for Booking editing - initialized strictly as null/false
   const [editingBooking, setEditingBooking] = useState<Booking | null>(null);
   const [isCreateBookingOpen, setIsCreateBookingOpen] = useState(false);
   const [leadForBooking, setLeadForBooking] = useState<Lead | null>(null);
@@ -83,7 +83,7 @@ const DashboardPage: React.FC<DashboardProps> = ({
   return (
     <div className="h-full overflow-y-auto pb-10 relative scrollbar-hide">
       
-      {/* Lead Details Drawer (Same as LeadsPage) */}
+      {/* Lead Details Drawer */}
       {selectedLead && (
         <>
             <div 
@@ -98,7 +98,6 @@ const DashboardPage: React.FC<DashboardProps> = ({
                   onClose={() => setSelectedLead(null)} 
                   onSave={handleUpdateLead}
                   onDelete={handleDeleteLead}
-                  // Wire up specific actions
                   onCreateBooking={() => {
                     setLeadForBooking(selectedLead);
                     setIsCreateBookingOpen(true);
@@ -109,32 +108,29 @@ const DashboardPage: React.FC<DashboardProps> = ({
         </>
       )}
 
-      {/* Booking Create/Edit Modal */}
-      {(editingBooking || isCreateBookingOpen) && (
-        <CreateBookingModal 
-          isOpen={true}
-          onClose={() => {
-            setEditingBooking(null);
-            setIsCreateBookingOpen(false);
-            setLeadForBooking(null);
-          }}
-          bookingToEdit={editingBooking}
-          lead={leadForBooking}
-          onBookingCreated={(b) => {
-            if (onAddBooking) onAddBooking(b);
-            setIsCreateBookingOpen(false);
-            setLeadForBooking(null);
-          }}
-          onBookingUpdated={(updated) => {
-            if (onUpdateBooking) onUpdateBooking(updated);
-            setEditingBooking(null);
-          }}
-        />
-      )}
+      {/* Booking Create/Edit Modal - Unified state management */}
+      <CreateBookingModal 
+        isOpen={isCreateBookingOpen || !!editingBooking}
+        onClose={() => {
+          setEditingBooking(null);
+          setIsCreateBookingOpen(false);
+          setLeadForBooking(null);
+        }}
+        bookingToEdit={editingBooking}
+        lead={leadForBooking}
+        onBookingCreated={(b) => {
+          if (onAddBooking) onAddBooking(b);
+          setIsCreateBookingOpen(false);
+          setLeadForBooking(null);
+        }}
+        onBookingUpdated={(updated) => {
+          if (onUpdateBooking) onUpdateBooking(updated);
+          setEditingBooking(null);
+        }}
+      />
 
       <div className="max-w-7xl mx-auto px-6 py-8 space-y-8">
-        
-        {/* 2. Welcome & Actions */}
+        {/* Dashboard Title & Actions */}
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold text-gray-900 dark:text-white tracking-tight">Dashboard</h1>
@@ -157,7 +153,7 @@ const DashboardPage: React.FC<DashboardProps> = ({
           </div>
         </div>
 
-        {/* 3. KPI Cards */}
+        {/* KPI Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {KPI_DATA.map((kpi, idx) => {
             const Icon = getKpiIcon(kpi.label);
@@ -191,19 +187,15 @@ const DashboardPage: React.FC<DashboardProps> = ({
           })}
         </div>
 
-        {/* 4. Main Content Grid */}
+        {/* Content Panels */}
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
-          
-          {/* Leads Panel */}
+          {/* Leads Section */}
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 flex flex-col h-full overflow-hidden">
-            {/* Panel Header */}
             <div className="p-4 border-b border-gray-100 dark:border-gray-700 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div className="flex items-center gap-2">
                 <h2 className="text-lg font-bold text-gray-900 dark:text-white">Leads to follow up</h2>
                 <span className="bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 text-xs px-2 py-0.5 rounded-full font-medium">{filteredLeads.length}</span>
               </div>
-              
-              {/* Tabs */}
               <div className="flex items-center p-1 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
                 {(['All', 'New', 'Priority'] as const).map((filter) => (
                   <button
@@ -221,7 +213,6 @@ const DashboardPage: React.FC<DashboardProps> = ({
               </div>
             </div>
 
-            {/* List */}
             <div className="flex-1 overflow-x-auto overflow-y-auto max-h-[400px]">
               <table className="w-full text-left border-collapse table-auto">
                 <thead className="bg-gray-50/50 dark:bg-gray-800/50 text-gray-500 dark:text-gray-400 font-medium text-[10px] uppercase tracking-wider sticky top-0 backdrop-blur-sm z-10">
@@ -264,13 +255,6 @@ const DashboardPage: React.FC<DashboardProps> = ({
                       </td>
                     </tr>
                   ))}
-                  {filteredLeads.length === 0 && (
-                    <tr>
-                      <td colSpan={4} className="px-6 py-8 text-center text-gray-500 dark:text-gray-400 text-sm">
-                        No leads found for this filter.
-                      </td>
-                    </tr>
-                  )}
                 </tbody>
               </table>
             </div>
@@ -284,7 +268,7 @@ const DashboardPage: React.FC<DashboardProps> = ({
             </div>
           </div>
 
-          {/* Bookings Panel */}
+          {/* Bookings Section */}
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 flex flex-col h-full overflow-hidden">
             <div className="p-4 border-b border-gray-100 dark:border-gray-700 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
@@ -354,13 +338,6 @@ const DashboardPage: React.FC<DashboardProps> = ({
                       </td>
                     </tr>
                   ))}
-                  {filteredBookings.length === 0 && (
-                    <tr>
-                      <td colSpan={5} className="px-6 py-8 text-center text-gray-500 dark:text-gray-400 text-sm">
-                        No bookings found for this filter.
-                      </td>
-                    </tr>
-                  )}
                 </tbody>
               </table>
             </div>
@@ -376,7 +353,6 @@ const DashboardPage: React.FC<DashboardProps> = ({
           </div>
         </div>
 
-        {/* Modals */}
         <AddLeadModal isOpen={isLeadModalOpen} onClose={() => setIsLeadModalOpen(false)} />
       </div>
     </div>

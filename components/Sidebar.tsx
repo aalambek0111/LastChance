@@ -19,14 +19,15 @@ import { useI18n } from '../context/ThemeContext';
 interface SidebarProps {
   activePage: string;
   onNavigate: (page: string) => void;
+  onLogout?: () => void;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ activePage, onNavigate }) => {
+const Sidebar: React.FC<SidebarProps> = ({ activePage, onNavigate, onLogout }) => {
   const { t } = useI18n();
 
   const mainNav = [
     { name: t('nav_dashboard'), icon: LayoutDashboard, id: 'dashboard' },
-    { name: 'Calendar', icon: CalendarDays, id: 'calendar' }, // Added Calendar
+    { name: 'Calendar', icon: CalendarDays, id: 'calendar' },
     { name: t('nav_inbox'), icon: Inbox, badge: 5, id: 'inbox' },
     { name: t('nav_leads'), icon: Users, id: 'leads' },
     { name: t('nav_bookings'), icon: CalendarCheck, id: 'bookings' },
@@ -119,7 +120,10 @@ const Sidebar: React.FC<SidebarProps> = ({ activePage, onNavigate }) => {
             <p className="text-xs text-gray-500 dark:text-gray-400 truncate">Wanderlust Tours</p>
           </div>
         </div>
-        <button className="flex w-full items-center justify-center gap-2 px-4 py-2 text-xs font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-white dark:hover:bg-gray-800 border border-transparent hover:border-gray-200 dark:hover:border-gray-700 rounded-md transition-all shadow-none hover:shadow-sm">
+        <button 
+          onClick={onLogout}
+          className="flex w-full items-center justify-center gap-2 px-4 py-2 text-xs font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-white dark:hover:bg-gray-800 border border-transparent hover:border-gray-200 dark:hover:border-gray-700 rounded-md transition-all shadow-none hover:shadow-sm"
+        >
           <LogOut className="w-3.5 h-3.5" />
           Sign out
         </button>
