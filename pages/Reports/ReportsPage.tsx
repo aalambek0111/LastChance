@@ -1,3 +1,4 @@
+
 import React, { useMemo, useState, useEffect, useRef } from 'react';
 import {
   DollarSign,
@@ -25,6 +26,8 @@ import {
 } from 'lucide-react';
 import { useI18n } from '../../context/ThemeContext';
 import { RECENT_LEADS, UPCOMING_BOOKINGS, TOURS } from '../../data/mockData';
+// Added Booking import
+import { Booking } from '../../types';
 
 // -------------------- Types --------------------
 type ReportType = 'leads' | 'bookings' | 'tours';
@@ -173,7 +176,14 @@ const SidebarSection = ({
 );
 
 // -------------------- Main Page --------------------
-const ReportsPage: React.FC = () => {
+
+// Added ReportsPageProps interface
+interface ReportsPageProps {
+  bookings: Booking[];
+}
+
+// Updated ReportsPage to accept bookings prop
+const ReportsPage: React.FC<ReportsPageProps> = ({ bookings }) => {
   const { t } = useI18n();
   const [activeTab, setActiveTab] = useState<'overview' | 'builder'>('overview');
 
@@ -228,7 +238,7 @@ const ReportsPage: React.FC = () => {
 
   // --- Processing Logic ---
   const processData = useMemo(() => {
-    let result = [...config.data];
+    let result = [...(selectedType === 'bookings' ? bookings : config.data)];
 
     // 1. Filters
     if (filters.length > 0) {
@@ -268,7 +278,7 @@ const ReportsPage: React.FC = () => {
     }
 
     return result;
-  }, [config.data, filters, filterLogic, sortBy, sortDir, selectedType]);
+  }, [config.data, bookings, filters, filterLogic, sortBy, sortDir, selectedType]);
 
   const displayedData = isPreview ? processData.slice(0, 10) : processData;
 
@@ -777,7 +787,7 @@ const OverviewTab: React.FC<{ onNavigateToBuilder: (type: ReportType) => void }>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 bg-white dark:bg-gray-800 p-6 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm min-h-[350px]">
+        <div className="lg:col-span-2 bg-white dark:bg-gray-800 p-6 rounded-2xl border border-100 dark:border-gray-700 shadow-sm min-h-[350px]">
           <h3 className="font-bold text-gray-900 dark:text-white mb-6">Revenue Growth</h3>
           <div className="h-48 flex items-end justify-between gap-3 px-2">
             {[40, 65, 45, 80, 55, 70, 40, 60, 50, 75, 65, 85].map((h, i) => (
@@ -791,7 +801,7 @@ const OverviewTab: React.FC<{ onNavigateToBuilder: (type: ReportType) => void }>
           </div>
         </div>
 
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm flex flex-col">
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl border border-100 dark:border-gray-700 shadow-sm flex flex-col">
           <h3 className="font-bold text-gray-900 dark:text-white mb-6">Popular Tours</h3>
           <div className="flex-1 space-y-6">
             {[

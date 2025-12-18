@@ -1,7 +1,26 @@
-
 import React, { useMemo, useState, useEffect } from 'react';
-import { Users, Filter, Pencil, Download, User, ArrowUp, ArrowDown, ArrowUpDown, MoreHorizontal, MessageSquare, Copy, XCircle, Trash2, CalendarCheck } from 'lucide-react';
-import { Booking } from '../../types';
+import { 
+  Users, 
+  Filter, 
+  Pencil, 
+  Download, 
+  User, 
+  ArrowUp, 
+  ArrowDown, 
+  ArrowUpDown, 
+  MoreHorizontal, 
+  MessageSquare, 
+  Copy, 
+  XCircle, 
+  Trash2, 
+  CalendarCheck,
+  LayoutGrid,
+  List,
+  Calendar,
+  Clock,
+  MapPin
+} from 'lucide-react';
+import { Booking, BookingStatus } from '../../types';
 import { useI18n } from '../../context/ThemeContext';
 import CreateBookingModal from '../../components/modals/CreateBookingModal';
 
@@ -15,7 +34,7 @@ interface BookingsPageProps {
 type SortKey = 'date' | 'status' | 'clientName' | 'tourName' | 'assignedTo';
 type SortDir = 'asc' | 'desc';
 
-const CURRENT_USER_NAME = "Alex Walker"; // Mock user for "My Bookings" filter
+const CURRENT_USER_NAME = "Alex Walker"; 
 
 const BookingsPage: React.FC<BookingsPageProps> = ({
   bookings,
@@ -25,21 +44,20 @@ const BookingsPage: React.FC<BookingsPageProps> = ({
 }) => {
   const { t } = useI18n();
 
+  const [viewMode, setViewMode] = useState<'table' | 'kanban'>('table');
   const [editingBooking, setEditingBooking] = useState<Booking | null>(null);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [draggedBookingId, setDraggedBookingId] = useState<string | null>(null);
   
-  // State for actions menu
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
-  // State for controlling initial tab in modal
   const [initialModalTab, setInitialModalTab] = useState<'comments' | 'activity'>('comments');
 
   const [statusFilter, setStatusFilter] = useState('All');
   const [assignedFilter, setAssignedFilter] = useState<'All' | 'Mine'>('All');
 
   const [sortKey, setSortKey] = useState<SortKey>('date');
-  const [sortDir, setSortDir] = useState<SortDir>('desc'); // Default to newest first
+  const [sortDir, setSortDir] = useState<SortDir>('desc');
 
-  // Close menus on click outside
   useEffect(() => {
     const onMouseDown = (e: MouseEvent) => {
       const target = e.target as HTMLElement | null;
@@ -63,7 +81,6 @@ const BookingsPage: React.FC<BookingsPageProps> = ({
         (b.bookingNo || '').toLowerCase().includes(term);
 
       const matchesStatus = statusFilter === 'All' || b.status === statusFilter;
-      
       const matchesAssigned = assignedFilter === 'All' || (assignedFilter === 'Mine' && b.assignedTo === CURRENT_USER_NAME);
 
       return matchesSearch && matchesStatus && matchesAssigned;
@@ -72,29 +89,22 @@ const BookingsPage: React.FC<BookingsPageProps> = ({
 
   const sortedBookings = useMemo(() => {
     const data = [...filteredBookings];
-
     data.sort((a, b) => {
       let aVal: any = a[sortKey];
       let bVal: any = b[sortKey];
-
-      // Handle null/undefined values: push to bottom for ASC, top for DESC (treat as infinity)
       if (!aVal && aVal !== 0) return sortDir === 'asc' ? 1 : -1;
       if (!bVal && bVal !== 0) return sortDir === 'asc' ? -1 : 1;
-
       if (sortKey === 'date') {
         const aTime = new Date(a.date).getTime();
         const bTime = new Date(b.date).getTime();
         return sortDir === 'asc' ? aTime - bTime : bTime - aTime;
       }
-
       aVal = String(aVal).toLowerCase();
       bVal = String(bVal).toLowerCase();
-
       if (aVal < bVal) return sortDir === 'asc' ? -1 : 1;
       if (aVal > bVal) return sortDir === 'asc' ? 1 : -1;
       return 0;
     });
-
     return data;
   }, [filteredBookings, sortKey, sortDir]);
 
@@ -120,15 +130,13 @@ const BookingsPage: React.FC<BookingsPageProps> = ({
   };
 
   const handleDuplicateBooking = (booking: Booking) => {
-    // Create copy without ID so it's treated as new by CreateBookingModal
     const duplicatedBooking = {
       ...booking,
       id: '', 
       status: 'Pending',
-      date: new Date().toISOString().split('T')[0], // Reset date to today
+      date: new Date().toISOString().split('T')[0], 
       notes: `Copy of Booking ${booking.id}. ${booking.notes || ''}`
     } as Booking;
-    
     setEditingBooking(duplicatedBooking);
     setInitialModalTab('comments');
     setMenuOpenId(null);
@@ -136,18 +144,14 @@ const BookingsPage: React.FC<BookingsPageProps> = ({
 
   const handleCancelBooking = (booking: Booking) => {
     if (window.confirm('Are you sure you want to cancel this booking?')) {
-      if (onUpdateBooking) {
-        onUpdateBooking({ ...booking, status: 'Cancelled' });
-      }
+      if (onUpdateBooking) onUpdateBooking({ ...booking, status: 'Cancelled' });
       setMenuOpenId(null);
     }
   };
 
   const handleDeleteBooking = (bookingId: string) => {
     if (window.confirm('Are you sure you want to delete this booking? This cannot be undone.')) {
-      if (onDeleteBooking) {
-        onDeleteBooking(bookingId);
-      }
+      if (onDeleteBooking) onDeleteBooking(bookingId);
       setMenuOpenId(null);
     }
   };
@@ -160,9 +164,7 @@ const BookingsPage: React.FC<BookingsPageProps> = ({
 
   const handleExport = () => {
     if (sortedBookings.length === 0) return;
-
     const headers = ['ID', 'Ref No', 'Tour Name', 'Client', 'Assigned To', 'Date', 'Guests', 'Status', 'Notes', 'Pickup Location'];
-
     const csvContent = [
       headers.join(','),
       ...sortedBookings.map(booking => [
@@ -178,34 +180,58 @@ const BookingsPage: React.FC<BookingsPageProps> = ({
         `"${(booking.pickupLocation || '').replace(/"/g, '""')}"`
       ].join(','))
     ].join('\n');
-
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     const url = URL.createObjectURL(blob);
-
     link.href = url;
     link.setAttribute('download', `bookings_export_${new Date().toISOString().slice(0, 10)}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-
     URL.revokeObjectURL(url);
   };
 
-  // Helper for Sortable Headers
+  // --- Kanban Logic ---
+  const KANBAN_COLUMNS: { id: BookingStatus; label: string; color: string }[] = [
+    { id: 'Pending', label: 'Pending', color: 'bg-amber-500' },
+    { id: 'Confirmed', label: 'Confirmed', color: 'bg-emerald-500' },
+    { id: 'Completed', label: 'Completed', color: 'bg-indigo-500' },
+    { id: 'Cancelled', label: 'Cancelled', color: 'bg-red-500' },
+  ];
+
+  const handleDragStart = (e: React.DragEvent, id: string) => {
+    setDraggedBookingId(id);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+  };
+
+  const handleDrop = (e: React.DragEvent, status: BookingStatus) => {
+    e.preventDefault();
+    if (draggedBookingId && onUpdateBooking) {
+      const b = bookings.find(item => item.id === draggedBookingId);
+      if (b && b.status !== status) {
+        onUpdateBooking({ ...b, status });
+      }
+      setDraggedBookingId(null);
+    }
+  };
+
   const SortableHeader = ({ label, id, align = 'left' }: { label: string, id: SortKey, align?: 'left' | 'right' | 'center' }) => {
     const isActive = sortKey === id;
     return (
       <th 
-        className={`px-6 py-2.5 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700/50 transition-colors select-none text-${align}`}
+        className={`px-6 py-2.5 text-[10px] font-bold text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700/50 transition-colors select-none text-${align}`}
         onClick={() => handleSort(id)}
       >
         <div className={`flex items-center gap-1.5 ${align === 'right' ? 'justify-end' : align === 'center' ? 'justify-center' : 'justify-start'}`}>
           {label}
           {isActive ? (
-            sortDir === 'asc' ? <ArrowUp className="w-3 h-3 text-indigo-600 dark:text-indigo-400" /> : <ArrowDown className="w-3 h-3 text-indigo-600 dark:text-indigo-400" />
+            sortDir === 'asc' ? <ArrowUp className="w-3 h-3 text-indigo-600" /> : <ArrowDown className="w-3 h-3 text-indigo-600" />
           ) : (
-            <ArrowUpDown className="w-3 h-3 text-gray-300 dark:text-gray-600 opacity-0 group-hover:opacity-100" />
+            <ArrowUpDown className="w-3 h-3 text-gray-300 opacity-0 group-hover:opacity-100" />
           )}
         </div>
       </th>
@@ -214,7 +240,6 @@ const BookingsPage: React.FC<BookingsPageProps> = ({
 
   return (
     <div className="flex flex-col h-full bg-gray-50 dark:bg-gray-900">
-      {/* Header Area - Tightened */}
       <div className="flex-none px-6 py-4 lg:px-8 pb-3">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
           <div>
@@ -222,16 +247,40 @@ const BookingsPage: React.FC<BookingsPageProps> = ({
               {t('page_bookings_title')}
             </h2>
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-              Showing <span className="font-semibold">{sortedBookings.length}</span> of{' '}
-              <span className="font-semibold">{(bookings || []).length}</span> bookings
+              Manage your agency's operations and reservations.
             </p>
           </div>
 
           <div className="flex gap-3 w-full sm:w-auto">
+            <div className="flex bg-gray-100 dark:bg-gray-800 p-1 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
+              <button
+                onClick={() => setViewMode('table')}
+                className={`p-1.5 rounded-md flex items-center gap-2 text-xs font-medium transition-all ${
+                  viewMode === 'table' 
+                    ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm' 
+                    : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-200'
+                }`}
+              >
+                <List className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Table</span>
+              </button>
+              <button
+                onClick={() => setViewMode('kanban')}
+                className={`p-1.5 rounded-md flex items-center gap-2 text-xs font-medium transition-all ${
+                  viewMode === 'kanban' 
+                    ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm' 
+                    : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-200'
+                }`}
+              >
+                <LayoutGrid className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Kanban</span>
+              </button>
+            </div>
+
             <button
               onClick={handleExport}
               disabled={sortedBookings.length === 0}
-              className="flex-1 sm:flex-none justify-center px-4 py-1.5 border border-gray-200 dark:border-gray-700 rounded-lg text-sm font-medium bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="hidden lg:flex px-4 py-1.5 border border-gray-200 dark:border-gray-700 rounded-lg text-sm font-medium bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors items-center gap-2 disabled:opacity-50"
             >
               <Download className="w-4 h-4" />
               Export
@@ -246,24 +295,18 @@ const BookingsPage: React.FC<BookingsPageProps> = ({
           </div>
         </div>
 
-        {/* Filter Bar - Tightened */}
         <div className="bg-white dark:bg-gray-800 p-2.5 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
           <div className="flex flex-col lg:flex-row lg:items-center gap-3">
-            
-            {/* Left: Filter Label + Toggle */}
             <div className="flex items-center gap-2.5 flex-none">
               <div className="flex items-center gap-1.5 text-gray-400 dark:text-gray-500">
                 <Filter className="w-3.5 h-3.5" />
                 <span className="text-[11px] font-bold uppercase tracking-wider">Filter:</span>
               </div>
-
               <div className="flex bg-gray-100 dark:bg-gray-700/50 p-0.5 rounded-lg">
                 <button
                   onClick={() => setAssignedFilter('All')}
                   className={`px-3 py-1 text-[11px] font-bold rounded-md transition-all ${
-                    assignedFilter === 'All'
-                      ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow-sm'
-                      : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+                    assignedFilter === 'All' ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow-sm' : 'text-gray-500'
                   }`}
                 >
                   All
@@ -271,9 +314,7 @@ const BookingsPage: React.FC<BookingsPageProps> = ({
                 <button
                   onClick={() => setAssignedFilter('Mine')}
                   className={`px-3 py-1 text-[11px] font-bold rounded-md transition-all flex items-center gap-1.5 ${
-                    assignedFilter === 'Mine'
-                      ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow-sm'
-                      : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+                    assignedFilter === 'Mine' ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow-sm' : 'text-gray-500'
                   }`}
                 >
                   <User className="w-3 h-3" />
@@ -281,8 +322,6 @@ const BookingsPage: React.FC<BookingsPageProps> = ({
                 </button>
               </div>
             </div>
-
-            {/* Middle: Status Filter */}
             <div className="flex flex-col sm:flex-row gap-2 flex-1 min-w-0">
               <div className="w-full sm:w-44">
                 <select
@@ -298,214 +337,186 @@ const BookingsPage: React.FC<BookingsPageProps> = ({
                 </select>
               </div>
             </div>
-
-            {/* Right: Clear Filters */}
             {hasActiveFilters && (
-              <button
-                onClick={clearFilters}
-                className="flex-none text-xs text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 font-bold transition-colors"
-              >
-                Clear Filters
-              </button>
+              <button onClick={clearFilters} className="flex-none text-xs text-indigo-600 font-bold">Clear Filters</button>
             )}
           </div>
         </div>
       </div>
 
-      {/* Table Area - Full flexibility for scroll */}
-      <div className="flex-1 min-h-0 overflow-hidden px-6 lg:px-8 pb-6">
-        <div className="h-full bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden flex flex-col">
-          <div className="flex-1 overflow-y-auto">
-            <table className="w-full text-left">
-              <thead className="bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-10 backdrop-blur-sm">
-                <tr>
-                  <th className="px-6 py-2.5 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    ID
-                  </th>
-                  <SortableHeader label="Tour Info" id="tourName" />
-                  <SortableHeader label="Client" id="clientName" />
-                  <SortableHeader label="Assigned To" id="assignedTo" />
-                  <SortableHeader label="Status" id="status" />
-                  <SortableHeader label="Date" id="date" />
-                  <th className="px-6 py-2.5 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-right">Actions</th>
-                </tr>
-              </thead>
-
-              <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-                {sortedBookings.map(booking => (
-                  <tr
-                    key={booking.id}
-                    onClick={() => openEditModal(booking)}
-                    className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors group"
-                  >
-                    <td className="px-6 py-3.5 text-xs font-mono text-gray-500 dark:text-gray-400">
-                      {booking.bookingNo || '-'}
-                    </td>
-                    
-                    <td className="px-6 py-3.5">
-                      <div className="font-semibold text-gray-900 dark:text-white text-sm">
-                        {booking.tourName}
+      <div className="flex-1 min-h-0 overflow-hidden relative">
+        {viewMode === 'table' ? (
+          <div className="h-full overflow-y-auto px-6 lg:px-8 pb-6">
+            <div className="h-full bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden flex flex-col">
+              <div className="flex-1 overflow-y-auto">
+                <table className="w-full text-left">
+                  <thead className="bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-10 backdrop-blur-sm">
+                    <tr>
+                      <th className="px-6 py-2.5 text-[10px] font-bold text-gray-400 uppercase tracking-wider">ID</th>
+                      <SortableHeader label="Tour Info" id="tourName" />
+                      <SortableHeader label="Client" id="clientName" />
+                      <SortableHeader label="Assigned To" id="assignedTo" />
+                      <SortableHeader label="Status" id="status" />
+                      <SortableHeader label="Date" id="date" />
+                      <th className="px-6 py-2.5 text-[10px] font-bold text-gray-400 uppercase tracking-wider text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+                    {sortedBookings.map(booking => (
+                      <tr
+                        key={booking.id}
+                        onClick={() => openEditModal(booking)}
+                        className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors group"
+                      >
+                        <td className="px-6 py-3.5 text-xs font-mono text-gray-500">{booking.bookingNo || '-'}</td>
+                        <td className="px-6 py-3.5">
+                          <div className="font-semibold text-gray-900 dark:text-white text-sm">{booking.tourName}</div>
+                          <div className="text-[10px] text-gray-500 flex items-center gap-1 mt-0.5"><Users className="w-3 h-3" /> {booking.people} Guests</div>
+                        </td>
+                        <td className="px-6 py-3.5 text-sm font-medium text-gray-700 dark:text-gray-300">{booking.clientName}</td>
+                        <td className="px-6 py-3.5 text-sm text-gray-500">
+                          {booking.assignedTo ? (
+                            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-gray-50 dark:bg-gray-700/50 text-xs">{booking.assignedTo}</span>
+                          ) : (
+                            <span className="text-gray-400 italic text-xs">Unassigned</span>
+                          )}
+                        </td>
+                        <td className="px-6 py-3.5">
+                          <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${
+                            booking.status === 'Confirmed' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' :
+                            booking.status === 'Pending' ? 'bg-amber-50 text-amber-700 border-amber-100' :
+                            booking.status === 'Cancelled' ? 'bg-red-50 text-red-700 border-red-100' :
+                            'bg-gray-50 text-gray-700 border-gray-100'
+                          }`}>
+                            {booking.status}
+                          </span>
+                        </td>
+                        <td className="px-6 py-3.5 text-sm text-gray-500">{formatDate(booking.date)}</td>
+                        <td className="px-6 py-3.5 text-right">
+                          <div className="relative inline-block" data-booking-menu="true">
+                            <button
+                              onClick={(e) => { e.stopPropagation(); setMenuOpenId(prev => (prev === booking.id ? null : booking.id)); }}
+                              className="p-1.5 text-gray-400 hover:text-gray-700 rounded-lg hover:bg-gray-100 transition-colors"
+                            >
+                              <MoreHorizontal className="w-4.5 h-4.5" />
+                            </button>
+                            {menuOpenId === booking.id && (
+                              <div className="absolute right-0 mt-1 w-48 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-xl overflow-hidden z-20">
+                                <button onClick={() => openEditModal(booking)} className="w-full px-4 py-2.5 text-sm text-left hover:bg-gray-50 flex items-center gap-2 text-gray-700 dark:text-gray-200"><Pencil className="w-4 h-4" /> Edit Booking</button>
+                                <button onClick={() => handleDuplicateBooking(booking)} className="w-full px-4 py-2.5 text-sm text-left hover:bg-gray-50 flex items-center gap-2 text-gray-700 dark:text-gray-200"><Copy className="w-4 h-4" /> Duplicate</button>
+                                <button onClick={() => handleCancelBooking(booking)} className="w-full px-4 py-2.5 text-sm text-left hover:bg-gray-50 flex items-center gap-2 text-gray-700 dark:text-gray-200"><XCircle className="w-4 h-4" /> Cancel</button>
+                                <div className="border-t border-gray-100 dark:border-gray-700 my-1"></div>
+                                <button onClick={() => handleDeleteBooking(booking.id)} className="w-full px-4 py-2.5 text-sm text-left text-red-600 hover:bg-red-50 flex items-center gap-2"><Trash2 className="w-4 h-4" /> Delete</button>
+                              </div>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="absolute inset-0 w-full h-full overflow-hidden">
+            <div className="h-full w-full overflow-x-auto overflow-y-hidden px-6 lg:px-8 pb-6">
+              <div className="inline-flex min-w-full min-h-full gap-6 items-start p-4 bg-white/50 dark:bg-gray-900/40 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-inner overflow-y-hidden">
+                {KANBAN_COLUMNS.map((col) => {
+                  const colBookings = filteredBookings.filter(b => b.status === col.id);
+                  return (
+                    <div 
+                      key={col.id} 
+                      className="flex-shrink-0 w-80 bg-gray-50 dark:bg-gray-800/40 rounded-2xl p-4 border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col h-full max-h-full"
+                      onDragOver={handleDragOver}
+                      onDrop={(e) => handleDrop(e, col.id)}
+                    >
+                      <div className="flex items-center justify-between mb-4 px-1 pb-2 border-b border-dashed border-gray-300 dark:border-gray-700">
+                        <div className="flex items-center gap-2">
+                          <div className={`w-2.5 h-2.5 rounded-full ${col.color}`}></div>
+                          <span className="font-bold text-gray-900 dark:text-white text-sm tracking-tight">{col.label}</span>
+                          <span className="bg-white dark:bg-gray-700 text-gray-500 dark:text-gray-400 text-[10px] px-2 py-0.5 rounded-full font-black border border-gray-100 dark:border-gray-600 shadow-sm">
+                            {colBookings.length}
+                          </span>
+                        </div>
+                        <button className="text-gray-400 hover:text-gray-600"><MoreHorizontal className="w-4 h-4" /></button>
                       </div>
-                      <div className="text-[10px] text-gray-500 dark:text-gray-400 flex items-center gap-1 mt-0.5">
-                        <Users className="w-3 h-3" /> {booking.people} Guests
-                      </div>
-                    </td>
-
-                    <td className="px-6 py-3.5 text-sm font-medium text-gray-700 dark:text-gray-300">
-                      {booking.clientName}
-                    </td>
-
-                    <td className="px-6 py-3.5 text-sm text-gray-500 dark:text-gray-400">
-                      {booking.assignedTo ? (
-                        <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-gray-50 dark:bg-gray-700/50 text-xs">
-                          {booking.assignedTo}
-                        </span>
-                      ) : (
-                        <span className="text-gray-400 italic text-xs">Unassigned</span>
-                      )}
-                    </td>
-
-                    <td className="px-6 py-3.5">
-                      <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${
-                        booking.status === 'Confirmed' ? 'bg-emerald-50 text-emerald-700 border-emerald-100 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-900/30' :
-                        booking.status === 'Pending' ? 'bg-amber-50 text-amber-700 border-amber-100 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-900/30' :
-                        booking.status === 'Cancelled' ? 'bg-red-50 text-red-700 border-red-100 dark:bg-red-900/20 dark:text-red-400 dark:border-red-900/30' :
-                        'bg-gray-50 text-gray-700 border-gray-100 dark:bg-gray-800 dark:text-gray-300'
-                      }`}>
-                        {booking.status}
-                      </span>
-                    </td>
-
-                    <td className="px-6 py-3.5 text-sm text-gray-500 dark:text-gray-400">
-                      {formatDate(booking.date)}
-                    </td>
-
-                    <td className="px-6 py-3.5 text-right">
-                      <div className="relative inline-block" data-booking-menu="true">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setMenuOpenId(prev => (prev === booking.id ? null : booking.id));
-                          }}
-                          className="p-1.5 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                          aria-label="Actions"
-                        >
-                          <MoreHorizontal className="w-4.5 h-4.5" />
-                        </button>
-
-                        {menuOpenId === booking.id && (
+                      
+                      <div className="flex-1 overflow-y-auto space-y-3 min-h-[50px] pr-1 custom-scrollbar">
+                        {colBookings.map((booking) => (
                           <div
-                            onClick={(e) => e.stopPropagation()}
-                            className="absolute right-0 mt-1 w-48 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-xl overflow-hidden z-20"
+                            key={booking.id}
+                            draggable
+                            onDragStart={(e) => handleDragStart(e, booking.id)}
+                            onClick={() => openEditModal(booking)}
+                            className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 cursor-pointer hover:shadow-md hover:border-indigo-300 dark:hover:border-indigo-500 transition-all group active:scale-95"
                           >
-                            <button
-                              onClick={() => openEditModal(booking, 'comments')}
-                              className="w-full px-4 py-2.5 text-sm text-left text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700/40 flex items-center gap-2"
-                            >
-                              <Pencil className="w-4 h-4" />
-                              Edit Booking
-                            </button>
-
-                            <button
-                              onClick={() => openEditModal(booking, 'comments')}
-                              className="w-full px-4 py-2.5 text-sm text-left text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700/40 flex items-center gap-2"
-                            >
-                              <MessageSquare className="w-4 h-4" />
-                              View Activity
-                            </button>
-
-                            <button
-                              onClick={() => handleDuplicateBooking(booking)}
-                              className="w-full px-4 py-2.5 text-sm text-left text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700/40 flex items-center gap-2"
-                            >
-                              <Copy className="w-4 h-4" />
-                              Duplicate
-                            </button>
-
-                            <button
-                              onClick={() => handleCancelBooking(booking)}
-                              className="w-full px-4 py-2.5 text-sm text-left text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700/40 flex items-center gap-2"
-                            >
-                              <XCircle className="w-4 h-4" />
-                              Cancel Booking
-                            </button>
-
-                            <div className="border-t border-gray-100 dark:border-gray-700 my-1"></div>
-
-                            <button
-                              onClick={() => handleDeleteBooking(booking.id)}
-                              className="w-full px-4 py-2.5 text-sm text-left text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-2"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                              Delete
-                            </button>
+                            <div className="flex justify-between items-start mb-3">
+                              <h4 className="font-bold text-gray-900 dark:text-white text-sm leading-snug group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">{booking.tourName}</h4>
+                              <span className="text-[9px] font-black text-gray-400 font-mono bg-gray-50 dark:bg-gray-900 px-1.5 py-0.5 rounded border border-gray-100 dark:border-gray-700">{booking.bookingNo || '---'}</span>
+                            </div>
+                            
+                            <div className="space-y-2">
+                              <div className="flex items-center justify-between text-[11px]">
+                                <div className="flex items-center gap-1.5 text-gray-600 dark:text-gray-400 font-medium">
+                                  <User className="w-3 h-3 text-indigo-400" />
+                                  <span className="truncate max-w-[120px]">{booking.clientName}</span>
+                                </div>
+                                <div className="flex items-center gap-1 text-gray-500 font-bold bg-gray-50 dark:bg-gray-900 px-1.5 py-0.5 rounded">
+                                  <Users className="w-3 h-3" /> {booking.people}
+                                </div>
+                              </div>
+                              
+                              <div className="h-px bg-gray-100 dark:bg-gray-700" />
+                              
+                              <div className="flex items-center justify-between mt-2">
+                                <div className="flex items-center gap-1.5 text-[10px] font-bold text-gray-400 uppercase tracking-tighter">
+                                  <Calendar className="w-3 h-3" />
+                                  <span>{formatDate(booking.date)}</span>
+                                </div>
+                                {booking.assignedTo && (
+                                  <div className="text-[9px] font-black uppercase tracking-widest text-indigo-600 bg-indigo-50 dark:bg-indigo-900/30 px-1.5 py-0.5 rounded border border-indigo-100 dark:border-indigo-800">
+                                    {booking.assignedTo.split(' ')[0]}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                        {colBookings.length === 0 && (
+                          <div className="h-32 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-2xl flex flex-col items-center justify-center bg-gray-50/50 dark:bg-transparent text-gray-400 p-4">
+                            <CalendarCheck className="w-6 h-6 mb-2 opacity-20" />
+                            <span className="text-[10px] font-bold uppercase tracking-widest text-center">Empty Stage</span>
                           </div>
                         )}
                       </div>
-                    </td>
-                  </tr>
-                ))}
-
-                {sortedBookings.length === 0 && (
-                  <tr>
-                    <td colSpan={7} className="px-6 py-12 text-center text-gray-500 dark:text-gray-400 text-sm">
-                      {!hasActiveFilters && searchTerm.trim().length === 0 ? (
-                        <div>
-                          <div className="font-bold text-gray-900 dark:text-white text-base">No bookings yet</div>
-                          <div className="mt-1">Click “Add Booking” to create your first booking.</div>
-                        </div>
-                      ) : (
-                        <div>
-                          <div className="font-bold text-gray-900 dark:text-white text-base">No matches</div>
-                          <div className="mt-1">Try clearing filters or adjusting your search.</div>
-                          {hasActiveFilters && (
-                            <button
-                              onClick={clearFilters}
-                              className="mt-3 inline-flex items-center gap-2 text-indigo-600 dark:text-indigo-400 font-bold hover:underline"
-                            >
-                              Clear filters
-                            </button>
-                          )}
-                        </div>
-                      )}
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
-      {/* Create Modal */}
       {isCreateOpen && (
         <CreateBookingModal
           isOpen={true}
           onClose={() => setIsCreateOpen(false)}
           bookingToEdit={null}
-          initialTab='comments'
           onBookingCreated={(b) => {
-            if (onUpdateBooking) onUpdateBooking(b);
-            setIsCreateOpen(false);
-          }}
-          onBookingUpdated={(b) => {
             if (onUpdateBooking) onUpdateBooking(b);
             setIsCreateOpen(false);
           }}
         />
       )}
 
-      {/* Edit Modal */}
       {editingBooking && (
         <CreateBookingModal
           isOpen={true}
           onClose={() => setEditingBooking(null)}
           bookingToEdit={editingBooking}
-          initialTab={initialModalTab}
-          onBookingCreated={(b) => {
-            if (onUpdateBooking) onUpdateBooking(b); // Reuse update for this mock
-            setEditingBooking(null);
-          }}
+          initialTab={initialModalTab as any}
           onBookingUpdated={(b) => {
             if (onUpdateBooking) onUpdateBooking(b);
             setEditingBooking(null);

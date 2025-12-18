@@ -10,7 +10,8 @@ import {
   Calendar
 } from 'lucide-react';
 import { KPI_DATA, RECENT_LEADS, UPCOMING_BOOKINGS } from '../../data/mockData';
-import { Booking, Lead } from '../../types';
+// Added NotificationType to imports
+import { Booking, Lead, NotificationType } from '../../types';
 import AddLeadModal from '../../components/modals/AddLeadModal';
 import CreateBookingModal from '../../components/modals/CreateBookingModal';
 import LeadDetailPane from '../Leads/LeadDetailPane';
@@ -33,6 +34,8 @@ interface DashboardProps {
   onNavigate?: (page: string) => void;
   onUpdateBooking?: (booking: Booking) => void;
   onAddBooking?: (booking: Booking) => void;
+  // Added addNotification to DashboardProps
+  addNotification?: (payload: { title: string; description?: string; type: NotificationType; actionLink?: string }) => void;
 }
 
 const DashboardPage: React.FC<DashboardProps> = ({ 

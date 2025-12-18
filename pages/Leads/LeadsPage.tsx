@@ -1,7 +1,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { List, LayoutGrid, Tag, Clock, MoreHorizontal, Filter, User, Pencil, Trash2, MessageSquare, CalendarPlus, FileText } from 'lucide-react';
-import { Lead, LeadStatus, Booking } from '../../types';
+// Added NotificationType to imports
+import { Lead, LeadStatus, Booking, NotificationType } from '../../types';
 import { RECENT_LEADS } from '../../data/mockData';
 import { useI18n } from '../../context/ThemeContext';
 import AddLeadModal from '../../components/modals/AddLeadModal';
@@ -13,6 +14,8 @@ interface LeadsPageProps {
   onOpenConversation?: (leadName: string) => void;
   bookings: Booking[];
   onAddBooking: (booking: Booking) => void;
+  // Added addNotification to LeadsPageProps
+  addNotification?: (payload: { title: string; description?: string; type: NotificationType; actionLink?: string }) => void;
 }
 
 const CURRENT_USER_NAME = "Alex Walker"; // Mock user for "My Leads" filter
