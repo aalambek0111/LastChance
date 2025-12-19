@@ -127,7 +127,7 @@ function App() {
           )}
           {authState === 'signup' && (
             <SignupPage 
-              onSignupSuccess={() => setAuthState('onboarding')} 
+              onSignupSuccess={() => setAuthState('authenticated')} 
               onNavigate={(page) => setAuthState(page as AuthState)} 
             />
           )}

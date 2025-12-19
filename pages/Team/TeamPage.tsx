@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo } from 'react';
 import {
   UserPlus,
@@ -23,7 +22,8 @@ import {
   Activity,
   Users,
   ShieldCheck,
-  Eye
+  Eye,
+  Loader2
 } from 'lucide-react';
 import { useI18n } from '../../context/ThemeContext';
 
@@ -70,6 +70,7 @@ const TeamPage: React.FC = () => {
   const { t } = useI18n();
   const [members, setMembers] = useState<TeamMember[]>(INITIAL_TEAM);
   const [editingMember, setEditingMember] = useState<TeamMember | null>(null);
+  const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
@@ -114,6 +115,7 @@ const TeamPage: React.FC = () => {
             </p>
           </div>
           <button 
+            onClick={() => setIsInviteModalOpen(true)}
             className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-bold shadow-lg shadow-indigo-500/20 transition-all active:scale-95 flex items-center gap-2"
           >
             <UserPlus className="w-4 h-4" /> Invite Member
@@ -126,20 +128,16 @@ const TeamPage: React.FC = () => {
         
         {/* LEFT: MEMBER LIST (70%) */}
         <div className="flex-1 flex flex-col min-w-0 border-r border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
-          {/* Search/Filter Bar */}
           <div className="p-4 border-b border-gray-50 dark:border-gray-800 flex gap-3">
              <div className="relative flex-1">
                 <Search className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
                 <input 
                   value={search}
                   onChange={e => setSearch(e.target.value)}
-                  placeholder="Search by name, email or role..."
+                  placeholder="Search team..."
                   className="w-full pl-9 pr-4 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-indigo-500/20"
                 />
              </div>
-             <button className="px-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm font-semibold text-gray-600 dark:text-gray-300 hover:bg-gray-50 flex items-center gap-2 transition-colors">
-               <Filter className="w-4 h-4" /> All Roles
-             </button>
           </div>
 
           <div className="flex-1 overflow-y-auto custom-scrollbar">
@@ -192,16 +190,6 @@ const TeamPage: React.FC = () => {
                     </td>
                   </tr>
                 ))}
-                {filteredMembers.length === 0 && (
-                   <tr>
-                     <td colSpan={5} className="py-20 text-center">
-                        <div className="flex flex-col items-center opacity-30">
-                           <Search className="w-12 h-12 mb-3" />
-                           <p className="text-sm font-bold uppercase tracking-widest">No matching team members</p>
-                        </div>
-                     </td>
-                   </tr>
-                )}
               </tbody>
             </table>
           </div>
@@ -209,8 +197,6 @@ const TeamPage: React.FC = () => {
 
         {/* RIGHT: INSIGHTS SIDEBAR (30%) */}
         <div className="hidden lg:flex flex-col w-[380px] flex-none bg-gray-50/50 dark:bg-gray-900/50 p-8 space-y-10 overflow-y-auto">
-          
-          {/* Stats Card */}
           <div className="space-y-4">
             <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest">Team Performance</h3>
             <div className="bg-white dark:bg-gray-800 p-5 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm space-y-4">
@@ -233,32 +219,6 @@ const TeamPage: React.FC = () => {
               </div>
             </div>
           </div>
-
-          {/* Activity Feed */}
-          <div className="space-y-4">
-            <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest flex items-center justify-between">
-               Recent Activity
-               <Activity className="w-3.5 h-3.5" />
-            </h3>
-            <div className="space-y-4">
-              {[
-                { name: 'Alex Walker', action: 'updated role of Emily Davis', time: '2h ago' },
-                { name: 'Sarah Miller', action: 'logged into Mobile App', time: '4h ago' },
-                { name: 'Mike Johnson', action: 'completed Historical Walk', time: '1d ago' },
-              ].map((act, i) => (
-                <div key={i} className="flex gap-3 items-start border-l-2 border-indigo-100 dark:border-indigo-900/30 pl-4 py-1">
-                  <div className="min-w-0">
-                    <p className="text-xs text-gray-600 dark:text-gray-300">
-                       <span className="font-bold text-gray-900 dark:text-white">{act.name}</span> {act.action}
-                    </p>
-                    <span className="text-[10px] text-gray-400">{act.time}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Help Box */}
           <div className="bg-indigo-600 rounded-2xl p-6 text-white shadow-xl shadow-indigo-500/20 relative overflow-hidden group">
              <div className="absolute -right-4 -bottom-4 w-24 h-24 bg-white/10 rounded-full blur-2xl group-hover:scale-150 transition-transform duration-700" />
              <ShieldCheck className="w-8 h-8 mb-4 opacity-80" />
@@ -266,27 +226,35 @@ const TeamPage: React.FC = () => {
              <p className="text-xs text-indigo-100 leading-relaxed mb-4">
                Manage detailed access levels for each member to secure your business data.
              </p>
-             <button className="w-full py-2 bg-white/20 hover:bg-white/30 rounded-lg text-xs font-bold transition-colors">
+             <button onClick={() => alert('Accessing permission documentation...')} className="w-full py-2 bg-white/20 hover:bg-white/30 rounded-lg text-xs font-bold transition-colors">
                 Read Permission Docs
              </button>
           </div>
-
         </div>
       </div>
 
-      {/* --- CENTERED EDIT MODAL --- */}
+      {/* --- INVITE MODAL --- */}
+      {isInviteModalOpen && (
+        <InviteMemberModal 
+          onClose={() => setIsInviteModalOpen(false)} 
+          onInvite={(member) => {
+            setMembers([...members, { ...member, id: Date.now(), status: 'Invited', joinedAt: 'Pending' }]);
+            setIsInviteModalOpen(false);
+          }}
+        />
+      )}
+
+      {/* --- EDIT MODAL --- */}
       {editingMember && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
           <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm animate-in fade-in" onClick={() => setEditingMember(null)} />
-          
           <form 
             onSubmit={handleSave}
             className="relative w-full max-w-2xl bg-white dark:bg-gray-800 rounded-3xl shadow-2xl flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-200 border border-gray-200 dark:border-gray-700 overflow-hidden"
           >
-            {/* Modal Header */}
-            <div className="px-8 py-6 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center bg-gray-50/50 dark:bg-gray-900/50">
+            <div className="px-8 py-6 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center">
               <div className="flex items-center gap-4">
-                 <div className="w-12 h-12 rounded-2xl bg-indigo-600 flex items-center justify-center text-white font-bold text-lg shadow-lg shadow-indigo-500/30">
+                 <div className="w-12 h-12 rounded-2xl bg-indigo-600 flex items-center justify-center text-white font-bold text-lg">
                     {initials(editingMember.name)}
                  </div>
                  <div>
@@ -294,129 +262,105 @@ const TeamPage: React.FC = () => {
                     <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Profile & Permissions</p>
                  </div>
               </div>
-              <button onClick={() => setEditingMember(null)} className="p-2 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-full text-gray-400 transition-colors">
-                <X className="w-6 h-6" />
-              </button>
+              <button type="button" onClick={() => setEditingMember(null)} className="p-2 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-full text-gray-400"><X className="w-6 h-6" /></button>
             </div>
-
-            {/* Modal Content */}
             <div className="flex-1 overflow-y-auto p-8 space-y-10 custom-scrollbar">
-              
-              {/* Info Grid */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Full Name</label>
-                  <input 
-                    required
-                    value={editingMember.name} 
-                    onChange={e => setEditingMember({...editingMember, name: e.target.value})}
-                    className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500/20 outline-none"
-                  />
+                  <input required value={editingMember.name} onChange={e => setEditingMember({...editingMember, name: e.target.value})} className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-3 text-sm" />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Email Address</label>
-                  <div className="relative">
-                    <Mail className="absolute left-4 top-3.5 w-4 h-4 text-gray-400" />
-                    <input 
-                      type="email"
-                      value={editingMember.email} 
-                      onChange={e => setEditingMember({...editingMember, email: e.target.value})}
-                      className="w-full pl-11 pr-4 py-3 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500/20 outline-none"
-                    />
-                  </div>
+                  <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Email</label>
+                  <input type="email" value={editingMember.email} onChange={e => setEditingMember({...editingMember, email: e.target.value})} className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-3 text-sm" />
                 </div>
-                <div>
-                  <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Job Title</label>
-                  <input 
-                    value={editingMember.jobTitle} 
-                    onChange={e => setEditingMember({...editingMember, jobTitle: e.target.value})}
-                    className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500/20 outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Mobile Phone</label>
-                  <div className="relative">
-                    <Phone className="absolute left-4 top-3.5 w-4 h-4 text-gray-400" />
-                    <input 
-                      value={editingMember.phone || ''} 
-                      onChange={e => setEditingMember({...editingMember, phone: e.target.value})}
-                      className="w-full pl-11 pr-4 py-3 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500/20 outline-none"
-                    />
+                <div className="md:col-span-2">
+                  <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-4">Permission Role</label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {(['Owner', 'Admin', 'Manager', 'Limited', 'Read Only'] as SystemRole[]).map(role => (
+                      <button
+                        key={role}
+                        type="button"
+                        onClick={() => setEditingMember({...editingMember, role})}
+                        className={`p-4 rounded-2xl border-2 text-left transition-all relative ${editingMember.role === role ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-900/20' : 'border-gray-100 dark:border-gray-700'}`}
+                      >
+                        {editingMember.role === role && <CheckCircle2 className="absolute top-3 right-3 w-5 h-5 text-indigo-600" />}
+                        <div className="flex items-center gap-2 mb-1">
+                           {React.createElement(ROLE_CONFIG[role].icon, { className: "w-4 h-4 text-indigo-500" })}
+                           <span className="font-bold text-gray-900 dark:text-white">{role}</span>
+                        </div>
+                        <p className="text-[10px] text-gray-500 leading-tight">{ROLE_CONFIG[role].desc}</p>
+                      </button>
+                    ))}
                   </div>
                 </div>
               </div>
-
-              {/* Roles Selector */}
-              <div className="space-y-4">
-                <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest">Select Permission Role</label>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {(['Owner', 'Admin', 'Manager', 'Limited', 'Read Only'] as SystemRole[]).map(role => (
-                    <button
-                      key={role}
-                      type="button"
-                      onClick={() => setEditingMember({...editingMember, role})}
-                      className={`p-4 rounded-2xl border-2 text-left transition-all relative ${editingMember.role === role ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-900/20 ring-1 ring-indigo-600' : 'border-gray-100 dark:border-gray-700 hover:border-gray-200 dark:hover:border-gray-600'}`}
-                    >
-                      {editingMember.role === role && <CheckCircle2 className="absolute top-3 right-3 w-5 h-5 text-indigo-600" />}
-                      <div className="flex items-center gap-2 mb-1">
-                         {React.createElement(ROLE_CONFIG[role].icon, { className: "w-4 h-4 text-indigo-500" })}
-                         <span className="font-bold text-gray-900 dark:text-white">{role}</span>
-                      </div>
-                      <p className="text-[10px] text-gray-500 dark:text-gray-400 leading-tight">{ROLE_CONFIG[role].desc}</p>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Danger Zone */}
-              {editingMember.role !== 'Owner' && (
-                <div className="pt-8 border-t border-gray-100 dark:border-gray-700 space-y-4">
-                  <div className="flex items-center gap-2 text-[10px] font-bold text-red-600 uppercase tracking-widest">
-                    <AlertTriangle className="w-3.5 h-3.5" /> Security Actions
-                  </div>
-                  <div className="flex flex-col sm:flex-row gap-4">
-                    <button 
-                      type="button"
-                      onClick={() => setEditingMember({...editingMember, status: editingMember.status === 'Suspended' ? 'Active' : 'Suspended'})}
-                      className="flex-1 py-3 px-4 bg-amber-50 dark:bg-amber-900/10 text-amber-700 dark:text-amber-400 rounded-xl text-xs font-bold border border-amber-100 dark:border-amber-900/30 hover:bg-amber-100 transition-colors flex items-center justify-center gap-2"
-                    >
-                      <Ban className="w-4 h-4" />
-                      {editingMember.status === 'Suspended' ? 'Activate Member' : 'Suspend Member'}
-                    </button>
-                    <button 
-                      type="button"
-                      onClick={() => handleDelete(editingMember.id)}
-                      className="flex-1 py-3 px-4 bg-red-50 dark:bg-red-900/10 text-red-700 dark:text-red-400 rounded-xl text-xs font-bold border border-red-100 dark:border-red-900/30 hover:bg-red-100 transition-colors flex items-center justify-center gap-2"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                      Remove from Workspace
-                    </button>
-                  </div>
-                </div>
-              )}
             </div>
-
-            {/* Modal Footer */}
-            <div className="p-8 border-t border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800 flex justify-end gap-4 sticky bottom-0">
-               <button 
-                type="button"
-                onClick={() => setEditingMember(null)}
-                className="px-6 py-2.5 text-sm font-bold text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
-               >
-                 Discard
-               </button>
-               <button 
-                type="submit"
-                disabled={isSaving}
-                className="px-10 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-bold shadow-lg shadow-indigo-500/20 transition-all flex items-center gap-2 disabled:opacity-70"
-               >
-                 {isSaving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                 Update Member
-               </button>
+            <div className="p-8 border-t border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800 flex justify-between gap-4">
+               <button type="button" onClick={() => handleDelete(editingMember.id)} className="px-4 py-2.5 text-sm font-bold text-red-600 hover:bg-red-50 rounded-xl">Remove Member</button>
+               <div className="flex gap-4">
+                  <button type="button" onClick={() => setEditingMember(null)} className="px-6 py-2.5 text-sm font-bold text-gray-500">Discard</button>
+                  <button type="submit" disabled={isSaving} className="px-10 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-bold shadow-lg shadow-indigo-500/20 flex items-center gap-2">
+                    {isSaving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                    Save Changes
+                  </button>
+               </div>
             </div>
           </form>
         </div>
       )}
+    </div>
+  );
+};
+
+const InviteMemberModal = ({ onClose, onInvite }: { onClose: () => void, onInvite: (m: any) => void }) => {
+  const [formData, setFormData] = useState({ name: '', email: '', role: 'Manager' as SystemRole, jobTitle: '' });
+  const [isSending, setIsSending] = useState(false);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSending(true);
+    setTimeout(() => {
+      onInvite(formData);
+      setIsSending(false);
+    }, 1000);
+  };
+
+  return (
+    <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={onClose} />
+      <form onSubmit={handleSubmit} className="relative w-full max-w-md bg-white dark:bg-gray-800 rounded-3xl shadow-2xl overflow-hidden border border-gray-100 dark:border-gray-700">
+        <div className="px-6 py-6 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center bg-gray-50/50 dark:bg-gray-900/50">
+          <h3 className="text-xl font-bold text-gray-900 dark:text-white">Invite Team Member</h3>
+          <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-600"><X className="w-5 h-5" /></button>
+        </div>
+        <div className="p-6 space-y-4">
+           <div>
+              <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5">Full Name</label>
+              <input required value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-2.5 text-sm" placeholder="John Doe" />
+           </div>
+           <div>
+              <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5">Email Address</label>
+              <input required type="email" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-2.5 text-sm" placeholder="john@example.com" />
+           </div>
+           <div>
+              <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5">System Role</label>
+              <select value={formData.role} onChange={e => setFormData({...formData, role: e.target.value as SystemRole})} className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-2.5 text-sm outline-none">
+                 <option value="Manager">Manager</option>
+                 <option value="Admin">Admin</option>
+                 <option value="Limited">Limited Access</option>
+                 <option value="Read Only">Read Only</option>
+              </select>
+           </div>
+        </div>
+        <div className="p-6 bg-gray-50/50 dark:bg-gray-900/50 flex gap-3">
+           <button type="button" onClick={onClose} className="flex-1 py-3 text-sm font-bold text-gray-500">Cancel</button>
+           <button type="submit" disabled={isSending} className="flex-1 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-bold shadow-lg shadow-indigo-500/20 flex items-center justify-center gap-2">
+             {isSending ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserPlus className="w-4 h-4" />}
+             Send Invite
+           </button>
+        </div>
+      </form>
     </div>
   );
 };

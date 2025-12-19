@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { 
   Send, 
@@ -18,7 +17,10 @@ import {
   Server,
   Lock,
   Smartphone,
-  Globe
+  Globe,
+  Settings,
+  ChevronRight,
+  Shield
 } from 'lucide-react';
 
 interface IntegrationsSettingsProps {
@@ -28,6 +30,7 @@ interface IntegrationsSettingsProps {
 
 const IntegrationsSettings: React.FC<IntegrationsSettingsProps> = ({ settings, onChange }) => {
   const [activeIntegration, setActiveIntegration] = useState<string | null>(null);
+  const [whatsappProvider, setWhatsappProvider] = useState<'twilio' | 'meta' | null>(null);
   const [isConnecting, setIsConnecting] = useState(false);
 
   const handleTestConnection = (type: string) => {
@@ -87,7 +90,119 @@ const IntegrationsSettings: React.FC<IntegrationsSettingsProps> = ({ settings, o
     </div>
   );
 
-  // --- Specific Config Views ---
+  const renderWhatsAppChoice = () => (
+    <div className="space-y-6 animate-in fade-in duration-300">
+      <div className="flex items-center gap-4 mb-2">
+        <button onClick={() => setActiveIntegration(null)} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full text-gray-500"><ChevronLeft className="w-6 h-6" /></button>
+        <div>
+          <h3 className="text-xl font-bold text-gray-900 dark:text-white">Choose WhatsApp Provider</h3>
+          <p className="text-sm text-gray-500">Select how you want to connect your business account.</p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <button 
+          onClick={() => setWhatsappProvider('twilio')}
+          className="p-6 text-left bg-white dark:bg-gray-800 rounded-2xl border-2 border-gray-100 dark:border-gray-700 hover:border-indigo-500 transition-all group"
+        >
+          <div className="w-12 h-12 bg-red-50 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+             <Server className="w-6 h-6 text-red-600" />
+          </div>
+          <h4 className="font-bold text-lg text-gray-900 dark:text-white">Twilio API</h4>
+          <p className="text-sm text-gray-500 mt-2">Easiest setup. Great for developers. Requires a Twilio Account.</p>
+          <div className="mt-4 flex items-center text-xs font-bold text-indigo-600 uppercase tracking-widest">Select Twilio <ChevronRight className="w-4 h-4" /></div>
+        </button>
+
+        <button 
+          onClick={() => setWhatsappProvider('meta')}
+          className="p-6 text-left bg-white dark:bg-gray-800 rounded-2xl border-2 border-gray-100 dark:border-gray-700 hover:border-emerald-500 transition-all group"
+        >
+          <div className="w-12 h-12 bg-emerald-50 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+             <Globe className="w-6 h-6 text-emerald-600" />
+          </div>
+          <h4 className="font-bold text-lg text-gray-900 dark:text-white">Meta Cloud API (Direct)</h4>
+          <p className="text-sm text-gray-500 mt-2">Lowest cost. Official direct connection. No middleman fees.</p>
+          <div className="mt-4 flex items-center text-xs font-bold text-emerald-600 uppercase tracking-widest">Select Direct <ChevronRight className="w-4 h-4" /></div>
+        </button>
+      </div>
+    </div>
+  );
+
+  const renderTwilioConfig = () => (
+    <ConfigWrapper
+      title="Twilio WhatsApp Setup"
+      subtitle="Connect via your Twilio Account SID and Auth Token."
+      onBack={() => setWhatsappProvider(null)}
+      instructions={
+        <>
+          <div className="flex gap-3"><div className="w-6 h-6 rounded-full bg-red-600 text-white flex items-center justify-center text-xs font-bold shrink-0">1</div><p className="text-sm text-indigo-800 dark:text-indigo-200">Log in to your <b>Twilio Console</b>.</p></div>
+          <div className="flex gap-3"><div className="w-6 h-6 rounded-full bg-red-600 text-white flex items-center justify-center text-xs font-bold shrink-0">2</div><p className="text-sm text-indigo-800 dark:text-indigo-200">Copy your <b>Account SID</b> and <b>Auth Token</b>.</p></div>
+          <div className="flex gap-3"><div className="w-6 h-6 rounded-full bg-red-600 text-white flex items-center justify-center text-xs font-bold shrink-0">3</div><p className="text-sm text-indigo-800 dark:text-indigo-200">Configure your <b>Webhook URL</b> in Twilio to point to our API.</p></div>
+        </>
+      }
+      form={
+        <>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-xs font-bold text-gray-400 uppercase mb-2">Account SID</label>
+              <input className="w-full p-3 bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-mono" placeholder="ACxxxxxxxxxxxxxxxx" />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-gray-400 uppercase mb-2">Auth Token</label>
+              <input type="password" className="w-full p-3 bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-mono" placeholder="••••••••••••••••" />
+            </div>
+          </div>
+          <button 
+            onClick={() => handleTestConnection('whatsapp')}
+            className="w-full py-4 bg-red-600 text-white rounded-xl font-bold shadow-lg shadow-red-500/20 hover:bg-red-700 transition-all flex items-center justify-center gap-3"
+          >
+            {isConnecting ? <RefreshCw className="w-5 h-5 animate-spin" /> : 'Link Twilio Account'}
+          </button>
+        </>
+      }
+    />
+  );
+
+  const renderMetaConfig = () => (
+    <ConfigWrapper
+      title="Direct Meta API Setup"
+      subtitle="Connect directly to Meta Cloud servers for the best rates."
+      onBack={() => setWhatsappProvider(null)}
+      instructions={
+        <>
+          <div className="flex gap-3"><div className="w-6 h-6 rounded-full bg-emerald-600 text-white flex items-center justify-center text-xs font-bold shrink-0">1</div><p className="text-sm text-indigo-800 dark:text-indigo-200">Create a <b>Business App</b> at developers.facebook.com.</p></div>
+          <div className="flex gap-3"><div className="w-6 h-6 rounded-full bg-emerald-600 text-white flex items-center justify-center text-xs font-bold shrink-0">2</div><p className="text-sm text-indigo-800 dark:text-indigo-200">Generate a <b>Permanent System User Token</b>.</p></div>
+          <div className="flex gap-3"><div className="w-6 h-6 rounded-full bg-emerald-600 text-white flex items-center justify-center text-xs font-bold shrink-0">3</div><p className="text-sm text-indigo-800 dark:text-indigo-200">Enter your <b>Phone Number ID</b> and <b>WABA ID</b>.</p></div>
+        </>
+      }
+      form={
+        <>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-xs font-bold text-gray-400 uppercase mb-2">Permanent Access Token</label>
+              <input type="password" className="w-full p-3 bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-mono" placeholder="EAAB..." />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-bold text-gray-400 uppercase mb-2">Phone ID</label>
+                <input className="w-full p-3 bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-mono" placeholder="102938..." />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-400 uppercase mb-2">WABA ID</label>
+                <input className="w-full p-3 bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-mono" placeholder="987654..." />
+              </div>
+            </div>
+          </div>
+          <button 
+            onClick={() => handleTestConnection('whatsapp')}
+            className="w-full py-4 bg-emerald-600 text-white rounded-xl font-bold shadow-lg shadow-emerald-500/20 hover:bg-emerald-700 transition-all flex items-center justify-center gap-3"
+          >
+            {isConnecting ? <RefreshCw className="w-5 h-5 animate-spin" /> : 'Connect Meta Cloud'}
+          </button>
+        </>
+      }
+    />
+  );
 
   const renderTelegramConfig = () => (
     <ConfigWrapper
@@ -118,41 +233,6 @@ const IntegrationsSettings: React.FC<IntegrationsSettingsProps> = ({ settings, o
             className={`w-full py-4 rounded-xl font-bold transition-all shadow-lg flex items-center justify-center gap-3 ${settings.telegramEnabled ? 'bg-white border border-red-200 text-red-600 hover:bg-red-50' : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-indigo-500/20'}`}
           >
             {isConnecting ? <RefreshCw className="w-5 h-5 animate-spin" /> : settings.telegramEnabled ? 'Disconnect' : 'Connect Telegram'}
-          </button>
-        </>
-      }
-    />
-  );
-
-  const renderWhatsAppConfig = () => (
-    <ConfigWrapper
-      title="WhatsApp Business API"
-      subtitle="Connect via Meta Cloud API for official business messaging."
-      onBack={() => setActiveIntegration(null)}
-      instructions={
-        <>
-          <div className="flex gap-3"><div className="w-6 h-6 rounded-full bg-emerald-600 text-white flex items-center justify-center text-xs font-bold shrink-0">1</div><p className="text-sm text-indigo-800 dark:text-indigo-200">Go to <b>Meta for Developers</b> and create a 'Business' App.</p></div>
-          <div className="flex gap-3"><div className="w-6 h-6 rounded-full bg-emerald-600 text-white flex items-center justify-center text-xs font-bold shrink-0">2</div><p className="text-sm text-indigo-800 dark:text-indigo-200">Add 'WhatsApp' product to your app.</p></div>
-          <div className="flex gap-3"><div className="w-6 h-6 rounded-full bg-emerald-600 text-white flex items-center justify-center text-xs font-bold shrink-0">3</div><p className="text-sm text-indigo-800 dark:text-indigo-200">Provide your <b>Phone Number ID</b> and <b>Permanent Access Token</b>.</p></div>
-        </>
-      }
-      form={
-        <>
-          <div className="space-y-4">
-            <div>
-              <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Phone Number ID</label>
-              <input value={settings.whatsappPhoneId || ''} onChange={(e) => onChange('whatsappPhoneId', e.target.value)} className="w-full p-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-300 dark:border-gray-600 rounded-lg text-sm" placeholder="e.g. 10928374655" />
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Access Token</label>
-              <input type="password" value={settings.whatsappToken || ''} onChange={(e) => onChange('whatsappToken', e.target.value)} className="w-full p-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-300 dark:border-gray-600 rounded-lg text-sm" placeholder="EAAB..." />
-            </div>
-          </div>
-          <button 
-            onClick={() => settings.whatsappEnabled ? onChange('whatsappEnabled', false) : handleTestConnection('whatsapp')}
-            className={`w-full py-4 rounded-xl font-bold transition-all flex items-center justify-center gap-3 ${settings.whatsappEnabled ? 'bg-white border border-red-200 text-red-600' : 'bg-emerald-600 text-white hover:bg-emerald-700'}`}
-          >
-            {isConnecting ? <RefreshCw className="w-5 h-5 animate-spin" /> : settings.whatsappEnabled ? 'Disconnect' : 'Connect WhatsApp'}
           </button>
         </>
       }
@@ -283,7 +363,7 @@ const IntegrationsSettings: React.FC<IntegrationsSettingsProps> = ({ settings, o
         onClick={onConnect}
         className={`w-full py-2.5 rounded-xl text-sm font-bold transition-all shadow-sm active:scale-95 ${
           status === 'connected' 
-            ? 'bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-white hover:bg-gray-50' 
+            ? 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-white hover:bg-gray-50' 
             : 'bg-indigo-600 hover:bg-indigo-700 text-white'
         }`}
       >
@@ -293,9 +373,14 @@ const IntegrationsSettings: React.FC<IntegrationsSettingsProps> = ({ settings, o
   );
 
   // Main Render Switch
+  if (activeIntegration === 'whatsapp') {
+    if (!whatsappProvider) return renderWhatsAppChoice();
+    if (whatsappProvider === 'twilio') return renderTwilioConfig();
+    return renderMetaConfig();
+  }
+
   switch (activeIntegration) {
     case 'telegram': return renderTelegramConfig();
-    case 'whatsapp': return renderWhatsAppConfig();
     case 'instagram': return renderInstagramConfig();
     case 'email': return renderEmailConfig();
     default:
@@ -335,7 +420,7 @@ const IntegrationsSettings: React.FC<IntegrationsSettingsProps> = ({ settings, o
             <IntegrationCard 
               icon={Instagram} 
               name="Instagram" 
-              description="Manage Instagram DMs and track leads directly from your social engagement."
+              description="Manage Instagram DMs and track leads directly from your engagement."
               status={settings.instagramEnabled ? 'connected' : 'disconnected'}
               onConnect={() => setActiveIntegration('instagram')}
             />

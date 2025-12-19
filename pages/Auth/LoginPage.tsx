@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Mail, Lock, Eye, EyeOff, AlertCircle, Loader2 } from 'lucide-react';
 import AuthLayout from '../../components/auth/AuthLayout';
@@ -71,7 +70,11 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess, onNavigate }) => 
   };
 
   const handleGoogleLogin = () => {
-    console.log("Google Login Clicked");
+    setIsLoading(true);
+    setTimeout(() => {
+        alert('Redirecting to Google Auth...');
+        setIsLoading(false);
+    }, 800);
   };
 
   return (

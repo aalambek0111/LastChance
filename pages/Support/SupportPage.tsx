@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useRef, useEffect } from 'react';
 import {
   Search,
   Book,
@@ -17,8 +17,12 @@ import {
   Bot,
   Send,
   X,
+  Plus,
+  Loader2,
+  FileText
 } from 'lucide-react';
 import { useI18n } from '../../context/ThemeContext';
+import { GoogleGenAI } from '@google/genai';
 
 type ContentType = 'ALL' | 'FAQ' | 'GUIDE' | 'VIDEO';
 
@@ -83,555 +87,355 @@ const KB: KBItem[] = [
   },
 ];
 
-function normalize(text: string) {
-  return (text || '')
-    .toLowerCase()
-    .replace(/[^\p{L}\p{N}\s]/gu, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
-}
+type ChatMsg = { id: string; role: 'user' | 'model'; text: string };
 
-function scoreMatch(query: string, item: KBItem) {
-  const q = normalize(query);
-  if (!q) return 0;
+const SYSTEM_INSTRUCTION = `You are the official TourCRM Support Assistant. 
+You help tour agency owners manage their operations.
 
-  const hay = normalize([item.title, item.summary, item.body, item.tags.join(' ')].join(' '));
-  if (!hay) return 0;
+App Features:
+1. Dashboard: Real-time KPIs (Leads, Unread chats, Follow-ups, Upcoming tours).
+2. Inbox: Unified messaging for WhatsApp, Email, and Website leads. Uses AI Smart Replies.
+3. Leads: Manage prospects. View modes: Table and Kanban. Features Activity Logs and internal comments.
+4. Bookings: Manage confirmed and pending reservations. Handles pax capacity and pickup locations.
+5. Tours: Your product catalog. Set price, duration, difficulty, and location.
+6. Calendar: Drag-and-drop scheduling for tours and guides.
+7. Team: Invite members with roles: Owner, Admin, Manager, Limited, Read Only.
+8. Settings: Customize branding (logo/colors), currency, timezone, and layout.
+9. Automations: Rules to auto-assign leads or send confirmation emails.
+10. Data Import: Bulk upload Leads, Bookings, or Tours via CSV.
 
-  const qTokens = q.split(' ').filter(Boolean);
-  let score = 0;
-
-  // Strong signals
-  if (hay.includes(q)) score += 30;
-  if (normalize(item.title).includes(q)) score += 25;
-
-  // Token overlap
-  for (const tok of qTokens) {
-    if (tok.length < 2) continue;
-    if (normalize(item.title).includes(tok)) score += 8;
-    else if (normalize(item.summary).includes(tok)) score += 5;
-    else if (hay.includes(tok)) score += 2;
-  }
-
-  return score;
-}
-
-function buildAssistantAnswer(query: string, matches: KBItem[]) {
-  const q = normalize(query);
-  if (!q) {
-    return {
-      text:
-        'Ask me something like: "How do I add a tour?", "How to export bookings?", or "Where do I change currency?"',
-      related: matches.slice(0, 2),
-    };
-  }
-
-  if (!matches.length) {
-    return {
-      text:
-        'I could not find an exact match in the help content yet. Try different keywords (example: "export", "currency", "invite").',
-      related: [],
-    };
-  }
-
-  const best = matches[0];
-  const related = matches.slice(0, 2);
-
-  return {
-    text:
-      `Here is what I found in **${best.title}**:\n\n` +
-      `${best.body}\n\n` +
-      `If you want, I can also suggest related articles.`,
-    related,
-  };
-}
-
-type ChatMsg = { id: string; role: 'user' | 'assistant'; text: string };
+Guidelines:
+- Be professional, helpful, and concise.
+- If a user asks how to do something, provide step-by-step instructions based on the features above.
+- If you don't know the answer, suggest they "Create a Support Ticket" using the button in the app.
+- Mention that features like WhatsApp Alerts are "Coming Soon" if asked.`;
 
 const SupportPage: React.FC = () => {
   const { t } = useI18n();
-
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(0);
-
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<ContentType>('ALL');
-
   const [assistantOpen, setAssistantOpen] = useState(false);
   const [assistantInput, setAssistantInput] = useState('');
+  const [isTicketModalOpen, setIsTicketModalOpen] = useState(false);
+  const [isAiLoading, setIsAiLoading] = useState(false);
+  const chatEndRef = useRef<HTMLDivElement>(null);
+
   const [chat, setChat] = useState<ChatMsg[]>([
-    {
-      id: 'a1',
-      role: 'assistant',
-      text:
-        'Hi - I am your Support Assistant (offline). I can answer using the help content on this page. Ask me anything about Tours, Leads, Bookings, Settings, or Team.',
-    },
+    { id: 'a1', role: 'model', text: 'Hi! I am your TourCRM expert. How can I help you streamline your agency operations today?' }
   ]);
 
-  const toggleFaq = (index: number) => {
-    setOpenFaqIndex(openFaqIndex === index ? null : index);
-  };
+  useEffect(() => {
+    if (chatEndRef.current) {
+      chatEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [chat, isAiLoading]);
 
-  const filteredKb = useMemo(() => {
-    if (filter === 'ALL') return KB;
-    return KB.filter((k) => k.type === filter);
-  }, [filter]);
-
+  const toggleFaq = (index: number) => setOpenFaqIndex(openFaqIndex === index ? null : index);
+  const filteredKb = useMemo(() => filter === 'ALL' ? KB : KB.filter(k => k.type === filter), [filter]);
+  
   const results = useMemo(() => {
-    const q = normalize(query);
-    if (!q) return [];
-    const scored = filteredKb
-      .map((item) => ({ item, score: scoreMatch(q, item) }))
-      .filter((x) => x.score > 0)
-      .sort((a, b) => b.score - a.score)
-      .slice(0, 6)
-      .map((x) => x.item);
-
-    return scored;
+    if (!query.trim()) return [];
+    const q = query.toLowerCase();
+    return filteredKb.filter(item => 
+      item.title.toLowerCase().includes(q) || 
+      item.summary.toLowerCase().includes(q) || 
+      item.tags.some(tag => tag.toLowerCase().includes(q))
+    ).slice(0, 6);
   }, [query, filteredKb]);
 
-  const assistant = useMemo(() => {
-    return buildAssistantAnswer(query, results);
-  }, [query, results]);
+  const quickFaqs = useMemo(() => KB.filter(x => x.type === 'FAQ').slice(0, 6), []);
 
-  const quickFaqs = useMemo(() => KB.filter((x) => x.type === 'FAQ').slice(0, 6), []);
-
-  const sendAssistantMessage = () => {
+  const sendAssistantMessage = async () => {
     const text = assistantInput.trim();
-    if (!text) return;
+    if (!text || isAiLoading) return;
 
-    const localResults = KB
-      .map((item) => ({ item, score: scoreMatch(text, item) }))
-      .filter((x) => x.score > 0)
-      .sort((a, b) => b.score - a.score)
-      .slice(0, 3)
-      .map((x) => x.item);
-
-    const answer = buildAssistantAnswer(text, localResults);
-
-    setChat((prev) => [
-      ...prev,
-      { id: crypto.randomUUID?.() ?? String(Date.now()), role: 'user', text },
-      {
-        id: crypto.randomUUID?.() ?? String(Date.now() + 1),
-        role: 'assistant',
-        text: answer.text,
-      },
-    ]);
-
+    // Add user message to UI
+    const userMsg: ChatMsg = { id: String(Date.now()), role: 'user', text };
+    setChat(prev => [...prev, userMsg]);
     setAssistantInput('');
+    setIsAiLoading(true);
+
+    try {
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      
+      // Prepare history for Gemini
+      const contents = chat.map(msg => ({
+        role: msg.role,
+        parts: [{ text: msg.text }]
+      }));
+      contents.push({ role: 'user', parts: [{ text }] });
+
+      const response = await ai.models.generateContent({
+        model: 'gemini-3-flash-preview',
+        contents,
+        config: {
+          systemInstruction: SYSTEM_INSTRUCTION,
+          temperature: 0.7,
+        }
+      });
+
+      const aiText = response.text || "I'm sorry, I couldn't process that request.";
+      setChat(prev => [...prev, { id: String(Date.now() + 1), role: 'model', text: aiText }]);
+    } catch (error) {
+      console.error('Gemini API Error:', error);
+      setChat(prev => [...prev, { 
+        id: String(Date.now() + 1), 
+        role: 'model', 
+        text: "I'm having trouble connecting to my brain right now. Please try again or create a support ticket if the issue persists." 
+      }]);
+    } finally {
+      setIsAiLoading(false);
+    }
   };
 
-  const Chip: React.FC<{ active: boolean; onClick: () => void; label: string }> = ({
-    active,
-    onClick,
-    label,
-  }) => (
-    <button
-      onClick={onClick}
-      className={[
-        'px-3 py-1.5 rounded-full text-xs font-semibold transition-colors border',
-        active
-          ? 'bg-white text-indigo-700 border-white'
-          : 'bg-indigo-500/20 text-indigo-100 border-indigo-300/20 hover:bg-indigo-500/30',
-      ].join(' ')}
-      type="button"
-    >
-      {label}
-    </button>
-  );
+  const handleAction = (label: string) => alert(`Redirecting to ${label} center...`);
 
   return (
     <div className="h-full overflow-y-auto bg-gray-50 dark:bg-gray-900">
       {/* Hero */}
-      <div className="bg-indigo-600 dark:bg-indigo-900 pt-10 pb-16 px-6 lg:px-8 text-center relative overflow-hidden">
+      <div className="bg-indigo-600 dark:bg-indigo-950 pt-10 pb-16 px-6 lg:px-8 text-center relative overflow-hidden">
         <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]" />
         <div className="relative z-10 max-w-3xl mx-auto">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 text-indigo-50 text-xs font-semibold mb-4">
-            <Sparkles className="w-4 h-4" />
-            Support Assistant (offline)
+            <Sparkles className="w-4 h-4" /> AI Support Enabled
           </div>
-
-          <h2 className="text-3xl font-bold text-white mb-3">{t?.('How can we help you?') ?? 'Support'}</h2>
-          <p className="text-indigo-100 mb-8">
-            Search your help center. You can also ask the assistant and it will reply using the content in this page.
-          </p>
-
-          <div className="bg-white/10 border border-white/10 rounded-2xl p-4 sm:p-5">
-            <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
+          <h2 className="text-3xl font-bold text-white mb-3">How can we help you?</h2>
+          <div className="bg-white/10 border border-white/10 rounded-2xl p-4 mt-8">
+            <div className="flex flex-col sm:flex-row gap-3">
               <div className="relative flex-1">
-                <input
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  type="text"
-                  placeholder="Search e.g. 'export bookings', 'change currency', 'invite team'..."
-                  className="w-full pl-11 pr-4 py-3.5 rounded-xl text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-4 focus:ring-indigo-500/30"
-                />
+                <input value={query} onChange={e => setQuery(e.target.value)} type="text" placeholder="Search documentation..." className="w-full pl-11 pr-4 py-3.5 rounded-xl text-gray-900 placeholder-gray-500 focus:outline-none" />
                 <Search className="absolute left-4 top-3.5 w-5 h-5 text-gray-400" />
               </div>
-
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => setAssistantOpen(true)}
-                  className="px-4 py-3 rounded-xl bg-white text-indigo-700 font-semibold text-sm hover:bg-indigo-50 transition flex items-center gap-2"
-                >
-                  <Bot className="w-4 h-4" />
-                  Ask Assistant
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setAssistantOpen((v) => !v)}
-                  className="px-4 py-3 rounded-xl bg-indigo-500/20 text-white font-semibold text-sm hover:bg-indigo-500/30 transition"
-                >
-                  {assistantOpen ? 'Close chat' : 'Open chat'}
-                </button>
-              </div>
-            </div>
-
-            <div className="flex flex-wrap items-center justify-center gap-2 mt-4">
-              <span className="text-indigo-100 text-xs font-semibold mr-1">Filter:</span>
-              <Chip active={filter === 'ALL'} onClick={() => setFilter('ALL')} label="All" />
-              <Chip active={filter === 'FAQ'} onClick={() => setFilter('FAQ')} label="FAQ" />
-              <Chip active={filter === 'GUIDE'} onClick={() => setFilter('GUIDE')} label="Guide" />
-              <Chip active={filter === 'VIDEO'} onClick={() => setFilter('VIDEO')} label="Video" />
+              <button onClick={() => setAssistantOpen(true)} className="px-6 py-3 rounded-xl bg-white text-indigo-700 font-bold text-sm hover:bg-indigo-50 transition flex items-center gap-2">
+                <Bot className="w-4 h-4" /> Ask AI
+              </button>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Main content (FIX: z-20 so it is never hidden under the hero) */}
       <div className="max-w-6xl mx-auto px-6 lg:px-8 -mt-10 pb-12 relative z-20">
-        {/* Quick links */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
-          <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md border border-gray-100 dark:border-gray-700 hover:-translate-y-1 transition-transform duration-300">
+          <div onClick={() => handleAction('Documentation')} className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md border border-gray-100 dark:border-gray-700 hover:-translate-y-1 transition-all cursor-pointer group">
             <div className="w-12 h-12 bg-blue-50 dark:bg-blue-900/20 rounded-lg flex items-center justify-center text-blue-600 dark:text-blue-400 mb-4">
               <Book className="w-6 h-6" />
             </div>
-            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">Documentation</h3>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-              Guides for tours, leads, bookings, team, and settings.
-            </p>
-            <button className="text-indigo-600 dark:text-indigo-400 text-sm font-semibold flex items-center gap-1 hover:gap-2 transition-all">
-              Browse Articles <ChevronRight className="w-4 h-4" />
-            </button>
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">Guides</h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">Master every feature with detailed docs.</p>
+            <span className="text-indigo-600 font-bold text-sm flex items-center gap-1 group-hover:gap-2 transition-all">Browse Articles <ChevronRight className="w-4 h-4" /></span>
           </div>
-
-          <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md border border-gray-100 dark:border-gray-700 hover:-translate-y-1 transition-transform duration-300">
+          <div onClick={() => handleAction('Tutorial')} className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md border border-gray-100 dark:border-gray-700 hover:-translate-y-1 transition-all cursor-pointer group">
             <div className="w-12 h-12 bg-purple-50 dark:bg-purple-900/20 rounded-lg flex items-center justify-center text-purple-600 dark:text-purple-400 mb-4">
               <PlayCircle className="w-6 h-6" />
             </div>
-            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">Video Tutorials</h3>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-              Quick walkthroughs for common workflows.
-            </p>
-            <button className="text-indigo-600 dark:text-indigo-400 text-sm font-semibold flex items-center gap-1 hover:gap-2 transition-all">
-              Watch Videos <ChevronRight className="w-4 h-4" />
-            </button>
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">Video Walkthroughs</h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">Visual guides for quick setup.</p>
+            <span className="text-indigo-600 font-bold text-sm flex items-center gap-1 group-hover:gap-2 transition-all">Watch Videos <ChevronRight className="w-4 h-4" /></span>
           </div>
-
-          <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md border border-gray-100 dark:border-gray-700 hover:-translate-y-1 transition-transform duration-300">
+          <div onClick={() => handleAction('Community')} className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md border border-gray-100 dark:border-gray-700 hover:-translate-y-1 transition-all cursor-pointer group">
             <div className="w-12 h-12 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg flex items-center justify-center text-emerald-600 dark:text-emerald-400 mb-4">
               <LifeBuoy className="w-6 h-6" />
             </div>
-            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">Community</h3>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-              Share tips with other tour operators.
-            </p>
-            <button className="text-indigo-600 dark:text-indigo-400 text-sm font-semibold flex items-center gap-1 hover:gap-2 transition-all">
-              Visit Community <ExternalLink className="w-3 h-3" />
-            </button>
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">Community Forum</h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">Connect with other agency owners.</p>
+            <span className="text-indigo-600 font-bold text-sm flex items-center gap-1 group-hover:gap-2 transition-all">Join Discussion <ExternalLink className="w-3 h-3" /></span>
           </div>
         </div>
 
-        {/* Results + Assistant answer */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Left */}
           <div className="lg:col-span-2 space-y-8">
-            {/* Assistant answer panel */}
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
-              <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Bot className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-                  <h3 className="font-bold text-gray-900 dark:text-white">Assistant Answer</h3>
-                </div>
-                <span className="text-xs font-semibold px-2 py-1 rounded-full bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-200">
-                  Offline
-                </span>
-              </div>
-
-              <div className="p-6">
-                <div className="text-sm text-gray-700 dark:text-gray-200 whitespace-pre-wrap leading-relaxed">
-                  {assistant.text}
-                </div>
-
-                {assistant.related.length > 0 && (
-                  <div className="mt-5">
-                    <div className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">
-                      Related
-                    </div>
-                    <div className="space-y-2">
-                      {assistant.related.map((r) => (
-                        <div
-                          key={r.id}
-                          className="p-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/20"
-                        >
-                          <div className="flex items-center justify-between gap-3">
-                            <div>
-                              <div className="text-sm font-semibold text-gray-900 dark:text-white">{r.title}</div>
-                              <div className="text-xs text-gray-500 dark:text-gray-400">{r.summary}</div>
-                            </div>
-                            <span className="text-[11px] font-bold px-2 py-1 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300">
-                              {r.type}
-                            </span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Search results */}
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
               <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center">
-                <h3 className="font-bold text-gray-900 dark:text-white">Search Results</h3>
-                <span className="text-xs text-gray-500 dark:text-gray-400">
-                  {query.trim() ? `${results.length} match(es)` : 'Type to search'}
-                </span>
+                <h3 className="font-bold text-gray-900 dark:text-white">Recent Articles</h3>
+                <span className="text-xs text-gray-500 uppercase font-bold tracking-widest">{query.trim() ? `${results.length} results` : 'Search for specific topics'}</span>
               </div>
-
               <div className="p-6">
                 {!query.trim() ? (
-                  <div className="text-sm text-gray-500 dark:text-gray-400">
-                    Try searching for “export”, “currency”, “invite”, or “create tour”.
-                  </div>
-                ) : results.length === 0 ? (
-                  <div className="text-sm text-gray-500 dark:text-gray-400">
-                    No results. Try different keywords.
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {results.map((r) => (
-                      <div
-                        key={r.id}
-                        className="p-4 rounded-xl border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition"
-                      >
-                        <div className="flex items-center justify-between gap-3">
-                          <div>
-                            <div className="font-semibold text-gray-900 dark:text-white">{r.title}</div>
-                            <div className="text-sm text-gray-500 dark:text-gray-400">{r.summary}</div>
-                          </div>
-                          <span className="text-[11px] font-bold px-2 py-1 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300">
-                            {r.type}
-                          </span>
+                  <div className="space-y-4">
+                    {KB.slice(0, 3).map(r => (
+                      <div key={r.id} className="p-4 rounded-xl border border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition cursor-pointer">
+                        <div className="flex justify-between">
+                          <h4 className="font-bold text-gray-900 dark:text-white">{r.title}</h4>
+                          <span className="text-[10px] font-black uppercase text-indigo-500">{r.type}</span>
                         </div>
-                        <div className="mt-3 text-sm text-gray-700 dark:text-gray-200 whitespace-pre-wrap">
-                          {r.body}
-                        </div>
+                        <p className="text-sm text-gray-500 mt-1">{r.summary}</p>
                       </div>
                     ))}
                   </div>
+                ) : results.length > 0 ? (
+                  results.map(r => (
+                    <div key={r.id} className="p-4 rounded-xl border border-gray-200 mb-3">
+                      <h4 className="font-bold text-gray-900 dark:text-white">{r.title}</h4>
+                      <p className="text-sm text-gray-600 dark:text-gray-300 mt-2">{r.body}</p>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center py-8">
+                    <p className="text-gray-500">No results found for "{query}". Try asking the AI Assistant instead.</p>
+                  </div>
                 )}
               </div>
             </div>
-
-            {/* FAQs */}
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
               <h3 className="font-bold text-gray-900 dark:text-white mb-6">Frequently Asked Questions</h3>
               <div className="space-y-4">
                 {quickFaqs.map((faq, idx) => (
                   <div key={faq.id} className="border border-gray-100 dark:border-gray-700 rounded-lg overflow-hidden">
-                    <button
-                      onClick={() => toggleFaq(idx)}
-                      className="w-full flex items-center justify-between p-4 text-left bg-gray-50/50 dark:bg-gray-700/30 hover:bg-gray-100 dark:hover:bg-gray-700/50 transition-colors"
-                      type="button"
-                    >
-                      <span className="font-medium text-gray-900 dark:text-white text-sm">{faq.title}</span>
-                      {openFaqIndex === idx ? (
-                        <ChevronUp className="w-4 h-4 text-gray-500" />
-                      ) : (
-                        <ChevronDown className="w-4 h-4 text-gray-500" />
-                      )}
+                    <button onClick={() => toggleFaq(idx)} className="w-full flex items-center justify-between p-4 text-left bg-gray-50/50 dark:bg-gray-700/30 hover:bg-gray-100 dark:hover:bg-gray-700/50 transition-colors">
+                      <span className="font-bold text-gray-900 dark:text-white text-sm">{faq.title}</span>
+                      {openFaqIndex === idx ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                     </button>
-                    {openFaqIndex === idx && (
-                      <div className="p-4 bg-white dark:bg-gray-800 text-sm text-gray-600 dark:text-gray-300 border-t border-gray-100 dark:border-gray-700 leading-relaxed">
-                        {faq.body}
-                      </div>
-                    )}
+                    {openFaqIndex === idx && <div className="p-4 bg-white dark:bg-gray-800 text-sm text-gray-600 dark:text-gray-300 border-t border-gray-100 dark:border-gray-700 leading-relaxed">{faq.body}</div>}
                   </div>
                 ))}
               </div>
             </div>
           </div>
 
-          {/* Right column - contact */}
           <div className="space-y-6">
-            <h3 className="font-bold text-gray-900 dark:text-white px-1">Contact Support</h3>
-
-            <div className="bg-white dark:bg-gray-800 p-5 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm flex items-start gap-4">
-              <div className="bg-indigo-50 dark:bg-indigo-900/20 p-3 rounded-lg text-indigo-600 dark:text-indigo-400">
-                <MessageCircle className="w-5 h-5" />
-              </div>
+            <h3 className="font-bold text-gray-900 dark:text-white px-1">Connect with Us</h3>
+            <div className="bg-white dark:bg-gray-800 p-5 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm flex items-start gap-4">
+              <div className="bg-indigo-50 dark:bg-indigo-900/20 p-3 rounded-lg text-indigo-600 dark:text-indigo-400"><MessageCircle className="w-5 h-5" /></div>
               <div>
-                <h4 className="font-bold text-gray-900 dark:text-white text-sm">Live Chat</h4>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 mb-3">Available Mon-Fri, 9am - 5pm.</p>
-                <button
-                  onClick={() => setAssistantOpen(true)}
-                  className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg transition-colors"
-                  type="button"
-                >
-                  Open Assistant Chat
-                </button>
+                <h4 className="font-bold text-gray-900 dark:text-white text-sm">Live Assistance</h4>
+                <p className="text-xs text-gray-500 mt-1 mb-3">Instant chat with our AI experts.</p>
+                <button onClick={() => setAssistantOpen(true)} className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-lg transition-colors">Open Chat</button>
               </div>
             </div>
-
-            <div className="bg-white dark:bg-gray-800 p-5 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm flex items-start gap-4">
-              <div className="bg-pink-50 dark:bg-pink-900/20 p-3 rounded-lg text-pink-600 dark:text-pink-400">
-                <Mail className="w-5 h-5" />
-              </div>
-              <div>
-                <h4 className="font-bold text-gray-900 dark:text-white text-sm">Email Us</h4>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 mb-3">Response within 24 hours.</p>
-                <a href="mailto:support@tourcrm.com" className="text-xs font-semibold text-pink-600 hover:underline">
-                  support@tourcrm.com
-                </a>
-              </div>
-            </div>
-
-            <div className="bg-white dark:bg-gray-800 p-5 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm flex items-start gap-4">
-              <div className="bg-amber-50 dark:bg-amber-900/20 p-3 rounded-lg text-amber-600 dark:text-amber-400">
-                <Phone className="w-5 h-5" />
-              </div>
-              <div>
-                <h4 className="font-bold text-gray-900 dark:text-white text-sm">Phone Support</h4>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 mb-3">For urgent issues (Premium only).</p>
-                <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">+1 (800) 123-4567</span>
-              </div>
-            </div>
-
-            {/* Example "tickets" block (optional) */}
             <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
-              <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-700">
-                <h4 className="font-bold text-gray-900 dark:text-white text-sm">Recent Tickets</h4>
-              </div>
+              <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-700"><h4 className="font-bold text-gray-900 dark:text-white text-sm">Open Support Tickets</h4></div>
               <div className="p-5 space-y-3">
                 {[
-                  { id: 'T-1024', subject: 'Integration with Stripe', status: 'In Progress', lastUpdate: '2h ago' },
-                  { id: 'T-1023', subject: 'Email notifications not sending', status: 'Resolved', lastUpdate: '1d ago' },
-                ].map((ticket) => (
-                  <div
-                    key={ticket.id}
-                    className="p-3 rounded-lg border border-gray-200 dark:border-gray-700 flex items-center justify-between gap-3"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div
-                        className={[
-                          'p-2 rounded-full',
-                          ticket.status === 'In Progress'
-                            ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30'
-                            : 'bg-green-100 text-green-700 dark:bg-green-900/30',
-                        ].join(' ')}
-                      >
-                        {ticket.status === 'In Progress' ? <Clock className="w-4 h-4" /> : <CheckCircle2 className="w-4 h-4" />}
-                      </div>
-                      <div>
-                        <div className="text-sm font-semibold text-gray-900 dark:text-white">{ticket.subject}</div>
-                        <div className="text-xs text-gray-500 dark:text-gray-400">
-                          {ticket.id} - Last updated {ticket.lastUpdate}
-                        </div>
-                      </div>
+                  { id: 'T-1024', subject: 'Integration help', status: 'Active', time: '2h ago' }
+                ].map(ticket => (
+                  <div key={ticket.id} className="p-3 rounded-lg border border-gray-100 dark:border-gray-700 flex items-center justify-between gap-3">
+                    <div>
+                      <div className="text-sm font-bold text-gray-900 dark:text-white">{ticket.subject}</div>
+                      <div className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">{ticket.id} • {ticket.time}</div>
                     </div>
-                    <span
-                      className={[
-                        'text-[11px] font-bold px-2 py-1 rounded-full',
-                        ticket.status === 'In Progress'
-                          ? 'bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-300'
-                          : 'bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-300',
-                      ].join(' ')}
-                    >
-                      {ticket.status}
-                    </span>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700">{ticket.status}</span>
                   </div>
                 ))}
-                <button
-                  type="button"
-                  className="w-full mt-1 px-3 py-2 text-sm font-semibold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-lg transition"
-                >
-                  + Create New Ticket
-                </button>
+                <button onClick={() => setIsTicketModalOpen(true)} className="w-full mt-2 py-2 text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-lg transition-all border border-dashed border-indigo-200">+ Create Ticket</button>
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Assistant Chat Drawer */}
       {assistantOpen && (
-        <div className="fixed right-6 bottom-6 w-[380px] max-w-[92vw] z-50">
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden">
-            <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-xl bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center">
-                  <Bot className="w-4 h-4 text-indigo-600 dark:text-indigo-300" />
-                </div>
-                <div>
-                  <div className="text-sm font-bold text-gray-900 dark:text-white">Support Assistant</div>
-                  <div className="text-xs text-gray-500 dark:text-gray-400">Offline - uses your help content</div>
-                </div>
+        <div className="fixed right-6 bottom-6 w-[400px] max-w-[92vw] z-50 animate-in slide-in-from-bottom-5">
+          <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden flex flex-col h-[500px]">
+            <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between bg-indigo-600">
+              <div className="flex items-center gap-3 text-white">
+                <Bot className="w-5 h-5" />
+                <h4 className="font-bold text-sm uppercase tracking-widest">Support Assistant</h4>
               </div>
-              <button
-                onClick={() => setAssistantOpen(false)}
-                className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700/50 transition"
-                type="button"
-                aria-label="Close assistant"
-              >
-                <X className="w-4 h-4 text-gray-600 dark:text-gray-300" />
-              </button>
+              <button onClick={() => setAssistantOpen(false)} className="text-white/70 hover:text-white"><X className="w-5 h-5" /></button>
             </div>
-
-            <div className="max-h-[360px] overflow-y-auto p-4 space-y-3">
-              {chat.map((m) => (
-                <div
-                  key={m.id}
-                  className={[
-                    'text-sm rounded-2xl px-3 py-2 leading-relaxed whitespace-pre-wrap',
-                    m.role === 'user'
-                      ? 'bg-indigo-600 text-white ml-10'
-                      : 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-200 mr-10',
-                  ].join(' ')}
-                >
-                  {m.text}
+            <div className="flex-1 overflow-y-auto p-5 space-y-4 custom-scrollbar">
+              {chat.map(m => (
+                <div key={m.id} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                   <div className={`p-3 rounded-2xl text-sm max-w-[85%] ${m.role === 'user' ? 'bg-indigo-600 text-white rounded-br-none shadow-md' : 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-white rounded-bl-none border border-gray-200 dark:border-gray-600'}`}>
+                     {m.text}
+                   </div>
                 </div>
               ))}
+              {isAiLoading && (
+                <div className="flex justify-start">
+                  <div className="bg-gray-100 dark:bg-gray-700 p-3 rounded-2xl rounded-bl-none flex items-center gap-2">
+                    <Loader2 className="w-4 h-4 animate-spin text-indigo-500" />
+                    <span className="text-xs text-gray-500 font-medium">Assistant is thinking...</span>
+                  </div>
+                </div>
+              )}
+              <div ref={chatEndRef} />
             </div>
-
-            <div className="p-3 border-t border-gray-100 dark:border-gray-700">
-              <div className="flex items-center gap-2">
-                <input
-                  value={assistantInput}
-                  onChange={(e) => setAssistantInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') sendAssistantMessage();
-                  }}
-                  placeholder="Ask a question..."
-                  className="flex-1 px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
+            <div className="p-4 border-t border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50">
+              <form 
+                onSubmit={(e) => { e.preventDefault(); sendAssistantMessage(); }}
+                className="flex gap-2"
+              >
+                <input 
+                  value={assistantInput} 
+                  onChange={e => setAssistantInput(e.target.value)} 
+                  disabled={isAiLoading}
+                  placeholder="Type your question..." 
+                  className="flex-1 px-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all" 
                 />
-                <button
-                  onClick={sendAssistantMessage}
-                  className="px-3 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white transition flex items-center gap-2"
-                  type="button"
+                <button 
+                  type="submit"
+                  disabled={!assistantInput.trim() || isAiLoading}
+                  className="p-2.5 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 disabled:opacity-50 transition-all active:scale-95"
                 >
                   <Send className="w-4 h-4" />
                 </button>
-              </div>
-              <div className="text-[11px] text-gray-500 dark:text-gray-400 mt-2">
-                Tip: Ask “export bookings”, “change currency”, “invite team”, “create tour”.
-              </div>
+              </form>
             </div>
           </div>
         </div>
       )}
+
+      {isTicketModalOpen && (
+        <CreateTicketModal 
+          onClose={() => setIsTicketModalOpen(false)} 
+          onSuccess={() => {
+            alert('Ticket created successfully!');
+            setIsTicketModalOpen(false);
+          }} 
+        />
+      )}
+    </div>
+  );
+};
+
+const CreateTicketModal = ({ onClose, onSuccess }: { onClose: () => void, onSuccess: () => void }) => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formData, setFormData] = useState({ subject: '', category: 'General', message: '' });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    setTimeout(onSuccess, 1200);
+  };
+
+  return (
+    <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={onClose} />
+      <form onSubmit={handleSubmit} className="relative w-full max-w-md bg-white dark:bg-gray-800 rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95">
+        <div className="px-6 py-5 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center bg-gray-50/50 dark:bg-gray-900/50">
+          <h3 className="text-xl font-bold text-gray-900 dark:text-white">Create Support Ticket</h3>
+          <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-600"><X className="w-5 h-5" /></button>
+        </div>
+        <div className="p-6 space-y-4">
+           <div>
+              <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5">Subject</label>
+              <input required value={formData.subject} onChange={e => setFormData({...formData, subject: e.target.value})} className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-2.5 text-sm" placeholder="Brief summary of the issue" />
+           </div>
+           <div>
+              <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5">Category</label>
+              <select value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})} className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-2.5 text-sm outline-none">
+                 <option>General</option>
+                 <option>Account & Billing</option>
+                 <option>Tour Management</option>
+                 <option>Integrations</option>
+                 <option>Bug Report</option>
+              </select>
+           </div>
+           <div>
+              <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5">Message</label>
+              <textarea required rows={4} value={formData.message} onChange={e => setFormData({...formData, message: e.target.value})} className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-2.5 text-sm resize-none" placeholder="Describe your problem in detail..." />
+           </div>
+        </div>
+        <div className="p-6 bg-gray-50/50 dark:bg-gray-900/50 flex gap-3">
+           <button type="button" onClick={onClose} className="flex-1 py-3 text-sm font-bold text-gray-500">Cancel</button>
+           <button type="submit" disabled={isSubmitting} className="flex-1 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-bold shadow-lg flex items-center justify-center gap-2">
+             {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
+             Submit Ticket
+           </button>
+        </div>
+      </form>
     </div>
   );
 };
