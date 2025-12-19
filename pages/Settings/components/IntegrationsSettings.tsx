@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { 
   Send, 
@@ -20,7 +21,8 @@ import {
   Globe,
   Settings,
   ChevronRight,
-  Shield
+  Shield,
+  ChevronDown
 } from 'lucide-react';
 
 interface IntegrationsSettingsProps {
@@ -28,35 +30,25 @@ interface IntegrationsSettingsProps {
   onChange: (key: string, value: any) => void;
 }
 
-const IntegrationsSettings: React.FC<IntegrationsSettingsProps> = ({ settings, onChange }) => {
-  const [activeIntegration, setActiveIntegration] = useState<string | null>(null);
-  const [whatsappProvider, setWhatsappProvider] = useState<'twilio' | 'meta' | null>(null);
-  const [isConnecting, setIsConnecting] = useState(false);
+// Extracted for state management
+const ConfigWrapper = ({ 
+  title, 
+  subtitle, 
+  onBack, 
+  instructions, 
+  form, 
+  helpBox 
+}: { 
+  title: string, 
+  subtitle: string, 
+  onBack: () => void, 
+  instructions: React.ReactNode, 
+  form: React.ReactNode,
+  helpBox?: React.ReactNode
+}) => {
+  const [showInstructions, setShowInstructions] = useState(true);
 
-  const handleTestConnection = (type: string) => {
-    setIsConnecting(true);
-    setTimeout(() => {
-      onChange(`${type}Enabled`, true);
-      setIsConnecting(false);
-    }, 1500);
-  };
-
-  // --- Layout Helper for Config Views ---
-  const ConfigWrapper = ({ 
-    title, 
-    subtitle, 
-    onBack, 
-    instructions, 
-    form, 
-    helpBox 
-  }: { 
-    title: string, 
-    subtitle: string, 
-    onBack: () => void, 
-    instructions: React.ReactNode, 
-    form: React.ReactNode,
-    helpBox?: React.ReactNode
-  }) => (
+  return (
     <div className="space-y-6 animate-in slide-in-from-right-4 duration-300">
       <div className="flex items-center gap-4 mb-2">
         <button 
@@ -71,24 +63,47 @@ const IntegrationsSettings: React.FC<IntegrationsSettingsProps> = ({ settings, o
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <div className="space-y-6">
-          <div className="bg-indigo-50 dark:bg-indigo-900/20 p-5 rounded-2xl border border-indigo-100 dark:border-indigo-800">
-            <h4 className="font-bold text-indigo-900 dark:text-indigo-300 flex items-center gap-2 mb-4">
-              <Info className="w-5 h-5" /> Setup Instructions
-            </h4>
-            <div className="space-y-4">
-              {instructions}
-            </div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8">
+        <div className="space-y-6 order-2 lg:order-1">
+          <div className="bg-indigo-50 dark:bg-indigo-900/20 rounded-2xl border border-indigo-100 dark:border-indigo-800 overflow-hidden">
+            <button 
+              onClick={() => setShowInstructions(!showInstructions)}
+              className="w-full flex items-center justify-between p-4 md:p-5 text-indigo-900 dark:text-indigo-300 font-bold hover:bg-indigo-100/50 dark:hover:bg-indigo-900/30 transition-colors"
+            >
+              <div className="flex items-center gap-2">
+                <Info className="w-5 h-5" /> Setup Instructions
+              </div>
+              <ChevronDown className={`w-5 h-5 transition-transform duration-200 ${showInstructions ? 'rotate-180' : ''}`} />
+            </button>
+            
+            {showInstructions && (
+              <div className="px-4 pb-4 md:px-5 md:pb-5 space-y-4 animate-in slide-in-from-top-1">
+                {instructions}
+              </div>
+            )}
           </div>
           {helpBox}
         </div>
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm space-y-6 h-fit">
+        <div className="order-1 lg:order-2 bg-white dark:bg-gray-800 p-4 md:p-6 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm space-y-6 h-fit">
           {form}
         </div>
       </div>
     </div>
   );
+};
+
+const IntegrationsSettings: React.FC<IntegrationsSettingsProps> = ({ settings, onChange }) => {
+  const [activeIntegration, setActiveIntegration] = useState<string | null>(null);
+  const [whatsappProvider, setWhatsappProvider] = useState<'twilio' | 'meta' | null>(null);
+  const [isConnecting, setIsConnecting] = useState(false);
+
+  const handleTestConnection = (type: string) => {
+    setIsConnecting(true);
+    setTimeout(() => {
+      onChange(`${type}Enabled`, true);
+      setIsConnecting(false);
+    }, 1500);
+  };
 
   const renderWhatsAppChoice = () => (
     <div className="space-y-6 animate-in fade-in duration-300">

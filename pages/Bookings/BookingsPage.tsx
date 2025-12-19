@@ -1,3 +1,4 @@
+
 import React, { useMemo, useState, useEffect } from 'react';
 import { 
   Users, 
@@ -420,14 +421,14 @@ const BookingsPage: React.FC<BookingsPageProps> = ({
           </div>
         ) : (
           <div className="absolute inset-0 w-full h-full overflow-hidden">
-            <div className="h-full w-full overflow-x-auto overflow-y-hidden px-6 lg:px-8 pb-6">
-              <div className="inline-flex min-w-full min-h-full gap-6 items-start p-4 bg-white/50 dark:bg-gray-900/40 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-inner overflow-y-hidden">
+            <div className="h-full w-full overflow-x-auto overflow-y-hidden px-4 md:px-6 lg:px-8 pb-6 snap-x snap-mandatory scroll-smooth">
+              <div className="inline-flex min-w-full min-h-full gap-4 md:gap-6 items-start p-3 md:p-4 bg-white/50 dark:bg-gray-900/40 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-inner overflow-y-hidden">
                 {KANBAN_COLUMNS.map((col) => {
                   const colBookings = filteredBookings.filter(b => b.status === col.id);
                   return (
                     <div 
                       key={col.id} 
-                      className="flex-shrink-0 w-80 bg-gray-50 dark:bg-gray-800/40 rounded-2xl p-4 border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col h-full max-h-full"
+                      className="flex-shrink-0 w-[85vw] md:w-80 bg-gray-50 dark:bg-gray-800/40 rounded-2xl p-4 border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col h-full max-h-full snap-center"
                       onDragOver={handleDragOver}
                       onDrop={(e) => handleDrop(e, col.id)}
                     >

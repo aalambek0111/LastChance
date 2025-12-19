@@ -2,9 +2,10 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { 
   ChevronLeft, ChevronRight, Calendar as CalendarIcon, 
-  Clock, Plus, Filter, Search, User, MoreHorizontal
+  Clock, Plus, Filter, Search, User, MoreHorizontal, AlertCircle, Briefcase, GripHorizontal
 } from 'lucide-react';
 import { Booking, BookingStatus } from '../../types';
+import { MOCK_TEAM_MEMBERS, TOURS } from '../../data/mockData';
 import { useI18n } from '../../context/ThemeContext';
 import BookingDrawer from './BookingDrawer';
 import CreateBookingModal from '../../components/modals/CreateBookingModal';
@@ -16,7 +17,7 @@ interface CalendarPageProps {
   onAddBooking: (booking: Booking) => void;
 }
 
-type ViewType = 'month' | 'week';
+type ViewType = 'month' | 'week' | 'resource';
 
 const CalendarPage: React.FC<CalendarPageProps> = ({ 
   bookings, 
@@ -38,15 +39,17 @@ const CalendarPage: React.FC<CalendarPageProps> = ({
   const [statusFilter, setStatusFilter] = useState<'All' | BookingStatus>('All');
   const [localSearch, setLocalSearch] = useState(searchTerm);
 
+  // Drag State
+  const [draggedBookingId, setDraggedBookingId] = useState<string | null>(null);
+
   // Constants for layout
   const ROW_HEIGHT = 80;
   const TOTAL_HOURS = 24;
   const TOP_PADDING = 24; // Space for the first label (12 AM)
 
-  // Auto-scroll to 7 AM when switching to week view
+  // Auto-scroll to 7 AM when switching views
   useEffect(() => {
-    if (view === 'week' && scrollContainerRef.current) {
-      // (Target hour) * Row Height + Top Padding
+    if ((view === 'week' || view === 'resource') && scrollContainerRef.current) {
       const scrollPos = 7 * ROW_HEIGHT;
       scrollContainerRef.current.scrollTop = scrollPos; 
     }
@@ -84,6 +87,7 @@ const CalendarPage: React.FC<CalendarPageProps> = ({
   const getHeaderText = () => {
     const month = currentDate.toLocaleDateString('en-US', { month: 'long' });
     const year = currentDate.getFullYear();
+    const dateNum = currentDate.getDate();
     
     if (view === 'week') {
       const weekDays = getWeekDays(currentDate);
@@ -97,6 +101,11 @@ const CalendarPage: React.FC<CalendarPageProps> = ({
       }
       return `${startMonth} - ${endMonth} ${year}`;
     }
+    
+    if (view === 'resource') {
+       return `${month} ${dateNum}, ${year}`;
+    }
+
     return `${month} ${year}`;
   };
 
@@ -120,14 +129,16 @@ const CalendarPage: React.FC<CalendarPageProps> = ({
   const handlePrev = () => {
     const newDate = new Date(currentDate);
     if (view === 'month') newDate.setMonth(newDate.getMonth() - 1);
-    else newDate.setDate(newDate.getDate() - 7);
+    else if (view === 'week') newDate.setDate(newDate.getDate() - 7);
+    else newDate.setDate(newDate.getDate() - 1); // Resource view moves by day
     setCurrentDate(newDate);
   };
 
   const handleNext = () => {
     const newDate = new Date(currentDate);
     if (view === 'month') newDate.setMonth(newDate.getMonth() + 1);
-    else newDate.setDate(newDate.getDate() + 7);
+    else if (view === 'week') newDate.setDate(newDate.getDate() + 7);
+    else newDate.setDate(newDate.getDate() + 1);
     setCurrentDate(newDate);
   };
 
@@ -144,7 +155,8 @@ const CalendarPage: React.FC<CalendarPageProps> = ({
     }
   }, [selectedBooking]);
 
-  const handleEventClick = (booking: Booking) => {
+  const handleEventClick = (e: React.MouseEvent, booking: Booking) => {
+    e.stopPropagation();
     setSelectedBooking(booking);
   };
 
@@ -153,6 +165,68 @@ const CalendarPage: React.FC<CalendarPageProps> = ({
     setTimeout(() => {
       setSelectedBooking(null);
     }, 300);
+  };
+
+  // --- Drag & Drop Logic ---
+
+  const handleDragStart = (e: React.DragEvent, id: string) => {
+    setDraggedBookingId(id);
+    e.dataTransfer.effectAllowed = 'move';
+    // Transparent image to remove default ghost if desired, 
+    // or keep default ghost. Currently keeping default.
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault(); // Necessary to allow dropping
+    e.dataTransfer.dropEffect = 'move';
+  };
+
+  const handleDrop = (
+    e: React.DragEvent, 
+    target: { date: Date; hour?: number; assignedTo?: string }
+  ) => {
+    e.preventDefault();
+    if (!draggedBookingId) return;
+
+    const booking = bookings.find(b => b.id === draggedBookingId);
+    if (!booking) return;
+
+    const dateStr = target.date.toISOString().split('T')[0];
+    
+    // Calculate new times if hour provided
+    let newStartTime = booking.startTime;
+    let newEndTime = booking.endTime;
+
+    if (target.hour !== undefined) {
+       const durationHours = getDurationInHours(booking);
+       newStartTime = `${String(target.hour).padStart(2, '0')}:00`;
+       
+       const endH = Math.floor(target.hour + durationHours);
+       const endM = Math.round((durationHours % 1) * 60);
+       newEndTime = `${String(endH % 24).padStart(2, '0')}:${String(endM).padStart(2, '0')}`;
+    }
+
+    const updates: Partial<Booking> = {
+        date: dateStr,
+        startTime: newStartTime,
+        endTime: newEndTime,
+    };
+
+    if (target.assignedTo !== undefined) {
+        updates.assignedTo = target.assignedTo;
+    }
+
+    onUpdateBooking({ ...booking, ...updates });
+    setDraggedBookingId(null);
+  };
+
+  const getDurationInHours = (booking: Booking) => {
+    if (!booking.startTime || !booking.endTime) return 2; // default
+    const [startH, startM] = booking.startTime.split(':').map(Number);
+    const [endH, endM] = booking.endTime.split(':').map(Number);
+    let diff = (endH + endM/60) - (startH + startM/60);
+    if (diff < 0) diff += 24; // overnight
+    return diff > 0 ? diff : 1;
   };
 
   // --- Renderers ---
@@ -166,6 +240,9 @@ const CalendarPage: React.FC<CalendarPageProps> = ({
     const blanks = Array(startDay).fill(null);
     const days = Array.from({ length: daysInMonth }, (_, i) => i + 1);
     const totalSlots = [...blanks, ...days];
+
+    // Calculate capacity per day (simple heuristic: 20 pax = full)
+    const DAILY_CAPACITY = 20;
 
     return (
       <div className="flex-1 grid grid-cols-7 grid-rows-[auto_1fr] h-full overflow-hidden bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">
@@ -182,29 +259,50 @@ const CalendarPage: React.FC<CalendarPageProps> = ({
             const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
             const dayEvents = filteredBookings.filter(b => b.date === dateStr);
             const isToday = isSameDay(new Date(), new Date(year, month, day));
+            
+            // Availability Calc
+            const totalPax = dayEvents.reduce((sum, b) => sum + (b.people || 0), 0);
+            const loadPercent = Math.min((totalPax / DAILY_CAPACITY) * 100, 100);
+            let loadColor = 'bg-green-500';
+            if(loadPercent > 80) loadColor = 'bg-red-500';
+            else if(loadPercent > 50) loadColor = 'bg-amber-500';
 
             return (
-              <div key={day} className={`min-h-[100px] p-1 border-b border-r border-gray-100 dark:border-gray-800 transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/50 ${isToday ? 'bg-indigo-50/30 dark:bg-indigo-900/10' : ''}`}>
-                <div className="flex justify-end mb-1">
+              <div 
+                key={day} 
+                className={`min-h-[100px] p-1 border-b border-r border-gray-100 dark:border-gray-800 transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/50 relative group ${isToday ? 'bg-indigo-50/30 dark:bg-indigo-900/10' : ''}`}
+                onDragOver={handleDragOver}
+                onDrop={(e) => handleDrop(e, { date: new Date(year, month, day) })}
+              >
+                <div className="flex justify-between items-start mb-1 px-1">
+                  <div className="h-1.5 w-1.5 rounded-full mt-1.5 opacity-0 group-hover:opacity-100 bg-gray-300"></div>
                   <span className={`text-xs font-medium w-6 h-6 flex items-center justify-center rounded-full ${isToday ? 'bg-indigo-600 text-white' : 'text-gray-700 dark:text-gray-300'}`}>
                     {day}
                   </span>
                 </div>
+                
                 <div className="space-y-1">
                   {dayEvents.map(booking => (
-                    <button
+                    <div
                       key={booking.id}
-                      onClick={() => handleEventClick(booking)}
-                      className={`w-full text-left text-[10px] px-1.5 py-1 rounded truncate transition-transform hover:scale-[1.02] border-l-2 shadow-sm ${
+                      draggable
+                      onDragStart={(e) => handleDragStart(e, booking.id)}
+                      onClick={(e) => handleEventClick(e, booking)}
+                      className={`w-full text-left text-[10px] px-1.5 py-1 rounded truncate transition-transform hover:scale-[1.02] border-l-2 shadow-sm cursor-grab active:cursor-grabbing ${
                         booking.status === 'Confirmed' ? 'bg-emerald-100 text-emerald-800 border-emerald-500 dark:bg-emerald-900/30 dark:text-emerald-200' :
                         booking.status === 'Pending' ? 'bg-amber-100 text-amber-800 border-amber-500 dark:bg-amber-900/30 dark:text-amber-200' :
                         'bg-gray-100 text-gray-700 border-gray-400 dark:bg-gray-700 dark:text-gray-300'
-                      }`}
+                      } ${draggedBookingId === booking.id ? 'opacity-50' : 'opacity-100'}`}
                     >
                       <span className="font-bold mr-1">{booking.startTime || 'All Day'}</span>
                       {booking.tourName}
-                    </button>
+                    </div>
                   ))}
+                </div>
+
+                {/* Daily Load Indicator (Bottom of cell) */}
+                <div className="absolute bottom-1 left-2 right-2 h-1 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden opacity-50 hover:opacity-100 transition-opacity" title={`${totalPax} / ${DAILY_CAPACITY} Pax Capacity`}>
+                   <div className={`h-full ${loadColor}`} style={{ width: `${loadPercent}%` }}></div>
                 </div>
               </div>
             );
@@ -214,34 +312,36 @@ const CalendarPage: React.FC<CalendarPageProps> = ({
     );
   };
 
-  const renderWeekView = () => {
-    const weekDays = getWeekDays(currentDate);
+  const renderTimeGrid = (
+    columns: { id: string; label: string; subLabel?: string; date: Date; isToday?: boolean }[],
+    getEvents: (colId: string) => Booking[],
+    onDropCell: (e: React.DragEvent, colId: string, hour: number) => void
+  ) => {
     const hours = Array.from({ length: 24 }, (_, i) => i);
 
     return (
       <div className="flex-1 flex flex-col h-full overflow-hidden bg-white dark:bg-gray-800">
-        {/* Week Header */}
+        {/* Grid Header */}
         <div className="flex border-b border-gray-200 dark:border-gray-700 shrink-0">
-          <div className="w-16 flex-none border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800" />
-          {weekDays.map(day => {
-            const isToday = isSameDay(new Date(), day);
-            return (
-              <div key={day.toString()} className={`flex-1 py-3 pl-3 border-r border-gray-100 dark:border-gray-700 last:border-0 relative ${isToday ? 'bg-indigo-50/10 dark:bg-indigo-900/5' : ''}`}>
-                {isToday && <div className="absolute top-0 left-0 right-0 h-1 bg-indigo-600"></div>}
-                <div className="flex flex-col items-start">
-                  <div className={`text-2xl font-normal leading-none ${isToday ? 'text-indigo-600 dark:text-indigo-400 font-semibold' : 'text-gray-700 dark:text-gray-200'}`}>
-                    {day.getDate()}
-                  </div>
-                  <div className={`text-xs font-medium uppercase mt-1 ${isToday ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-500'}`}>
-                    {day.toLocaleDateString('en-US', { weekday: 'short' })}
-                  </div>
+          <div className="w-16 flex-none border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 sticky left-0 z-20" />
+          {columns.map(col => (
+            <div key={col.id} className={`flex-1 py-3 pl-3 border-r border-gray-100 dark:border-gray-700 min-w-[140px] relative ${col.isToday ? 'bg-indigo-50/10 dark:bg-indigo-900/5' : ''}`}>
+              {col.isToday && <div className="absolute top-0 left-0 right-0 h-1 bg-indigo-600"></div>}
+              <div className="flex flex-col items-start">
+                <div className={`text-sm font-bold truncate w-full ${col.isToday ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-900 dark:text-white'}`}>
+                  {col.label}
                 </div>
+                {col.subLabel && (
+                  <div className={`text-xs font-medium uppercase mt-0.5 ${col.isToday ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-500'}`}>
+                    {col.subLabel}
+                  </div>
+                )}
               </div>
-            );
-          })}
+            </div>
+          ))}
         </div>
 
-        {/* Scrollable Grid Container */}
+        {/* Scrollable Grid Body */}
         <div className="flex-1 overflow-y-auto relative scroll-smooth bg-white dark:bg-gray-800" ref={scrollContainerRef}>
           <div className="flex relative pt-6" style={{ height: `${TOTAL_HOURS * ROW_HEIGHT + TOP_PADDING}px` }}>
             
@@ -254,54 +354,67 @@ const CalendarPage: React.FC<CalendarPageProps> = ({
                   </span>
                 </div>
               ))}
-              {/* Added final label for midnight at the very bottom line */}
               <div className="absolute bottom-0 right-2 text-[11px] text-gray-400 font-medium z-10 bg-white dark:bg-gray-800 px-1 transform translate-y-1/2">
                 12 AM
               </div>
             </div>
 
-            {/* Days Columns */}
-            {weekDays.map(day => {
-              const dateStr = day.toISOString().split('T')[0];
-              const dayEvents = filteredBookings.filter(b => b.date === dateStr);
-              const isToday = isSameDay(new Date(), day);
-
+            {/* Content Columns */}
+            {columns.map(col => {
+              const events = getEvents(col.id);
+              
               return (
-                <div key={day.toString()} className={`flex-1 border-r border-gray-100 dark:border-gray-700 last:border-0 relative min-w-[120px] ${isToday ? 'bg-indigo-50/5 dark:bg-indigo-900/10' : ''}`}>
-                  {/* Grid Lines */}
+                <div key={col.id} className={`flex-1 border-r border-gray-100 dark:border-gray-700 relative min-w-[140px] ${col.isToday ? 'bg-indigo-50/5 dark:bg-indigo-900/10' : ''}`}>
+                  {/* Grid Lines & Drop Targets */}
                   {hours.map(h => (
-                    <div key={h} className="h-20 border-b border-gray-100 dark:border-gray-800/30" />
+                    <div 
+                      key={h} 
+                      className="h-20 border-b border-gray-100 dark:border-gray-800/30 group"
+                      onDragOver={handleDragOver}
+                      onDrop={(e) => onDropCell(e, col.id, h)}
+                    >
+                      {/* Hover effect for drop target */}
+                      <div className="hidden group-hover:block w-full h-full bg-indigo-50/30 dark:bg-indigo-900/20 border-l-2 border-indigo-400 transition-all pointer-events-none"></div>
+                    </div>
                   ))}
 
                   {/* Events Overlay */}
-                  <div className="absolute inset-0 top-0">
-                    {dayEvents.map(booking => {
+                  <div className="absolute inset-0 top-0 pointer-events-none">
+                    {events.map(booking => {
                       const startHour = parseInt(booking.startTime?.split(':')[0] || '9');
-                      const endHour = parseInt(booking.endTime?.split(':')[0] || '10');
                       const startMin = parseInt(booking.startTime?.split(':')[1] || '0');
-                      const endMin = parseInt(booking.endTime?.split(':')[1] || '0');
-                      
-                      let durationHours = (endHour + (endMin/60)) - (startHour + (startMin/60));
-                      if (durationHours <= 0) durationHours = 1; 
+                      const durationHours = getDurationInHours(booking);
                       
                       const top = (startHour + (startMin/60)) * ROW_HEIGHT;
                       const height = Math.max(durationHours * ROW_HEIGHT, 40);
 
+                      // Determine if overloaded (visual indicator)
+                      const tourInfo = TOURS.find(t => t.name === booking.tourName);
+                      const isFull = tourInfo && booking.people >= tourInfo.maxPeople;
+
                       return (
                         <div
                           key={booking.id}
-                          onClick={() => handleEventClick(booking)}
+                          draggable
+                          onDragStart={(e) => handleDragStart(e, booking.id)}
+                          onClick={(e) => handleEventClick(e, booking)}
                           style={{ top: `${top}px`, height: `${height}px` }}
-                          className={`absolute left-1 right-1 rounded-md p-2 text-xs border-l-4 cursor-pointer hover:brightness-95 transition-all shadow-sm overflow-hidden z-20 ${
+                          className={`absolute left-1 right-1 rounded-md p-2 text-xs border-l-4 cursor-grab active:cursor-grabbing hover:brightness-95 transition-all shadow-sm overflow-hidden z-20 pointer-events-auto ${
                             booking.status === 'Confirmed' ? 'bg-emerald-100 border-emerald-500 text-emerald-900 dark:bg-emerald-900/40 dark:text-emerald-100' :
                             booking.status === 'Pending' ? 'bg-amber-100 border-amber-500 text-amber-900 dark:bg-amber-900/40 dark:text-amber-100' :
                             'bg-gray-100 border-gray-400 text-gray-800 dark:bg-gray-700 dark:text-gray-200'
-                          }`}
+                          } ${draggedBookingId === booking.id ? 'opacity-50' : 'opacity-100'}`}
                         >
-                          <div className="font-bold truncate">{booking.tourName}</div>
+                          <div className="flex justify-between items-start">
+                             <span className="font-bold truncate">{booking.tourName}</span>
+                             {isFull && <AlertCircle className="w-3 h-3 text-red-500 fill-red-500/20" title="Full Capacity" />}
+                          </div>
                           <div className="truncate opacity-80">{booking.startTime} - {booking.endTime}</div>
-                          <div className="mt-1 opacity-70 text-[10px] flex items-center gap-1">
-                            <User className="w-3 h-3" /> {booking.clientName}
+                          <div className="mt-1 opacity-70 text-[10px] flex items-center gap-1 font-medium">
+                            <User className="w-3 h-3" /> {booking.clientName} ({booking.people})
+                          </div>
+                          <div className="absolute bottom-1 right-1 opacity-0 hover:opacity-100 cursor-move text-gray-400">
+                             <GripHorizontal className="w-3 h-3" />
                           </div>
                         </div>
                       );
@@ -313,6 +426,50 @@ const CalendarPage: React.FC<CalendarPageProps> = ({
           </div>
         </div>
       </div>
+    );
+  };
+
+  const renderWeekView = () => {
+    const weekDays = getWeekDays(currentDate);
+    
+    const columns = weekDays.map(day => ({
+        id: day.toISOString().split('T')[0],
+        label: String(day.getDate()),
+        subLabel: day.toLocaleDateString('en-US', { weekday: 'short' }),
+        date: day,
+        isToday: isSameDay(new Date(), day)
+    }));
+
+    return renderTimeGrid(
+        columns,
+        (dateStr) => filteredBookings.filter(b => b.date === dateStr),
+        (e, dateStr, hour) => handleDrop(e, { date: new Date(dateStr), hour })
+    );
+  };
+
+  const renderResourceView = () => {
+    // Columns: Unassigned + Team Members
+    const dateStr = currentDate.toISOString().split('T')[0];
+    const isToday = isSameDay(new Date(), currentDate);
+
+    const columns = [
+        { id: 'Unassigned', label: 'Unassigned', subLabel: 'Queue', date: currentDate, isToday: false },
+        ...MOCK_TEAM_MEMBERS.map(member => ({
+            id: member.name,
+            label: member.name,
+            subLabel: 'Guide', // Could fetch role
+            date: currentDate,
+            isToday: false
+        }))
+    ];
+
+    return renderTimeGrid(
+        columns,
+        (resourceId) => filteredBookings.filter(b => b.date === dateStr && (b.assignedTo === resourceId || (!b.assignedTo && resourceId === 'Unassigned'))),
+        (e, resourceId, hour) => {
+            const assignedTo = resourceId === 'Unassigned' ? '' : resourceId;
+            handleDrop(e, { date: currentDate, hour, assignedTo });
+        }
     );
   };
 
@@ -352,18 +509,24 @@ const CalendarPage: React.FC<CalendarPageProps> = ({
         {/* Right: Actions & Filters */}
         <div className="flex items-center gap-3 w-full sm:w-auto">
            {/* View Toggle */}
-           <div className="flex bg-gray-100 dark:bg-gray-700 rounded-lg p-0.5">
+           <div className="flex bg-gray-100 dark:bg-gray-700 rounded-lg p-0.5 overflow-x-auto">
               <button 
                 onClick={() => setView('month')}
-                className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${view === 'month' ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow-sm' : 'text-gray-500 hover:text-gray-900 dark:hover:text-gray-200'}`}
+                className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all whitespace-nowrap ${view === 'month' ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow-sm' : 'text-gray-500 hover:text-gray-900 dark:hover:text-gray-200'}`}
               >
                 Month
               </button>
               <button 
                 onClick={() => setView('week')}
-                className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${view === 'week' ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow-sm' : 'text-gray-500 hover:text-gray-900 dark:hover:text-gray-200'}`}
+                className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all whitespace-nowrap ${view === 'week' ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow-sm' : 'text-gray-500 hover:text-gray-900 dark:hover:text-gray-200'}`}
               >
                 Week
+              </button>
+              <button 
+                onClick={() => setView('resource')}
+                className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all flex items-center gap-1 whitespace-nowrap ${view === 'resource' ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow-sm' : 'text-gray-500 hover:text-gray-900 dark:hover:text-gray-200'}`}
+              >
+                <Briefcase className="w-3 h-3" /> Staff
               </button>
            </div>
 
@@ -393,7 +556,9 @@ const CalendarPage: React.FC<CalendarPageProps> = ({
 
       {/* --- Calendar Grid --- */}
       <div className="flex-1 overflow-hidden relative bg-white dark:bg-gray-800">
-        {view === 'month' ? renderMonthView() : renderWeekView()}
+        {view === 'month' && renderMonthView()}
+        {view === 'week' && renderWeekView()}
+        {view === 'resource' && renderResourceView()}
       </div>
 
       {/* --- Details Drawer --- */}

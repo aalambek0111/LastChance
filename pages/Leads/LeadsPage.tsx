@@ -435,15 +435,15 @@ const LeadsPage: React.FC<LeadsPageProps> = ({
         ) : (
           /* Kanban View Container */
           <div className="absolute inset-0 w-full h-full">
-            <div className="h-full w-full overflow-x-auto overflow-y-hidden px-6 lg:px-8 pb-6">
+            <div className="h-full w-full overflow-x-auto overflow-y-hidden px-4 md:px-6 lg:px-8 pb-6 snap-x snap-mandatory scroll-smooth">
               <div className="inline-flex min-w-full min-h-full rounded-2xl bg-white/95 dark:bg-gray-900/40 border border-gray-200 dark:border-gray-700 shadow-sm">
-                <div className="flex flex-1 h-full gap-6 items-start p-4">
+                <div className="flex flex-1 h-full gap-4 md:gap-6 items-start p-3 md:p-4">
                   {KANBAN_COLUMNS.map((col) => {
                     const colLeads = filteredLeads.filter(l => l.status === col.id);
                     return (
                       <div 
                         key={col.id} 
-                        className="flex-shrink-0 w-72 bg-gradient-to-b from-white to-gray-50 dark:from-gray-800 dark:to-gray-900/40 rounded-2xl p-4 border border-gray-300 dark:border-gray-700 shadow-sm flex flex-col h-full max-h-full"
+                        className="flex-shrink-0 w-[85vw] md:w-72 bg-gradient-to-b from-white to-gray-50 dark:from-gray-800 dark:to-gray-900/40 rounded-2xl p-4 border border-gray-300 dark:border-gray-700 shadow-sm flex flex-col h-full max-h-full snap-center"
                         onDragOver={handleDragOver}
                         onDrop={(e) => handleDrop(e, col.id)}
                       >
@@ -466,7 +466,7 @@ const LeadsPage: React.FC<LeadsPageProps> = ({
                               key={lead.id}
                               draggable
                               onDragStart={(e) => handleDragStart(e, lead.id)}
-                              onClick={() => openLeadDrawer(lead.id)}
+                              onClick={() => setSelectedLeadId(lead.id)}
                               className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 cursor-pointer hover:shadow-md hover:border-indigo-300 dark:hover:border-indigo-500 transition-all group active:scale-95"
                             >
                               <div className="flex justify-between items-start mb-2">
