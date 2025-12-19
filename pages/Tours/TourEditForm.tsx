@@ -1,8 +1,7 @@
 
-import React, { useMemo, useState, useEffect, useRef } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import {
   Activity,
-  DollarSign,
   MapPin,
   Tag,
   X,
@@ -10,7 +9,6 @@ import {
   Save,
   Trash2,
   AlignLeft,
-  Layout,
   Image as ImageIcon,
   MessageSquare,
   Clock,
@@ -18,16 +16,16 @@ import {
   Info,
   CheckCircle2,
   Send,
-  Maximize2,
   ChevronDown,
   ChevronUp,
-  Eye
+  Eye,
+  Ticket
 } from 'lucide-react';
-import { TOURS } from '../../data/mockData';
+import { Tour, PricingTier } from '../../types';
 
 interface TourEditFormProps {
-  tour: typeof TOURS[0];
-  onSave: (t: typeof TOURS[0]) => void;
+  tour: Tour;
+  onSave: (t: Tour) => void;
   onDelete?: (id: number) => void;
   onClose?: () => void;
 }
@@ -78,7 +76,7 @@ const Lightbox = ({ src, onClose }: { src: string; onClose: () => void }) => (
 
 const TourEditForm: React.FC<TourEditFormProps> = ({ tour, onSave, onDelete, onClose }) => {
   const [activeTab, setActiveTab] = useState<'details' | 'comments' | 'activity'>('details');
-  const [formData, setFormData] = useState(tour);
+  const [formData, setFormData] = useState<Tour>(tour);
   const [newTag, setNewTag] = useState('');
   const isNew = tour.id === 0;
   
@@ -98,10 +96,9 @@ const TourEditForm: React.FC<TourEditFormProps> = ({ tour, onSave, onDelete, onC
     setFormData(tour);
     setNewTag('');
     setActiveTab('details');
-    // Default open image section if it's a new tour so they see to add one
     if (tour.id === 0) setIsImageSectionOpen(true);
     
-    // Load mock activities/comments from local storage based on tour ID
+    // Load mock activities/comments
     const storedActivities = localStorage.getItem(`tour_activities_${tour.id}`);
     if (storedActivities) setActivities(JSON.parse(storedActivities));
     else setActivities([]);
@@ -120,7 +117,7 @@ const TourEditForm: React.FC<TourEditFormProps> = ({ tour, onSave, onDelete, onC
     }
   }, [formData, tour]);
 
-  const canSave = (formData.name || '').trim().length > 0 && (formData.price || 0) > 0;
+  const canSave = (formData.name || '').trim().length > 0 && (formData.price || 0) >= 0;
 
   const handleSave = () => {
     if (!canSave) return;
@@ -130,8 +127,6 @@ const TourEditForm: React.FC<TourEditFormProps> = ({ tour, onSave, onDelete, onC
     const changes: ActivityLogItem[] = [];
     if (formData.price !== tour.price) changes.push({ id: Date.now() + 'p', field: 'Price', from: tour.price, to: formData.price, actor: CURRENT_USER_NAME, timestamp: Date.now() });
     if (formData.name !== tour.name) changes.push({ id: Date.now() + 'n', field: 'Name', from: tour.name, to: formData.name, actor: CURRENT_USER_NAME, timestamp: Date.now() });
-    if (formData.active !== tour.active) changes.push({ id: Date.now() + 's', field: 'Status', from: tour.active ? 'Live' : 'Draft', to: formData.active ? 'Live' : 'Draft', actor: CURRENT_USER_NAME, timestamp: Date.now() });
-    if (formData.duration !== tour.duration) changes.push({ id: Date.now() + 'd', field: 'Duration', from: tour.duration, to: formData.duration, actor: CURRENT_USER_NAME, timestamp: Date.now() });
     
     // Update local storage for activity
     if (changes.length > 0) {
@@ -208,6 +203,23 @@ const TourEditForm: React.FC<TourEditFormProps> = ({ tour, onSave, onDelete, onC
     img.src = FALLBACK_IMAGE;
   };
 
+  // --- Pricing Logic ---
+  const updateTier = (index: number, field: keyof PricingTier, value: any) => {
+    const newTiers = [...(formData.pricingTiers || [])];
+    newTiers[index] = { ...newTiers[index], [field]: value };
+    setFormData({ ...formData, pricingTiers: newTiers });
+  };
+
+  const addTier = () => {
+    const newTiers = [...(formData.pricingTiers || []), { name: '', price: 0 }];
+    setFormData({ ...formData, pricingTiers: newTiers });
+  };
+
+  const removeTier = (index: number) => {
+    const newTiers = [...(formData.pricingTiers || [])].filter((_, i) => i !== index);
+    setFormData({ ...formData, pricingTiers: newTiers });
+  };
+
   // --- Render Tabs Content ---
 
   const renderDetails = () => (
@@ -227,23 +239,66 @@ const TourEditForm: React.FC<TourEditFormProps> = ({ tour, onSave, onDelete, onC
 
       {/* 2. Key Details Grid */}
       <div className="bg-gray-50 dark:bg-gray-700/20 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-gray-500 dark:text-gray-400">Price ($)</label>
-            <input
-              type="number"
-              min="0"
-              value={(formData as any).price}
-              onChange={e => setFormData({ ...(formData as any), price: Number(e.target.value) } as any)}
-              className="w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all"
-            />
+        
+        {/* Pricing Tiers Section */}
+        <div className="mb-6">
+          <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider flex items-center gap-2 mb-3">
+            <Ticket className="w-4 h-4" /> Pricing Options
+          </label>
+          
+          <div className="space-y-2">
+            {(formData.pricingTiers || []).map((tier, idx) => (
+              <div key={idx} className="flex items-center gap-2 animate-in slide-in-from-left-2">
+                <input 
+                  value={tier.name}
+                  onChange={(e) => updateTier(idx, 'name', e.target.value)}
+                  placeholder="Option Name (e.g. Adult)"
+                  className="flex-1 px-3 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 outline-none transition-all"
+                />
+                <div className="relative w-28">
+                  <span className="absolute left-3 top-2 text-gray-400 text-sm">$</span>
+                  <input 
+                    type="number"
+                    min="0"
+                    value={tier.price}
+                    onChange={(e) => updateTier(idx, 'price', Number(e.target.value))}
+                    className="w-full pl-6 pr-3 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg text-sm font-semibold focus:ring-2 focus:ring-indigo-500/20 outline-none transition-all"
+                  />
+                </div>
+                <button 
+                  onClick={() => removeTier(idx)}
+                  className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+            ))}
+            <button 
+              onClick={addTier}
+              className="mt-2 text-xs font-bold text-indigo-600 dark:text-indigo-400 flex items-center gap-1 hover:underline"
+            >
+              <Plus className="w-3 h-3" /> Add Option
+            </button>
           </div>
+
+          {/* Legacy Base Price (Calculated or Fallback) */}
+          <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
+             <span>Base Price (for lists):</span>
+             <span className="font-mono font-bold">
+               ${(formData.pricingTiers && formData.pricingTiers.length > 0) 
+                  ? Math.min(...formData.pricingTiers.map(t => t.price)) 
+                  : formData.price}
+             </span>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 border-t border-gray-200 dark:border-gray-700 pt-4">
           <div className="space-y-1.5">
             <label className="text-xs font-semibold text-gray-500 dark:text-gray-400">Duration</label>
             <input
               type="text"
-              value={(formData as any).duration}
-              onChange={e => setFormData({ ...(formData as any), duration: e.target.value } as any)}
+              value={formData.duration}
+              onChange={e => setFormData({ ...formData, duration: e.target.value })}
               className="w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all"
               placeholder="e.g. 3h"
             />
@@ -252,8 +307,8 @@ const TourEditForm: React.FC<TourEditFormProps> = ({ tour, onSave, onDelete, onC
           <div className="space-y-1.5">
             <label className="text-xs font-semibold text-gray-500 dark:text-gray-400">Difficulty</label>
             <select
-              value={(formData as any).difficulty || 'Easy'}
-              onChange={e => setFormData({ ...(formData as any), difficulty: e.target.value } as any)}
+              value={formData.difficulty || 'Easy'}
+              onChange={e => setFormData({ ...formData, difficulty: e.target.value })}
               className="w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all appearance-none"
             >
               <option>Easy</option>
@@ -267,8 +322,8 @@ const TourEditForm: React.FC<TourEditFormProps> = ({ tour, onSave, onDelete, onC
             <label className="text-xs font-semibold text-gray-500 dark:text-gray-400">Max Group Size</label>
             <input
               type="number"
-              value={(formData as any).maxPeople || 0}
-              onChange={e => setFormData({ ...(formData as any), maxPeople: Number(e.target.value) } as any)}
+              value={formData.maxPeople || 0}
+              onChange={e => setFormData({ ...formData, maxPeople: Number(e.target.value) })}
               className="w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all"
             />
           </div>
@@ -290,19 +345,14 @@ const TourEditForm: React.FC<TourEditFormProps> = ({ tour, onSave, onDelete, onC
             </div>
           </div>
 
-          <div className="space-y-1.5 sm:col-span-1">
-             {/* Spacer to keep grid aligned if needed, or put Location here if it fits */}
-             {/* For now, let's just let Location span full width below */}
-          </div>
-
           <div className="space-y-1.5 sm:col-span-2">
             <label className="text-xs font-semibold text-gray-500 dark:text-gray-400">Location</label>
             <div className="relative">
               <MapPin className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
               <input
                 type="text"
-                value={(formData as any).location || ''}
-                onChange={e => setFormData({ ...(formData as any), location: e.target.value } as any)}
+                value={formData.location || ''}
+                onChange={e => setFormData({ ...formData, location: e.target.value })}
                 className="w-full pl-9 pr-3 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all"
                 placeholder="Meeting point or area"
               />
@@ -347,8 +397,8 @@ const TourEditForm: React.FC<TourEditFormProps> = ({ tour, onSave, onDelete, onC
               <div className="flex-1 space-y-3">
                 <input
                   type="text"
-                  value={(formData as any).image || ''}
-                  onChange={e => setFormData({ ...(formData as any), image: e.target.value } as any)}
+                  value={formData.image || ''}
+                  onChange={e => setFormData({ ...formData, image: e.target.value })}
                   className="w-full px-3 py-2 bg-white dark:bg-gray-900/50 border border-gray-200 dark:border-gray-600 rounded-lg text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all"
                   placeholder="https://example.com/image.jpg"
                 />
@@ -361,7 +411,7 @@ const TourEditForm: React.FC<TourEditFormProps> = ({ tour, onSave, onDelete, onC
                   </button>
                   {formData.image && (
                     <button 
-                      onClick={() => setFormData({...formData, image: ''} as any)}
+                      onClick={() => setFormData({...formData, image: ''})}
                       className="px-3 py-1.5 text-xs font-medium bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400 rounded-md hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors"
                     >
                       Remove
@@ -412,8 +462,8 @@ const TourEditForm: React.FC<TourEditFormProps> = ({ tour, onSave, onDelete, onC
           <AlignLeft className="w-4 h-4 text-gray-400" /> Description
         </h4>
         <textarea
-          value={(formData as any).description || ''}
-          onChange={e => setFormData({ ...(formData as any), description: e.target.value } as any)}
+          value={formData.description || ''}
+          onChange={e => setFormData({ ...formData, description: e.target.value })}
           rows={6}
           className="w-full p-4 bg-white dark:bg-gray-800 rounded-xl text-sm leading-relaxed text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none resize-none transition-all placeholder-gray-400"
           placeholder="Describe highlights, itinerary, requirements..."

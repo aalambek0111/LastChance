@@ -20,6 +20,17 @@ export interface Lead {
   notes?: string;
 }
 
+export interface PricingTier {
+  name: string;
+  price: number;
+}
+
+export interface TierSelection {
+  tierName: string;
+  quantity: number;
+  pricePerUnit: number;
+}
+
 export interface Booking {
   id: string; // Internal UUID
   bookingNo?: string; // Human Readable (e.g. BR-0001)
@@ -43,6 +54,28 @@ export interface Booking {
   amountPaid?: number;
   amountDue?: number; // Calculated/Read-only usually
   isAmountOverridden?: boolean;
+  commissionRate?: number;
+  
+  // Pricing Logic
+  tierSelections?: TierSelection[];
+}
+
+export interface Tour {
+  id: number;
+  tourNo?: string;
+  name: string;
+  price: number; // Base or "From" price
+  duration: string;
+  active: boolean;
+  description: string;
+  image: string;
+  tags: string[];
+  maxPeople: number;
+  difficulty: string;
+  location: string;
+  bookingsCount: number;
+  revenue: number;
+  pricingTiers?: PricingTier[];
 }
 
 export interface KPIMetric {

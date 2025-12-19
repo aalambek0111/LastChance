@@ -1,5 +1,5 @@
 
-import { Booking, KPIMetric, Lead, AppNotification } from '../types';
+import { Booking, KPIMetric, Lead, AppNotification, Tour } from '../types';
 
 // Team Members for assignment
 export const MOCK_TEAM_MEMBERS = [
@@ -213,7 +213,7 @@ export const UPCOMING_BOOKINGS: Booking[] = [
 ];
 
 // Mock Tours Data
-export const TOURS = [
+export const TOURS: Tour[] = [
    { 
       id: 1, 
       tourNo: 'TR-000001',
@@ -228,7 +228,12 @@ export const TOURS = [
       difficulty: 'Easy',
       location: 'Downtown Marina',
       bookingsCount: 142,
-      revenue: 12070
+      revenue: 12070,
+      pricingTiers: [
+        { name: 'Adult', price: 85 },
+        { name: 'Child (under 12)', price: 45 },
+        { name: 'Senior', price: 70 }
+      ]
    },
    { 
       id: 2, 
@@ -244,7 +249,11 @@ export const TOURS = [
       difficulty: 'Easy',
       location: 'Old Town Square',
       bookingsCount: 89,
-      revenue: 4005
+      revenue: 4005,
+      pricingTiers: [
+        { name: 'General Admission', price: 45 },
+        { name: 'Student', price: 30 }
+      ]
    },
    { 
       id: 3, 
@@ -260,7 +269,11 @@ export const TOURS = [
       difficulty: 'Easy',
       location: 'Vineyard District',
       bookingsCount: 56,
-      revenue: 6720
+      revenue: 6720,
+      pricingTiers: [
+        { name: 'Adult (Alcohol included)', price: 120 },
+        { name: 'Non-Alcoholic', price: 90 }
+      ]
    },
    { 
       id: 4, 
@@ -276,6 +289,9 @@ export const TOURS = [
       difficulty: 'Hard',
       location: 'National Park',
       bookingsCount: 32,
-      revenue: 3040
+      revenue: 3040,
+      pricingTiers: [
+        { name: 'Hiker', price: 95 }
+      ]
    },
 ];

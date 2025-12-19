@@ -1,11 +1,12 @@
+
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { 
   X, Calendar, MapPin, Users, FileText, Flag, User, MessageSquare, Activity, 
   ShieldCheck, Download, Trash2, Plus, PieChart, Percent, DollarSign, 
   AlertTriangle, Save, CheckCircle2, RotateCcw, Info, File, UserPlus, Clock,
-  CreditCard, Wallet
+  CreditCard, Wallet, Tag
 } from 'lucide-react';
-import { Booking, BookingStatus, PaymentStatus, Lead } from '../../types';
+import { Booking, BookingStatus, PaymentStatus, Lead, Tour, TierSelection } from '../../types';
 import { TOURS, RECENT_LEADS, UPCOMING_BOOKINGS } from '../../data/mockData';
 
 // --- Types for Internal Details ---
@@ -160,9 +161,13 @@ const CreateBookingModal: React.FC<CreateBookingModalProps> = ({
 
   const [activeTab, setActiveTab] = useState<'comments' | 'activity' | 'documents'>(initialTab);
   const [isManualAmount, setIsManualAmount] = useState(false);
+  
+  // Complex Pricing State
+  const [tierSelections, setTierSelections] = useState<TierSelection[]>([]);
 
-  // --- Capacity Logic ---
+  // --- Logic Hooks ---
   const activeTour = useMemo(() => TOURS.find(t => t.name === formData.tourName), [formData.tourName]);
+  
   const availability = useMemo(() => {
     if (!formData.tourName || !formData.date) return null;
     const existingBookedCount = UPCOMING_BOOKINGS
@@ -172,15 +177,44 @@ const CreateBookingModal: React.FC<CreateBookingModalProps> = ({
     return { left: max - existingBookedCount, max };
   }, [formData.tourName, formData.date, activeTour, bookingToEdit]);
 
-  // --- Auto-calculation logic for Tour Price ---
+  // --- Reset/Init Pricing Tiers when Tour Changes ---
   useEffect(() => {
-    if (!isManualAmount && activeTour && !bookingToEdit) {
-      setFormData(prev => ({
-        ...prev,
-        totalAmount: activeTour.price * (prev.pax || 0)
-      }));
+    if (!bookingToEdit && activeTour) {
+      if (activeTour.pricingTiers && activeTour.pricingTiers.length > 0) {
+        // Initialize tiers with 0 quantity
+        setTierSelections(activeTour.pricingTiers.map(t => ({
+          tierName: t.name,
+          quantity: 0,
+          pricePerUnit: t.price
+        })));
+      } else {
+        setTierSelections([]);
+      }
     }
-  }, [activeTour, formData.pax, isManualAmount, bookingToEdit]);
+  }, [activeTour, bookingToEdit]);
+
+  // --- Auto-calculation logic ---
+  useEffect(() => {
+    // Only auto-calc if not manually overridden OR if we are explicitly changing tier quantities
+    if (!isManualAmount && activeTour && !bookingToEdit) {
+      if (tierSelections.length > 0) {
+        const calculatedTotal = tierSelections.reduce((acc, curr) => acc + (curr.quantity * curr.pricePerUnit), 0);
+        const calculatedPax = tierSelections.reduce((acc, curr) => acc + curr.quantity, 0);
+        
+        setFormData(prev => ({
+          ...prev,
+          totalAmount: calculatedTotal,
+          pax: calculatedPax > 0 ? calculatedPax : 1 // fallback to 1 to avoid empty field logic issues
+        }));
+      } else {
+        // Legacy/Simple Mode
+        setFormData(prev => ({
+          ...prev,
+          totalAmount: activeTour.price * (prev.pax || 0)
+        }));
+      }
+    }
+  }, [tierSelections, activeTour, formData.pax, isManualAmount, bookingToEdit]);
 
   // --- Financial Formulas ---
   const totals = useMemo(() => {
@@ -214,6 +248,8 @@ const CreateBookingModal: React.FC<CreateBookingModalProps> = ({
         totalAmount: bookingToEdit.totalAmount ?? 0,
         amountPaid: bookingToEdit.amountPaid ?? 0
       });
+      // Load existing tier selections if available
+      setTierSelections(bookingToEdit.tierSelections || []);
       setIsManualAmount(true);
     } else {
       setFormData({
@@ -233,9 +269,17 @@ const CreateBookingModal: React.FC<CreateBookingModalProps> = ({
         totalAmount: 0,
         amountPaid: 0
       });
+      setTierSelections([]);
       setIsManualAmount(false);
     }
   }, [bookingToEdit, isOpen, lead, leadName]);
+
+  const handleUpdateTierQuantity = (index: number, newQty: number) => {
+    const updated = [...tierSelections];
+    updated[index].quantity = Math.max(0, newQty);
+    setTierSelections(updated);
+    setIsManualAmount(false); // Enable auto-calc
+  };
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
@@ -248,6 +292,7 @@ const CreateBookingModal: React.FC<CreateBookingModalProps> = ({
       amountPaid: totals.paid,
       amountDue: totals.due,
       people: formData.pax,
+      tierSelections: tierSelections
     } as any;
 
     if (bookingToEdit) onBookingUpdated?.(finalBooking);
@@ -296,14 +341,14 @@ const CreateBookingModal: React.FC<CreateBookingModalProps> = ({
                 <SearchableSelect 
                   label="Tour Catalog Item"
                   icon={<Flag className="w-4 h-4 text-gray-400" />}
-                  options={TOURS.map(t => ({ id: t.id, label: t.name, subLabel: `$${t.price} / pax` }))}
+                  options={TOURS.map(t => ({ id: t.id, label: t.name, subLabel: t.pricingTiers ? `${t.pricingTiers.length} Options` : `$${t.price} / pax` }))}
                   value={formData.tourName}
                   onChange={(val) => setFormData(p => ({ ...p, tourName: val }))}
                   placeholder="Select a tour..."
                 />
               </div>
 
-              {/* Date & Pax */}
+              {/* Date & Pax (Logic Split) */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-1.5">
                   <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase">Date</label>
@@ -318,18 +363,49 @@ const CreateBookingModal: React.FC<CreateBookingModalProps> = ({
                   </div>
                 </div>
 
+                {/* PAX / TIER LOGIC */}
                 <div className="space-y-1.5 relative">
-                  <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase">Pax (Guests)</label>
-                  <div className="relative">
-                    <Users className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
-                    <input 
-                        type="number"
-                        min="1"
-                        value={formData.pax}
-                        onChange={e => setFormData(p => ({ ...p, pax: parseInt(e.target.value) || 0 }))}
-                        className={`w-full pl-10 p-2.5 border rounded-xl dark:bg-gray-700/50 text-sm outline-none focus:ring-2 focus:ring-indigo-500 transition-all ${availability && formData.pax > availability.left ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-300 dark:border-gray-600'}`}
-                    />
-                  </div>
+                  <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase">
+                    {tierSelections.length > 0 ? 'Guest Count' : 'Pax (Guests)'}
+                  </label>
+                  {tierSelections.length > 0 ? (
+                    <div className="p-3 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl space-y-2">
+                      {tierSelections.map((tier, idx) => (
+                        <div key={idx} className="flex items-center justify-between text-sm">
+                          <span className="text-gray-600 dark:text-gray-300 font-medium">{tier.tierName} <span className="text-xs text-gray-400">(${tier.pricePerUnit})</span></span>
+                          <div className="flex items-center gap-2">
+                            <button 
+                              type="button"
+                              onClick={() => handleUpdateTierQuantity(idx, tier.quantity - 1)}
+                              className="w-6 h-6 flex items-center justify-center rounded bg-white dark:bg-gray-800 border hover:bg-gray-100 dark:hover:bg-gray-700"
+                            >-</button>
+                            <span className="w-4 text-center font-bold">{tier.quantity}</span>
+                            <button 
+                              type="button"
+                              onClick={() => handleUpdateTierQuantity(idx, tier.quantity + 1)}
+                              className="w-6 h-6 flex items-center justify-center rounded bg-white dark:bg-gray-800 border hover:bg-gray-100 dark:hover:bg-gray-700"
+                            >+</button>
+                          </div>
+                        </div>
+                      ))}
+                      <div className="pt-2 border-t border-gray-200 dark:border-gray-700 flex justify-between text-xs font-bold text-gray-500">
+                        <span>Total Guests:</span>
+                        <span>{formData.pax}</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="relative">
+                      <Users className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
+                      <input 
+                          type="number"
+                          min="1"
+                          value={formData.pax}
+                          onChange={e => setFormData(p => ({ ...p, pax: parseInt(e.target.value) || 0 }))}
+                          className={`w-full pl-10 p-2.5 border rounded-xl dark:bg-gray-700/50 text-sm outline-none focus:ring-2 focus:ring-indigo-500 transition-all ${availability && formData.pax > availability.left ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-300 dark:border-gray-600'}`}
+                      />
+                    </div>
+                  )}
+                  
                   {availability && (
                     <div className="absolute -bottom-6 left-0 right-0 flex justify-between items-center px-1">
                        <span className={`text-[10px] font-bold uppercase tracking-tight ${availability.left <= 2 ? 'text-orange-600' : 'text-emerald-600'}`}>

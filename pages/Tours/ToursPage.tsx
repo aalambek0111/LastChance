@@ -2,6 +2,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Plus, MoreHorizontal, Search, Pencil, Trash2, Filter, Activity, MapPin, ArrowUp, ArrowDown, Copy, Archive } from 'lucide-react';
 import { TOURS } from '../../data/mockData';
+import { Tour } from '../../types';
 import { useI18n } from '../../context/ThemeContext';
 import TourEditForm from './TourEditForm';
 
@@ -9,12 +10,11 @@ interface ToursPageProps {
   searchTerm?: string;
 }
 
-type Tour = typeof TOURS[number];
 type SortKey = keyof Tour | 'status';
 type SortDir = 'asc' | 'desc';
 
 // Default template for a new tour
-const EMPTY_TOUR = {
+const EMPTY_TOUR: Tour = {
   id: 0,
   name: '',
   price: 0,
@@ -29,7 +29,10 @@ const EMPTY_TOUR = {
   location: '',
   bookingsCount: 0,
   revenue: 0,
-} as Tour;
+  pricingTiers: [
+    { name: 'Adult', price: 0 }
+  ]
+};
 
 const FALLBACK_IMAGE =
   'https://images.unsplash.com/photo-1526779259212-939e64788e3c?auto=format&fit=crop&q=80&w=600';
@@ -37,7 +40,7 @@ const FALLBACK_IMAGE =
 const ToursPage: React.FC<ToursPageProps> = ({ searchTerm = '' }) => {
   const { t } = useI18n();
 
-  const [tours, setTours] = useState<Tour[]>(TOURS as Tour[]);
+  const [tours, setTours] = useState<Tour[]>(TOURS);
   const [selectedTour, setSelectedTour] = useState<Tour | null>(null);
 
   // Filter States
@@ -176,10 +179,21 @@ const ToursPage: React.FC<ToursPageProps> = ({ searchTerm = '' }) => {
       const newTour = {
         ...savedTour,
         id: Date.now(),
+        // Ensure starting price is accurate if tiers exist
+        price: savedTour.pricingTiers && savedTour.pricingTiers.length > 0 
+          ? Math.min(...savedTour.pricingTiers.map(t => t.price)) 
+          : savedTour.price
       };
       setTours(prev => [newTour, ...prev]);
     } else {
-      setTours(prev => prev.map(t => (t.id === savedTour.id ? savedTour : t)));
+      // Recalculate base price from tiers if changed
+      const updatedTour = {
+        ...savedTour,
+        price: savedTour.pricingTiers && savedTour.pricingTiers.length > 0 
+          ? Math.min(...savedTour.pricingTiers.map(t => t.price)) 
+          : savedTour.price
+      };
+      setTours(prev => prev.map(t => (t.id === updatedTour.id ? updatedTour : t)));
     }
     closeDrawer();
   };
@@ -390,8 +404,13 @@ const ToursPage: React.FC<ToursPageProps> = ({ searchTerm = '' }) => {
                     {tour.duration || '-'}
                   </td>
 
-                  <td className="px-6 py-3.5 text-sm font-semibold text-gray-900 dark:text-white">
-                    ${tour.price}
+                  <td className="px-6 py-3.5">
+                    <span className="text-sm font-semibold text-gray-900 dark:text-white">
+                      {tour.pricingTiers && tour.pricingTiers.length > 0 
+                        ? `From $${Math.min(...tour.pricingTiers.map(t => t.price))}`
+                        : `$${tour.price}`
+                      }
+                    </span>
                   </td>
 
                   <td className="px-6 py-3.5">
