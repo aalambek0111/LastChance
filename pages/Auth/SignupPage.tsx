@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Mail, Lock, Building, Eye, EyeOff, Loader2, Globe, DollarSign, Check } from 'lucide-react';
 import AuthLayout from '../../components/auth/AuthLayout';
@@ -32,6 +33,11 @@ const SignupPage: React.FC<SignupPageProps> = ({ onSignupSuccess, onNavigate }) 
 
   const handleLinkClick = (label: string) => alert(`${label} page coming soon.`);
 
+  const handleLanguageChange = (lang: 'en' | 'ru') => {
+    setFormData(prev => ({...prev, language: lang}));
+    setLanguage(lang); // Update global context immediately for instant feedback
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -52,9 +58,6 @@ const SignupPage: React.FC<SignupPageProps> = ({ onSignupSuccess, onNavigate }) 
     
     setIsLoading(true);
 
-    // Apply language preference immediately
-    setLanguage(formData.language);
-
     // Mock Signup & Workspace Creation Flow
     setTimeout(() => {
       console.log('User & Workspace Created with Preferences:', formData);
@@ -62,10 +65,40 @@ const SignupPage: React.FC<SignupPageProps> = ({ onSignupSuccess, onNavigate }) 
     }, 1500);
   };
 
+  // Language Selector Component for Top Right
+  const LanguageSelector = (
+    <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 p-1 rounded-full border border-gray-200 dark:border-gray-700">
+      <button
+        type="button"
+        onClick={() => handleLanguageChange('en')}
+        className={`px-3 py-1 rounded-full text-xs font-bold transition-all ${
+          formData.language === 'en' 
+            ? 'bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-400 shadow-sm' 
+            : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
+        }`}
+      >
+        EN
+      </button>
+      <button
+        type="button"
+        onClick={() => handleLanguageChange('ru')}
+        className={`px-3 py-1 rounded-full text-xs font-bold transition-all ${
+          formData.language === 'ru' 
+            ? 'bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-400 shadow-sm' 
+            : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
+        }`}
+      >
+        RU
+      </button>
+    </div>
+  );
+
   return (
     <AuthLayout 
       title="Create your workspace" 
       subtitle="Setup your agency and preferences in one step."
+      headerActions={LanguageSelector}
+      hideLogo={true} // Hides the logo/CRM Name for more vertical space
     >
       <form className="space-y-5" onSubmit={handleSubmit} noValidate>
         
@@ -73,7 +106,7 @@ const SignupPage: React.FC<SignupPageProps> = ({ onSignupSuccess, onNavigate }) 
         <AuthInput
           id="workspaceName"
           type="text"
-          label="Agency / Workspace Name"
+          label="Agency Name"
           placeholder="e.g. Blue Horizon Tours"
           value={formData.workspaceName}
           onChange={(e) => {
@@ -132,10 +165,10 @@ const SignupPage: React.FC<SignupPageProps> = ({ onSignupSuccess, onNavigate }) 
           />
         </div>
 
-        {/* Preferences Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {/* Preferences Grid (Collapsed) */}
+        <div className="grid grid-cols-2 gap-4">
           <div className="relative">
-            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
+            <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1.5">
               Currency
             </label>
             <div className="relative">
@@ -143,7 +176,7 @@ const SignupPage: React.FC<SignupPageProps> = ({ onSignupSuccess, onNavigate }) 
                 <DollarSign className="w-4 h-4" />
               </div>
               <select
-                className="block w-full pl-9 pr-8 py-2.5 text-sm border-gray-300 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none appearance-none"
+                className="block w-full pl-9 pr-4 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none appearance-none"
                 value={formData.currency}
                 onChange={(e) => setFormData({...formData, currency: e.target.value})}
                 disabled={isLoading}
@@ -154,7 +187,7 @@ const SignupPage: React.FC<SignupPageProps> = ({ onSignupSuccess, onNavigate }) 
           </div>
 
           <div className="relative">
-            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
+            <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1.5">
               Timezone
             </label>
             <div className="relative">
@@ -162,47 +195,14 @@ const SignupPage: React.FC<SignupPageProps> = ({ onSignupSuccess, onNavigate }) 
                 <Globe className="w-4 h-4" />
               </div>
               <select
-                className="block w-full pl-9 pr-8 py-2.5 text-sm border-gray-300 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none appearance-none"
+                className="block w-full pl-9 pr-4 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none appearance-none"
                 value={formData.timezone}
                 onChange={(e) => setFormData({...formData, timezone: e.target.value})}
                 disabled={isLoading}
               >
-                {TIMEZONES.map(tz => <option key={tz} value={tz}>{tz}</option>)}
+                {TIMEZONES.map(tz => <option key={tz} value={tz}>{tz.split(' ')[0]}</option>)}
               </select>
             </div>
-          </div>
-        </div>
-
-        {/* Language Picker */}
-        <div className="space-y-2">
-          <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300">
-            System Language
-          </label>
-          <div className="grid grid-cols-2 gap-3">
-            <button
-              type="button"
-              onClick={() => setFormData({...formData, language: 'en'})}
-              className={`flex items-center justify-center px-4 py-2.5 border rounded-xl text-xs font-bold transition-all ${
-                formData.language === 'en'
-                  ? 'border-indigo-600 text-indigo-600 bg-indigo-50 dark:bg-indigo-900/20 ring-1 ring-indigo-600'
-                  : 'border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'
-              }`}
-            >
-              🇺🇸 English
-              {formData.language === 'en' && <Check className="ml-2 w-3 h-3" />}
-            </button>
-            <button
-              type="button"
-              onClick={() => setFormData({...formData, language: 'ru'})}
-              className={`flex items-center justify-center px-4 py-2.5 border rounded-xl text-xs font-bold transition-all ${
-                formData.language === 'ru'
-                  ? 'border-indigo-600 text-indigo-600 bg-indigo-50 dark:bg-indigo-900/20 ring-1 ring-indigo-600'
-                  : 'border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'
-              }`}
-            >
-              🇷🇺 Русский
-              {formData.language === 'ru' && <Check className="ml-2 w-3 h-3" />}
-            </button>
           </div>
         </div>
 
@@ -227,17 +227,17 @@ const SignupPage: React.FC<SignupPageProps> = ({ onSignupSuccess, onNavigate }) 
         <button
           type="submit"
           disabled={isLoading || !agreed}
-          className="w-full flex justify-center items-center h-12 px-4 border border-transparent rounded-xl shadow-lg shadow-indigo-500/20 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 transition-all active:scale-[0.98]"
+          className="w-full flex justify-center items-center h-12 px-4 border border-transparent rounded-xl shadow-lg shadow-indigo-500/20 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-[0.98]"
         >
           {isLoading ? (
             <Loader2 className="animate-spin h-5 w-5 text-white" />
           ) : (
-            'Create Workspace & Start Free Trial'
+            'Create Workspace'
           )}
         </button>
       </form>
 
-      <div className="mt-8 text-center border-t border-gray-100 dark:border-gray-800 pt-6">
+      <div className="mt-6 text-center border-t border-gray-100 dark:border-gray-800 pt-6">
         <p className="text-sm text-gray-600 dark:text-gray-400">
           Already have an account?{' '}
           <button 
