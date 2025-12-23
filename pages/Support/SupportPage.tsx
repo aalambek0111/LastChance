@@ -23,6 +23,8 @@ import {
 } from 'lucide-react';
 import { useI18n } from '../../context/ThemeContext';
 import { GoogleGenAI } from '@google/genai';
+import { supabase } from '../../lib/supabase';
+import { useTenant } from '../../context/TenantContext';
 
 type ContentType = 'ALL' | 'FAQ' | 'GUIDE' | 'VIDEO';
 
@@ -189,7 +191,19 @@ const SupportPage: React.FC = () => {
     }
   };
 
-  const handleAction = (label: string) => alert(`Redirecting to ${label} center...`);
+  const handleAction = (action: string) => {
+    switch(action) {
+      case 'Documentation':
+        window.open('https://docs.tourcrm.example.com', '_blank');
+        break;
+      case 'Tutorial':
+        window.open('https://youtube.com/@tourcrm', '_blank');
+        break;
+      case 'Community':
+        window.open('https://community.tourcrm.example.com', '_blank');
+        break;
+    }
+  };
 
   return (
     <div className="h-full overflow-y-auto bg-gray-50 dark:bg-gray-900">
@@ -393,11 +407,31 @@ const SupportPage: React.FC = () => {
 const CreateTicketModal = ({ onClose, onSuccess }: { onClose: () => void, onSuccess: () => void }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({ subject: '', category: 'General', message: '' });
+  const { organizationId } = useTenant();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!organizationId) return;
+
     setIsSubmitting(true);
-    setTimeout(onSuccess, 1200);
+    try {
+      const { error } = await supabase.from('support_tickets').insert({
+        organization_id: organizationId,
+        subject: formData.subject,
+        category: formData.category,
+        message: formData.message,
+        status: 'open',
+        created_at: new Date().toISOString()
+      });
+
+      if (error) throw error;
+      onSuccess();
+    } catch (err: any) {
+      console.error('Error creating ticket:', err);
+      alert(`Error: ${err.message}`);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (

@@ -295,9 +295,9 @@ const UpgradePage: React.FC<UpgradePageProps> = ({ onBack }) => {
 
           <div className="mt-12 text-center">
             <p className="text-gray-500 dark:text-gray-400 mb-4">Still have questions?</p>
-            <button className="text-indigo-600 dark:text-indigo-400 font-semibold hover:underline flex items-center justify-center gap-2 mx-auto">
+            <a href="mailto:sales@tourcrm.example.com" className="text-indigo-600 dark:text-indigo-400 font-semibold hover:underline flex items-center justify-center gap-2 mx-auto">
               <HelpCircle className="w-4 h-4" /> Contact our sales team
-            </button>
+            </a>
           </div>
         </div>
 
