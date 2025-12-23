@@ -1,44 +1,45 @@
-
-import React, { useState, useEffect } from 'react';
-import { List, LayoutGrid, Tag, Clock, MoreHorizontal, Filter, User, Pencil, Trash2, MessageSquare, CalendarPlus, FileText } from 'lucide-react';
-// Added NotificationType to imports
+import React, { useState, useEffect, useCallback } from 'react';
+import { List, LayoutGrid, Tag, Clock, MoreHorizontal, Filter, User, Pencil, Trash2, MessageSquare, CalendarPlus, Loader2, RefreshCw, Zap } from 'lucide-react';
 import { Lead, LeadStatus, Booking, NotificationType } from '../../types';
-import { RECENT_LEADS } from '../../data/mockData';
 import { useI18n } from '../../context/ThemeContext';
 import AddLeadModal from '../../components/modals/AddLeadModal';
 import CreateBookingModal from '../../components/modals/CreateBookingModal';
 import LeadDetailPane from './LeadDetailPane';
+import { supabase } from '../../lib/supabase';
+import { useTenant } from '../../context/TenantContext';
 
 interface LeadsPageProps {
   searchTerm?: string;
   onOpenConversation?: (leadName: string) => void;
   bookings: Booking[];
   onAddBooking: (booking: Booking) => void;
-  // Added addNotification to LeadsPageProps
   addNotification?: (payload: { title: string; description?: string; type: NotificationType; actionLink?: string }) => void;
 }
 
-const CURRENT_USER_NAME = "Alex Walker"; // Mock user for "My Leads" filter
+const CURRENT_USER_NAME = "Alex Walker"; 
 
 const LeadsPage: React.FC<LeadsPageProps> = ({ 
   searchTerm = '', 
   onOpenConversation,
   bookings,
-  onAddBooking
+  onAddBooking,
+  addNotification
 }) => {
   const { t } = useI18n();
-  const [leads, setLeads] = useState<Lead[]>(RECENT_LEADS);
+  const { organizationId } = useTenant();
+  
+  const [leads, setLeads] = useState<Lead[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'table' | 'kanban'>('table');
   const [draggedLeadId, setDraggedLeadId] = useState<string | null>(null);
   const [isAddLeadModalOpen, setIsAddLeadModalOpen] = useState(false);
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
   
-  // State for actions menu
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
-  // State for booking modal when triggered from menu (without opening drawer)
   const [leadForBooking, setLeadForBooking] = useState<Lead | null>(null);
-  // State to direct DetailPane to specific tab
   const [initialDetailTab, setInitialDetailTab] = useState<'details' | 'comments' | 'activity'>('details');
 
   // Filters
@@ -54,7 +55,47 @@ const LeadsPage: React.FC<LeadsPageProps> = ({
     { id: 'Lost', label: t('leads_status_lost'), color: 'bg-gray-500' },
   ];
 
-  // Close menus on click outside
+  // Helper to map DB row to Frontend type
+  const mapDbToLead = (row: any): Lead => ({
+    id: row.id,
+    leadNo: row.lead_no ? `LD-${String(row.lead_no).padStart(6, '0')}` : undefined,
+    name: row.name,
+    email: row.email,
+    phone: row.phone,
+    company: row.company,
+    status: row.status as LeadStatus,
+    channel: row.channel,
+    value: row.value,
+    notes: row.notes,
+    assignedTo: row.assigned_to,
+    lastMessageTime: row.last_interaction_at ? new Date(row.last_interaction_at).toLocaleString() : 'New',
+  });
+
+  const fetchLeads = useCallback(async () => {
+    if (!organizationId) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const { data, error } = await supabase
+        .from('leads')
+        .select('*')
+        .eq('organization_id', organizationId)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setLeads(data.map(mapDbToLead));
+    } catch (err: any) {
+      console.error('Error fetching leads:', err);
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }, [organizationId]);
+
+  useEffect(() => {
+    fetchLeads();
+  }, [fetchLeads]);
+
   useEffect(() => {
     const onMouseDown = (e: MouseEvent) => {
       const target = e.target as HTMLElement | null;
@@ -79,48 +120,97 @@ const LeadsPage: React.FC<LeadsPageProps> = ({
   
   const activeLead = leads.find(l => l.id === selectedLeadId);
 
-  const handleUpdateLead = (updatedLead: Lead) => {
-    setLeads(prev => prev.map(l => l.id === updatedLead.id ? updatedLead : l));
-    setSelectedLeadId(null);
+  // --- CRUD Handlers ---
+
+  const handleAddLead = async (leadData: any) => {
+    if (!organizationId) return;
+    try {
+      const { error } = await supabase.from('leads').insert({
+        organization_id: organizationId,
+        name: leadData.name,
+        email: leadData.email,
+        phone: leadData.phone,
+        status: leadData.status,
+        channel: leadData.channel,
+        notes: leadData.notes,
+        company: leadData.company,
+        value: leadData.value,
+        assigned_to: leadData.assignedTo
+      });
+
+      if (error) throw error;
+      
+      fetchLeads(); // Refresh list
+      
+      if (addNotification) {
+        addNotification({
+          title: 'New Lead Created',
+          description: `${leadData.name} has been added.`,
+          type: 'lead'
+        });
+      }
+    } catch (err: any) {
+      alert(`Error creating lead: ${err.message}`);
+    }
   };
 
-  const handleDeleteLead = (id: string) => {
-    if (window.confirm("Are you sure you want to delete this lead?")) {
-      setLeads(prev => prev.filter(l => l.id !== id));
-      setMenuOpenId(null);
-      if (selectedLeadId === id) setSelectedLeadId(null);
+  const handleUpdateLead = async (updatedLead: Lead) => {
+    if (!organizationId) return;
+    try {
+      const { error } = await supabase.from('leads').update({
+        name: updatedLead.name,
+        status: updatedLead.status,
+        channel: updatedLead.channel,
+        email: (updatedLead as any).email,
+        phone: (updatedLead as any).phone,
+        company: (updatedLead as any).company,
+        value: (updatedLead as any).value,
+        notes: (updatedLead as any).notes,
+        assigned_to: updatedLead.assignedTo,
+        last_interaction_at: new Date().toISOString()
+      }).eq('id', updatedLead.id);
+
+      if (error) throw error;
+
+      // Update local state for immediate feedback
+      setLeads(prev => prev.map(l => l.id === updatedLead.id ? updatedLead : l));
+      setSelectedLeadId(null);
+    } catch (err: any) {
+      alert(`Error updating lead: ${err.message}`);
     }
+  };
+
+  const handleDeleteLead = async (id: string) => {
+    if (window.confirm("Are you sure you want to delete this lead?")) {
+      try {
+        const { error } = await supabase.from('leads').delete().eq('id', id);
+        if (error) throw error;
+        setLeads(prev => prev.filter(l => l.id !== id));
+        setMenuOpenId(null);
+        if (selectedLeadId === id) setSelectedLeadId(null);
+      } catch (err: any) {
+        alert(`Error deleting lead: ${err.message}`);
+      }
+    }
+  };
+
+  const handleCreateSampleLeads = async () => {
+    if (!organizationId) return;
+    const samples = [
+      { name: 'Alice Walker', email: 'alice@example.com', status: 'New', channel: 'Website' },
+      { name: 'Bob Smith', email: 'bob@example.com', status: 'Contacted', channel: 'Referral' },
+      { name: 'Charlie Brown', email: 'charlie@example.com', status: 'Qualified', channel: 'WhatsApp' },
+    ];
+    
+    setLoading(true);
+    for (const s of samples) {
+      await supabase.from('leads').insert({ ...s, organization_id: organizationId });
+    }
+    fetchLeads();
   };
 
   const handleBookingCreated = (newBooking: Booking) => {
     onAddBooking(newBooking);
-    
-    const targetLead = leadForBooking || activeLead;
-
-    // Log activity on the lead side
-    if (targetLead) {
-      const storedActivities = localStorage.getItem(`lead_activities_${targetLead.id}`);
-      const activities = storedActivities ? JSON.parse(storedActivities) : [];
-      
-      const newActivity = {
-        id: `a_${Date.now()}_booking`,
-        leadId: targetLead.id,
-        field: 'Booking',
-        from: 'None',
-        to: `Created Booking ${newBooking.bookingNo || newBooking.id}`,
-        actorName: CURRENT_USER_NAME,
-        timestamp: Date.now()
-      };
-      
-      localStorage.setItem(`lead_activities_${targetLead.id}`, JSON.stringify([newActivity, ...activities]));
-      
-      // Auto update status if not already booked
-      if (targetLead.status !== 'Booked' && targetLead.status !== 'Lost') {
-         const updatedLead = { ...targetLead, status: 'Booked' as LeadStatus };
-         setLeads(prev => prev.map(l => l.id === updatedLead.id ? updatedLead : l));
-      }
-    }
-    
     setIsBookingModalOpen(false);
     setLeadForBooking(null);
   };
@@ -143,12 +233,16 @@ const LeadsPage: React.FC<LeadsPageProps> = ({
     e.preventDefault();
   };
 
-  const handleDrop = (e: React.DragEvent, status: LeadStatus) => {
+  const handleDrop = async (e: React.DragEvent, status: LeadStatus) => {
     e.preventDefault();
     if (draggedLeadId) {
-      setLeads(prev => prev.map(l => 
-        l.id === draggedLeadId ? { ...l, status } : l
-      ));
+      const lead = leads.find(l => l.id === draggedLeadId);
+      if (lead && lead.status !== status) {
+        // Optimistic update
+        setLeads(prev => prev.map(l => l.id === draggedLeadId ? { ...l, status } : l));
+        // Persist
+        await supabase.from('leads').update({ status }).eq('id', draggedLeadId);
+      }
       setDraggedLeadId(null);
     }
   };
@@ -188,12 +282,22 @@ const LeadsPage: React.FC<LeadsPageProps> = ({
         </>
       )}
 
-      {/* Header Section - Tightened padding and margins */}
+      {/* Header Section */}
       <div className="flex-none px-6 py-4 lg:px-8 pb-3">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
           <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{t('page_leads_title')}</h2>
           
           <div className="flex items-center gap-3 w-full sm:w-auto">
+            
+            {/* Dev Helper */}
+            <button 
+              onClick={handleCreateSampleLeads}
+              className="p-1.5 text-xs font-bold text-indigo-600 bg-indigo-50 dark:bg-indigo-900/20 dark:text-indigo-300 rounded border border-indigo-200 dark:border-indigo-800 flex items-center gap-1 hover:bg-indigo-100 transition-colors"
+              title="Dev: Create 3 Sample Leads"
+            >
+              <Zap className="w-3 h-3" /> Gen Samples
+            </button>
+
             {/* View Switcher */}
             <div className="flex bg-gray-100 dark:bg-gray-800 p-1 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
               <button
@@ -312,7 +416,19 @@ const LeadsPage: React.FC<LeadsPageProps> = ({
       
       {/* Content Section */}
       <div className="flex-1 min-h-0 overflow-hidden relative">
-        {viewMode === 'table' ? (
+        {loading ? (
+          <div className="flex h-full items-center justify-center">
+            <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
+          </div>
+        ) : error ? (
+          <div className="flex flex-col h-full items-center justify-center text-center p-8">
+            <p className="text-red-500 font-bold mb-2">Failed to load leads</p>
+            <p className="text-sm text-gray-500 mb-4">{error}</p>
+            <button onClick={fetchLeads} className="px-4 py-2 bg-indigo-50 text-indigo-600 rounded-lg text-sm font-bold flex items-center gap-2">
+              <RefreshCw className="w-4 h-4" /> Retry
+            </button>
+          </div>
+        ) : viewMode === 'table' ? (
           <div className="h-full overflow-y-auto px-6 lg:px-8 pb-6">
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
               <table className="w-full text-left">
@@ -421,7 +537,7 @@ const LeadsPage: React.FC<LeadsPageProps> = ({
                   ))}
                   {filteredLeads.length === 0 && (
                       <tr>
-                        <td colSpan={7} className="px-6 py-8 text-center text-gray-500 text-sm">
+                        <td colSpan={7} className="px-6 py-12 text-center text-gray-500 text-sm">
                           {searchTerm 
                             ? `No leads found matching "${searchTerm}".` 
                             : "No leads found for the selected filters."}
@@ -512,6 +628,7 @@ const LeadsPage: React.FC<LeadsPageProps> = ({
       <AddLeadModal 
         isOpen={isAddLeadModalOpen} 
         onClose={() => setIsAddLeadModalOpen(false)} 
+        onSave={handleAddLead}
       />
 
       <CreateBookingModal 

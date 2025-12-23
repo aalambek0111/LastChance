@@ -1,10 +1,10 @@
-
 import React, { useState } from 'react';
-import { Mail, Lock, Building, Eye, EyeOff, Loader2, Globe, DollarSign, Check } from 'lucide-react';
+import { Mail, Lock, Building, Eye, EyeOff, Loader2, Globe, DollarSign, Check, AlertCircle } from 'lucide-react';
 import AuthLayout from '../../components/auth/AuthLayout';
 import AuthInput from '../../components/auth/AuthInput';
 import { TIMEZONES, CURRENCIES } from '../../constants';
 import { useI18n } from '../../context/ThemeContext';
+import { supabase, isSupabaseConfigured } from '../../lib/supabase';
 
 interface SignupPageProps {
   onSignupSuccess: () => void;
@@ -25,7 +25,7 @@ const SignupPage: React.FC<SignupPageProps> = ({ onSignupSuccess, onNavigate }) 
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [agreed, setAgreed] = useState(false);
-  const [errors, setErrors] = useState<{ workspaceName?: string; email?: string; password?: string }>({});
+  const [errors, setErrors] = useState<{ workspaceName?: string; email?: string; password?: string; general?: string }>({});
 
   const validateEmail = (email: string) => {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -40,6 +40,7 @@ const SignupPage: React.FC<SignupPageProps> = ({ onSignupSuccess, onNavigate }) 
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setErrors({});
     
     // Simple client-side validation
     const newErrors: typeof errors = {};
@@ -55,14 +56,44 @@ const SignupPage: React.FC<SignupPageProps> = ({ onSignupSuccess, onNavigate }) 
     }
 
     if (!agreed) return;
+
+    if (!isSupabaseConfigured()) {
+      setErrors({ general: 'Supabase is not configured. Please add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to your .env file.' });
+      return;
+    }
     
     setIsLoading(true);
 
-    // Mock Signup & Workspace Creation Flow
-    setTimeout(() => {
-      console.log('User & Workspace Created with Preferences:', formData);
-      onSignupSuccess();
-    }, 1500);
+    try {
+      // 1. Sign up user
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: formData.email,
+        password: formData.password,
+        options: {
+          data: {
+            workspace_name: formData.workspaceName,
+            full_name: formData.workspaceName.split(' ')[0] + ' Admin', // Simple default name
+            // avatar_url: ...
+          }
+        }
+      });
+
+      if (authError) {
+        setErrors({ general: authError.message });
+        setIsLoading(false);
+        return;
+      }
+
+      if (authData.user) {
+        // Success
+        console.log('User created:', authData.user);
+        onSignupSuccess();
+      }
+    } catch (err: any) {
+      console.error('Signup error:', err);
+      setErrors({ general: err.message || 'An unexpected error occurred. Please try again.' });
+      setIsLoading(false);
+    }
   };
 
   // Language Selector Component for Top Right
@@ -101,7 +132,13 @@ const SignupPage: React.FC<SignupPageProps> = ({ onSignupSuccess, onNavigate }) 
       hideLogo={true} // Hides the logo/CRM Name for more vertical space
     >
       <form className="space-y-5" onSubmit={handleSubmit} noValidate>
-        
+        {errors.general && (
+          <div className="mb-4 rounded-xl bg-red-50 dark:bg-red-900/20 p-3 border border-red-200 dark:border-red-800 flex items-center gap-2 animate-in fade-in slide-in-from-top-1">
+            <AlertCircle className="w-4 h-4 text-red-600 dark:text-red-400" />
+            <span className="text-sm text-red-700 dark:text-red-300">{errors.general}</span>
+          </div>
+        )}
+
         {/* Organization Name */}
         <AuthInput
           id="workspaceName"

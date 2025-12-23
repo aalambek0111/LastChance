@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { 
   ChevronLeft, ChevronRight, Calendar as CalendarIcon, 
@@ -407,7 +406,11 @@ const CalendarPage: React.FC<CalendarPageProps> = ({
                         >
                           <div className="flex justify-between items-start">
                              <span className="font-bold truncate">{booking.tourName}</span>
-                             {isFull && <AlertCircle className="w-3 h-3 text-red-500 fill-red-500/20" title="Full Capacity" />}
+                             {isFull && (
+                               <span title="Full Capacity">
+                                 <AlertCircle className="w-3 h-3 text-red-500 fill-red-500/20" />
+                               </span>
+                             )}
                           </div>
                           <div className="truncate opacity-80">{booking.startTime} - {booking.endTime}</div>
                           <div className="mt-1 opacity-70 text-[10px] flex items-center gap-1 font-medium">

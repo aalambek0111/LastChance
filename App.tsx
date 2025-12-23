@@ -1,5 +1,4 @@
-
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
 import MobileNav from './components/MobileNav';
@@ -21,14 +20,17 @@ import OnboardingPage from './pages/Auth/OnboardingPage';
 import ForgotPasswordPage from './pages/Auth/ForgotPasswordPage';
 import Toast from './components/Toast';
 import { ThemeProvider } from './context/ThemeContext';
+import { TenantProvider, useTenant } from './context/TenantContext';
 import { UPCOMING_BOOKINGS, INITIAL_NOTIFICATIONS } from './data/mockData';
 import { Booking, AppNotification, NotificationType } from './types';
+import { supabase } from './lib/supabase';
 
 // Types of view states for the App router
 type AuthState = 'login' | 'signup' | 'forgot' | 'onboarding' | 'authenticated';
 
-function App() {
-  // SET TO 'login' SO YOU CAN SEE THE LOGIN PAGE AGAIN
+// Inner component to consume Context
+const AppContent = () => {
+  const { session, loading: tenantLoading, organizationId } = useTenant();
   const [authState, setAuthState] = useState<AuthState>('login'); 
   const [activePage, setActivePage] = useState('dashboard');
   const [activeSettingsSection, setActiveSettingsSection] = useState<string | undefined>(undefined);
@@ -37,6 +39,18 @@ function App() {
   const [toast, setToast] = useState({ message: '', visible: false });
   const [searchTerm, setSearchTerm] = useState('');
   const [initialLeadForInbox, setInitialLeadForInbox] = useState<string | null>(null);
+
+  // Sync Supabase Session with Local Router State
+  useEffect(() => {
+    if (!tenantLoading) {
+      if (session) {
+        setAuthState('authenticated');
+      } else if (authState === 'authenticated') {
+        // If we were authenticated but lost session, go to login
+        setAuthState('login');
+      }
+    }
+  }, [session, tenantLoading, authState]);
 
   const handleNavigate = (page: string, section?: string) => {
     setActivePage(page);
@@ -47,9 +61,10 @@ function App() {
     }
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
     setAuthState('login');
-    setActivePage('dashboard'); // Reset to default for next login
+    setActivePage('dashboard');
   };
 
   // --- Notification System ---
@@ -78,7 +93,6 @@ function App() {
     setBookings(prev => prev.map(b => b.id === updatedBooking.id ? updatedBooking : b));
     showToast('Booking updated successfully');
 
-    // Trigger specific operational notifications
     if (original && original.status !== 'Cancelled' && updatedBooking.status === 'Cancelled') {
         addNotification({
             title: '⚠️ Booking Cancelled',
@@ -109,14 +123,21 @@ function App() {
     setToast(prev => ({ ...prev, visible: false }));
   };
 
-  // Feature: Open Conversation
   const handleOpenConversation = (leadName: string) => {
     setInitialLeadForInbox(leadName);
     setActivePage('inbox');
   };
 
+  if (tenantLoading) {
+    return (
+      <div className="h-screen w-full flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-600"></div>
+      </div>
+    );
+  }
+
   return (
-    <ThemeProvider>
+    <>
       {authState !== 'authenticated' ? (
         <>
           {authState === 'login' && (
@@ -162,62 +183,73 @@ function App() {
             )}
 
             <div className={`flex-1 overflow-hidden flex flex-col ${activePage !== 'upgrade' ? 'pt-[72px]' : ''}`}>
-              {activePage === 'dashboard' && (
-                <DashboardPage 
-                  bookings={bookings} 
-                  searchTerm={searchTerm} 
-                  onNavigate={handleNavigate}
-                  onUpdateBooking={updateBooking}
-                  onAddBooking={addBooking}
-                  addNotification={addNotification}
-                />
+              {/* Show error if logged in but no org (except if creating one) */}
+              {!organizationId && authState === 'authenticated' && activePage !== 'settings' ? (
+                 <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
+                    <h2 className="text-2xl font-bold mb-2">No Workspace Found</h2>
+                    <p className="text-gray-500 mb-4">You are logged in, but not a member of any organization.</p>
+                    <button onClick={handleLogout} className="text-indigo-600 hover:underline">Sign out</button>
+                 </div>
+              ) : (
+                <>
+                  {activePage === 'dashboard' && (
+                    <DashboardPage 
+                      bookings={bookings} 
+                      searchTerm={searchTerm} 
+                      onNavigate={handleNavigate}
+                      onUpdateBooking={updateBooking}
+                      onAddBooking={addBooking}
+                      addNotification={addNotification}
+                    />
+                  )}
+                  {activePage === 'inbox' && (
+                    <InboxPage 
+                      bookings={bookings}
+                      onAddBooking={addBooking} 
+                      showToast={showToast} 
+                      searchTerm={searchTerm}
+                      initialLeadName={initialLeadForInbox}
+                    />
+                  )}
+                  {activePage === 'leads' && (
+                    <LeadsPage 
+                      bookings={bookings}
+                      onAddBooking={addBooking}
+                      searchTerm={searchTerm} 
+                      onOpenConversation={handleOpenConversation}
+                      addNotification={addNotification}
+                    />
+                  )}
+                  {activePage === 'bookings' && (
+                    <BookingsPage 
+                      bookings={bookings} 
+                      searchTerm={searchTerm} 
+                      onUpdateBooking={updateBooking}
+                      onDeleteBooking={deleteBooking}
+                    />
+                  )}
+                  {activePage === 'calendar' && (
+                    <CalendarPage 
+                      bookings={bookings} 
+                      searchTerm={searchTerm} 
+                      onUpdateBooking={updateBooking}
+                      onAddBooking={addBooking}
+                    />
+                  )}
+                  {activePage === 'team' && <TeamPage />}
+                  {activePage === 'settings' && (
+                    <SettingsPage 
+                        onNavigate={handleNavigate} 
+                        initialSection={activeSettingsSection} 
+                    />
+                  )}
+                  {activePage === 'upgrade' && <UpgradePage onBack={() => setActivePage('settings')} />}
+                  {activePage === 'tours' && <ToursPage searchTerm={searchTerm} />}
+                  {activePage === 'reports' && <ReportsPage bookings={bookings} />}
+                  {activePage === 'import' && <ImportPage />}
+                  {activePage === 'support' && <SupportPage />}
+                </>
               )}
-              {activePage === 'inbox' && (
-                <InboxPage 
-                  bookings={bookings}
-                  onAddBooking={addBooking} 
-                  showToast={showToast} 
-                  searchTerm={searchTerm}
-                  initialLeadName={initialLeadForInbox}
-                />
-              )}
-              {activePage === 'leads' && (
-                <LeadsPage 
-                  bookings={bookings}
-                  onAddBooking={addBooking}
-                  searchTerm={searchTerm} 
-                  onOpenConversation={handleOpenConversation}
-                  addNotification={addNotification}
-                />
-              )}
-              {activePage === 'bookings' && (
-                <BookingsPage 
-                  bookings={bookings} 
-                  searchTerm={searchTerm} 
-                  onUpdateBooking={updateBooking}
-                  onDeleteBooking={deleteBooking}
-                />
-              )}
-              {activePage === 'calendar' && (
-                <CalendarPage 
-                  bookings={bookings} 
-                  searchTerm={searchTerm} 
-                  onUpdateBooking={updateBooking}
-                  onAddBooking={addBooking}
-                />
-              )}
-              {activePage === 'team' && <TeamPage />}
-              {activePage === 'settings' && (
-                <SettingsPage 
-                    onNavigate={handleNavigate} 
-                    initialSection={activeSettingsSection} 
-                />
-              )}
-              {activePage === 'upgrade' && <UpgradePage onBack={() => setActivePage('settings')} />}
-              {activePage === 'tours' && <ToursPage searchTerm={searchTerm} />}
-              {activePage === 'reports' && <ReportsPage bookings={bookings} />}
-              {activePage === 'import' && <ImportPage />}
-              {activePage === 'support' && <SupportPage />}
             </div>
           </main>
           
@@ -232,7 +264,17 @@ function App() {
           />
         </div>
       )}
-    </ThemeProvider>
+    </>
+  );
+};
+
+function App() {
+  return (
+    <TenantProvider>
+      <ThemeProvider>
+        <AppContent />
+      </ThemeProvider>
+    </TenantProvider>
   );
 }
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, User, Mail, Phone, Tag, FileText, UserPlus, DollarSign, Building } from 'lucide-react';
+import { X, User, Mail, Phone, Tag, FileText, UserPlus, DollarSign, Building, Loader2 } from 'lucide-react';
 import { LeadStatus, NotificationType } from '../../types';
 import { MOCK_TEAM_MEMBERS } from '../../data/mockData';
 import { LayoutService, LayoutField } from '../../services/layoutService';
@@ -7,15 +7,17 @@ import { LayoutService, LayoutField } from '../../services/layoutService';
 interface AddLeadModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onSave?: (data: any) => Promise<void>; // Make onSave async
   addNotification?: (payload: { title: string; description?: string; type: NotificationType; actionLink?: string }) => void;
 }
 
-const AddLeadModal: React.FC<AddLeadModalProps> = ({ isOpen, onClose, addNotification }) => {
+const AddLeadModal: React.FC<AddLeadModalProps> = ({ isOpen, onClose, addNotification, onSave }) => {
   const [layout, setLayout] = useState<LayoutField[]>([]);
   const [formData, setFormData] = useState<Record<string, any>>({
     status: 'New',
     assignedTo: ''
   });
+  const [isSaving, setIsSaving] = useState(false);
 
   // Load layout on open
   useEffect(() => {
@@ -34,18 +36,30 @@ const AddLeadModal: React.FC<AddLeadModalProps> = ({ isOpen, onClose, addNotific
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('New Lead Submitted:', formData);
+    setIsSaving(true);
     
-    if (addNotification) {
-        addNotification({
-            title: 'New Lead Inquired',
-            description: `${formData.name || 'New Lead'} reached out.`,
-            type: 'lead'
-        });
+    try {
+      if (onSave) {
+        await onSave(formData);
+      } else {
+        // Fallback or deprecated behavior if parent doesn't provide onSave
+        console.log('New Lead Submitted (Local):', formData);
+        if (addNotification) {
+            addNotification({
+                title: 'New Lead Inquired',
+                description: `${formData.name || 'New Lead'} reached out.`,
+                type: 'lead'
+            });
+        }
+      }
+      onClose();
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setIsSaving(false);
     }
-    onClose();
   };
 
   const renderField = (field: LayoutField) => {
@@ -75,6 +89,7 @@ const AddLeadModal: React.FC<AddLeadModalProps> = ({ isOpen, onClose, addNotific
               placeholder={`Enter ${field.label.toLowerCase()}...`}
               value={formData[field.id] || ''}
               onChange={(e) => setFormData({...formData, [field.id]: e.target.value})}
+              disabled={isSaving}
             />
           </div>
         );
@@ -91,6 +106,7 @@ const AddLeadModal: React.FC<AddLeadModalProps> = ({ isOpen, onClose, addNotific
               className={`${commonClasses} pl-10 pr-3 appearance-none`}
               value={formData[field.id] || ''}
               onChange={(e) => setFormData({...formData, [field.id]: e.target.value})}
+              disabled={isSaving}
             >
               <option value="">Select option</option>
               {field.options?.map(opt => <option key={opt} value={opt}>{opt}</option>)}
@@ -112,6 +128,7 @@ const AddLeadModal: React.FC<AddLeadModalProps> = ({ isOpen, onClose, addNotific
               placeholder={`Enter ${field.label.toLowerCase()}...`}
               value={formData[field.id] || ''}
               onChange={(e) => setFormData({...formData, [field.id]: e.target.value})}
+              disabled={isSaving}
             />
           </div>
         );
@@ -122,7 +139,7 @@ const AddLeadModal: React.FC<AddLeadModalProps> = ({ isOpen, onClose, addNotific
     <div className="fixed inset-0 z-[70] overflow-y-auto" role="dialog" aria-modal="true">
       <div 
         className="fixed inset-0 bg-gray-900/50 backdrop-blur-sm transition-opacity" 
-        onClick={onClose}
+        onClick={!isSaving ? onClose : undefined}
       ></div>
 
       <div className="flex items-center justify-center min-h-screen p-4 text-center sm:p-0">
@@ -138,7 +155,8 @@ const AddLeadModal: React.FC<AddLeadModalProps> = ({ isOpen, onClose, addNotific
             </div>
             <button 
               onClick={onClose}
-              className="bg-gray-50 dark:bg-gray-700 rounded-full p-1.5 text-gray-400 hover:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors focus:outline-none"
+              disabled={isSaving}
+              className="bg-gray-50 dark:bg-gray-700 rounded-full p-1.5 text-gray-400 hover:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors focus:outline-none disabled:opacity-50"
             >
               <X className="h-5 w-5" />
             </button>
@@ -155,7 +173,7 @@ const AddLeadModal: React.FC<AddLeadModalProps> = ({ isOpen, onClose, addNotific
                     </div>
                 ))}
 
-                {/* Static Status & Assigned To (Often separate from generic layout in CRM) */}
+                {/* Static Status & Assigned To */}
                 <div className="grid grid-cols-2 gap-4 pt-2 border-t border-gray-100 dark:border-gray-700">
                     <div>
                         <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide mb-1.5">Status</label>
@@ -164,6 +182,7 @@ const AddLeadModal: React.FC<AddLeadModalProps> = ({ isOpen, onClose, addNotific
                                 className="block w-full px-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white bg-white dark:bg-gray-700/50 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm appearance-none"
                                 value={formData.status}
                                 onChange={(e) => setFormData({...formData, status: e.target.value as LeadStatus})}
+                                disabled={isSaving}
                             >
                                 <option value="New">New</option>
                                 <option value="Contacted">Contacted</option>
@@ -183,6 +202,7 @@ const AddLeadModal: React.FC<AddLeadModalProps> = ({ isOpen, onClose, addNotific
                                 className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white bg-white dark:bg-gray-700/50 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm appearance-none"
                                 value={formData.assignedTo}
                                 onChange={(e) => setFormData({...formData, assignedTo: e.target.value})}
+                                disabled={isSaving}
                             >
                                 <option value="">Unassigned</option>
                                 {MOCK_TEAM_MEMBERS.map(member => (
@@ -200,13 +220,21 @@ const AddLeadModal: React.FC<AddLeadModalProps> = ({ isOpen, onClose, addNotific
             <button
               type="submit"
               form="add-lead-form"
-              className="inline-flex justify-center rounded-lg border border-transparent shadow-sm px-5 py-2.5 bg-indigo-600 text-sm font-semibold text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all active:scale-95"
+              disabled={isSaving}
+              className="inline-flex justify-center items-center rounded-lg border border-transparent shadow-sm px-5 py-2.5 bg-indigo-600 text-sm font-semibold text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed"
             >
-              Add Lead
+              {isSaving ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Saving...
+                </>
+              ) : (
+                'Add Lead'
+              )}
             </button>
             <button
               type="button"
-              className="inline-flex justify-center rounded-lg border border-gray-300 dark:border-gray-600 shadow-sm px-5 py-2.5 bg-white dark:bg-gray-800 text-sm font-semibold text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all"
+              disabled={isSaving}
+              className="inline-flex justify-center rounded-lg border border-gray-300 dark:border-gray-600 shadow-sm px-5 py-2.5 bg-white dark:bg-gray-800 text-sm font-semibold text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               onClick={onClose}
             >
               Cancel

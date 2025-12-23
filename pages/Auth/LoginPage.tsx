@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Mail, Lock, Eye, EyeOff, AlertCircle, Loader2 } from 'lucide-react';
 import AuthLayout from '../../components/auth/AuthLayout';
 import AuthInput from '../../components/auth/AuthInput';
+import { supabase, isSupabaseConfigured } from '../../lib/supabase';
 
 interface LoginPageProps {
   onLoginSuccess: () => void;
@@ -48,31 +49,39 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess, onNavigate }) => 
       return;
     }
 
+    if (!isSupabaseConfigured()) {
+        setErrors({ general: 'Supabase is not configured. Please check your environment variables.' });
+        return;
+    }
+
     setIsLoading(true);
 
-    // Mock Authentication Delay & Logic
-    setTimeout(() => {
-      // Mock Error Scenario for testing
-      if (email.includes('error')) {
-        setErrors({ general: 'We couldn’t find an account matching those details.' });
-        setIsLoading(false);
-        return;
-      }
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
 
-      // Success
-      const hasWorkspace = true; 
-      if (hasWorkspace) {
-        onLoginSuccess();
+      if (error) {
+        setErrors({ general: error.message });
+        setIsLoading(false);
       } else {
-        onNavigate('onboarding');
+        // Successful login
+        // The App component listens to auth state changes, but we call success explicitly
+        onLoginSuccess();
       }
-    }, 1200);
+    } catch (err: any) {
+      console.error(err);
+      setErrors({ general: err.message || 'Failed to connect to the server.' });
+      setIsLoading(false);
+    }
   };
 
   const handleGoogleLogin = () => {
     setIsLoading(true);
+    // TODO: Implement Google OAuth with Supabase
     setTimeout(() => {
-        alert('Redirecting to Google Auth...');
+        alert('Google Auth requires additional configuration in Supabase.');
         setIsLoading(false);
     }, 800);
   };
