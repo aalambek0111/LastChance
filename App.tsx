@@ -268,13 +268,44 @@ const AppContent = () => {
   );
 };
 
+const ErrorBoundary: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [hasError, setHasError] = React.useState(false);
+
+  React.useEffect(() => {
+    const handleError = () => setHasError(true);
+    window.addEventListener('error', handleError);
+    return () => window.removeEventListener('error', handleError);
+  }, []);
+
+  if (hasError) {
+    return (
+      <div className="h-screen w-full flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+        <div className="text-center p-8">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Something went wrong</h1>
+          <p className="text-gray-600 dark:text-gray-400 mb-4">Please refresh the page to try again</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+          >
+            Refresh
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return <>{children}</>;
+};
+
 function App() {
   return (
-    <TenantProvider>
-      <ThemeProvider>
-        <AppContent />
-      </ThemeProvider>
-    </TenantProvider>
+    <ErrorBoundary>
+      <TenantProvider>
+        <ThemeProvider>
+          <AppContent />
+        </ThemeProvider>
+      </TenantProvider>
+    </ErrorBoundary>
   );
 }
 

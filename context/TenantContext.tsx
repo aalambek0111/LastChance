@@ -109,6 +109,26 @@ export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     if (organizationId) setLoading(false);
   }, [organizationId]);
 
+  if (!isSupabaseConfigured()) {
+    return (
+      <div className="h-screen w-full flex items-center justify-center bg-white dark:bg-gray-900">
+        <div className="text-center max-w-md p-8">
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-3">Setup Required</h2>
+          <p className="text-gray-600 dark:text-gray-400 mb-4">
+            This app needs Supabase credentials to function. Please configure your environment variables.
+          </p>
+          <code className="block bg-gray-100 dark:bg-gray-800 p-3 rounded-lg text-sm text-left mb-4 text-gray-700 dark:text-gray-300">
+            VITE_SUPABASE_URL<br/>
+            VITE_SUPABASE_ANON_KEY
+          </code>
+          <p className="text-xs text-gray-500 dark:text-gray-500">
+            Add these to your .env file and restart the dev server.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <TenantContext.Provider value={{ session, organizationId, loading, error, refreshOrg: () => fetchOrganization(0) }}>
       {children}
