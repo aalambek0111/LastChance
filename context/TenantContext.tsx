@@ -1,10 +1,12 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { Session } from '@supabase/supabase-js';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
+import { TeamMember } from '../types';
 
 interface TenantContextType {
   session: Session | null;
   organizationId: string | null;
+  teamMembers: TeamMember[];
   loading: boolean;
   error: string | null;
   refreshOrg: () => Promise<void>;
@@ -15,6 +17,7 @@ const TenantContext = createContext<TenantContextType | undefined>(undefined);
 export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [organizationId, setOrganizationId] = useState<string | null>(null);
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [initialCheckDone, setInitialCheckDone] = useState(false);
@@ -111,11 +114,49 @@ export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
   };
 
+  const fetchTeamMembers = async (orgId: string) => {
+    if (!isSupabaseConfigured() || !orgId) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('organization_members')
+        .select('id, user_id, role')
+        .eq('organization_id', orgId)
+        .eq('status', 'active');
+
+      if (error) {
+        console.error('Error fetching team members:', error);
+        setTeamMembers([]);
+        return;
+      }
+
+      if (data) {
+        const members: TeamMember[] = data.map(member => ({
+          id: member.user_id,
+          name: member.role === 'owner' ? 'Owner' : 'Team Member',
+          email: '',
+          role: member.role,
+          status: 'active'
+        }));
+        setTeamMembers(members);
+      }
+    } catch (err) {
+      console.error('Unexpected error fetching team members:', err);
+      setTeamMembers([]);
+    }
+  };
+
   useEffect(() => {
     if (initialCheckDone && session) {
       fetchOrganization();
     }
   }, [session, initialCheckDone]);
+
+  useEffect(() => {
+    if (organizationId) {
+      fetchTeamMembers(organizationId);
+    }
+  }, [organizationId]);
 
   if (!isSupabaseConfigured()) {
     return (
@@ -138,7 +179,7 @@ export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   }
 
   return (
-    <TenantContext.Provider value={{ session, organizationId, loading, error, refreshOrg: () => fetchOrganization(0) }}>
+    <TenantContext.Provider value={{ session, organizationId, teamMembers, loading, error, refreshOrg: () => fetchOrganization(0) }}>
       {children}
     </TenantContext.Provider>
   );

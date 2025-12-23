@@ -4,6 +4,14 @@ export type BookingStatus = 'Confirmed' | 'Pending' | 'Completed' | 'Cancelled';
 export type Channel = 'Website' | 'WhatsApp' | 'Email' | 'Referral';
 export type PaymentStatus = 'Unpaid' | 'Waiting' | 'Partially Paid' | 'Paid' | 'Refunded';
 
+export interface TeamMember {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  status: 'active' | 'inactive';
+}
+
 export interface Lead {
   id: string; // Internal UUID
   leadNo?: string; // Human Readable (e.g. LD-0001)
