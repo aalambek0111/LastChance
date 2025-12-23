@@ -71,9 +71,8 @@ const SignupPage: React.FC<SignupPageProps> = ({ onSignupSuccess, onNavigate }) 
         password: formData.password,
         options: {
           data: {
-            workspace_name: formData.workspaceName,
-            full_name: formData.workspaceName.split(' ')[0] + ' Admin', // Simple default name
-            // avatar_url: ...
+            name: formData.workspaceName,
+            full_name: formData.workspaceName.split(' ')[0] + ' Admin',
           }
         }
       });
