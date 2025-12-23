@@ -73,6 +73,8 @@ const SignupPage: React.FC<SignupPageProps> = ({ onSignupSuccess, onNavigate }) 
           data: {
             name: formData.workspaceName,
             full_name: formData.fullName,
+            timezone: formData.timezone,
+            currency: formData.currency,
           }
         }
       });

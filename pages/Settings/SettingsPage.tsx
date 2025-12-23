@@ -25,8 +25,10 @@ import {
   Columns
 } from 'lucide-react';
 import { useI18n } from '../../context/ThemeContext';
+import { useTenant } from '../../context/TenantContext';
 import { TIMEZONES, CURRENCIES } from '../../constants';
 import { EmailTemplate } from '../../types';
+import { supabase } from '../../lib/supabase';
 
 // Sub-components
 import AutomationsSettings from './components/AutomationsSettings';
@@ -131,17 +133,19 @@ interface SettingsPageProps {
 
 const SettingsPage: React.FC<SettingsPageProps> = ({ onNavigate, initialSection }) => {
   const { language: ctxLang, setLanguage, t } = useI18n();
+  const { session, organizationId } = useTenant();
 
   // Global State
   const [settings, setSettings] = useState<SettingsState>(DEFAULT_SETTINGS);
   const [lastSaved, setLastSaved] = useState<SettingsState>(DEFAULT_SETTINGS);
   const [searchQuery, setSearchQuery] = useState('');
-  
+  const [isLoading, setIsLoading] = useState(true);
+
   // UX State
   const [isSaving, setIsSaving] = useState(false);
   const [activeSection, setActiveSection] = useState('general');
   const [highlightedSection, setHighlightedSection] = useState<string | null>(null);
-  
+
   // Refs
   const sectionsRef = useRef<Record<string, HTMLElement | null>>({});
   const logoInputRef = useRef<HTMLInputElement>(null);
@@ -149,15 +153,87 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ onNavigate, initialSection 
 
   // --- Effects ---
 
-  // Load Settings
+  // Load Settings from Database
   useEffect(() => {
-    const loaded = safeParseSettings(localStorage.getItem(STORAGE_KEY));
-    if (loaded.language !== ctxLang) {
-      loaded.language = ctxLang === 'ru' ? 'ru' : 'en'; 
-    }
-    setSettings(loaded);
-    setLastSaved(loaded);
-  }, []);
+    const loadSettings = async () => {
+      try {
+        setIsLoading(true);
+
+        if (!organizationId) {
+          const loaded = safeParseSettings(localStorage.getItem(STORAGE_KEY));
+          setSettings(loaded);
+          setLastSaved(loaded);
+          setIsLoading(false);
+          return;
+        }
+
+        const [{ data: orgSettings, error }, { data: org }] = await Promise.all([
+          supabase
+            .from('organization_settings')
+            .select('*')
+            .eq('organization_id', organizationId)
+            .single(),
+          supabase
+            .from('organizations')
+            .select('name')
+            .eq('id', organizationId)
+            .single(),
+        ]);
+
+        if (error || !orgSettings) {
+          const loaded = safeParseSettings(localStorage.getItem(STORAGE_KEY));
+          setSettings(loaded);
+          setLastSaved(loaded);
+        } else {
+          const loaded: SettingsState = {
+            orgName: org?.name || DEFAULT_SETTINGS.orgName,
+            contactEmail: orgSettings.contact_email || DEFAULT_SETTINGS.contactEmail,
+            timezone: orgSettings.timezone || DEFAULT_SETTINGS.timezone,
+            currency: orgSettings.currency || DEFAULT_SETTINGS.currency,
+            primaryColor: orgSettings.primary_color || DEFAULT_SETTINGS.primaryColor,
+            logoDataUrl: orgSettings.logo_url || DEFAULT_SETTINGS.logoDataUrl,
+            faviconDataUrl: orgSettings.favicon_url || DEFAULT_SETTINGS.faviconDataUrl,
+            fontFamily: orgSettings.font_family || DEFAULT_SETTINGS.fontFamily,
+            language: orgSettings.language as 'en' | 'ru' || DEFAULT_SETTINGS.language,
+            emailLeads: orgSettings.email_leads_enabled ?? DEFAULT_SETTINGS.emailLeads,
+            emailBookings: orgSettings.email_bookings_enabled ?? DEFAULT_SETTINGS.emailBookings,
+            emailTemplates: DEFAULT_SETTINGS.emailTemplates,
+            billingEmail: orgSettings.billing_email || DEFAULT_SETTINGS.billingEmail,
+            telegramEnabled: orgSettings.telegram_enabled ?? DEFAULT_SETTINGS.telegramEnabled,
+            telegramBotToken: orgSettings.telegram_bot_token || DEFAULT_SETTINGS.telegramBotToken,
+            whatsappEnabled: orgSettings.whatsapp_enabled ?? DEFAULT_SETTINGS.whatsappEnabled,
+            whatsappToken: orgSettings.whatsapp_token || DEFAULT_SETTINGS.whatsappToken,
+            whatsappPhoneId: orgSettings.whatsapp_phone_id || DEFAULT_SETTINGS.whatsappPhoneId,
+            whatsappBusinessId: orgSettings.whatsapp_business_id || DEFAULT_SETTINGS.whatsappBusinessId,
+            instagramEnabled: orgSettings.instagram_enabled ?? DEFAULT_SETTINGS.instagramEnabled,
+            instagramToken: orgSettings.instagram_token || DEFAULT_SETTINGS.instagramToken,
+            instagramPageId: orgSettings.instagram_page_id || DEFAULT_SETTINGS.instagramPageId,
+            emailIntegrationEnabled: orgSettings.email_integration_enabled ?? DEFAULT_SETTINGS.emailIntegrationEnabled,
+            emailSmtpHost: orgSettings.email_smtp_host || DEFAULT_SETTINGS.emailSmtpHost,
+            emailSmtpPort: orgSettings.email_smtp_port || DEFAULT_SETTINGS.emailSmtpPort,
+            emailSmtpUser: orgSettings.email_smtp_user || DEFAULT_SETTINGS.emailSmtpUser,
+            emailSmtpPass: orgSettings.email_smtp_pass || DEFAULT_SETTINGS.emailSmtpPass,
+          };
+
+          if (loaded.language !== ctxLang) {
+            loaded.language = ctxLang === 'ru' ? 'ru' : 'en';
+          }
+
+          setSettings(loaded);
+          setLastSaved(loaded);
+        }
+      } catch (err) {
+        console.error('Error loading settings:', err);
+        const loaded = safeParseSettings(localStorage.getItem(STORAGE_KEY));
+        setSettings(loaded);
+        setLastSaved(loaded);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadSettings();
+  }, [organizationId, ctxLang]);
 
   // Handle initial deep-link scroll
   useEffect(() => {
@@ -230,10 +306,60 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ onNavigate, initialSection 
 
   const handleSave = async () => {
     setIsSaving(true);
-    await new Promise(r => setTimeout(r, 800)); 
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
-    setLastSaved(settings);
-    setIsSaving(false);
+    try {
+      if (organizationId) {
+        const [settingsErr, orgErr] = await Promise.all([
+          supabase
+            .from('organization_settings')
+            .update({
+              billing_email: settings.billingEmail,
+              contact_email: settings.contactEmail,
+              timezone: settings.timezone,
+              currency: settings.currency,
+              primary_color: settings.primaryColor,
+              logo_url: settings.logoDataUrl,
+              favicon_url: settings.faviconDataUrl,
+              font_family: settings.fontFamily,
+              language: settings.language,
+              email_leads_enabled: settings.emailLeads,
+              email_bookings_enabled: settings.emailBookings,
+              telegram_enabled: settings.telegramEnabled,
+              telegram_bot_token: settings.telegramBotToken,
+              whatsapp_enabled: settings.whatsappEnabled,
+              whatsapp_token: settings.whatsappToken,
+              whatsapp_phone_id: settings.whatsappPhoneId,
+              whatsapp_business_id: settings.whatsappBusinessId,
+              instagram_enabled: settings.instagramEnabled,
+              instagram_token: settings.instagramToken,
+              instagram_page_id: settings.instagramPageId,
+              email_integration_enabled: settings.emailIntegrationEnabled,
+              email_smtp_host: settings.emailSmtpHost,
+              email_smtp_port: settings.emailSmtpPort,
+              email_smtp_user: settings.emailSmtpUser,
+              email_smtp_pass: settings.emailSmtpPass,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('organization_id', organizationId)
+            .then(res => res.error),
+          supabase
+            .from('organizations')
+            .update({ name: settings.orgName, updated_at: new Date().toISOString() })
+            .eq('id', organizationId)
+            .then(res => res.error),
+        ]);
+
+        if (settingsErr) console.error('Error saving settings:', settingsErr);
+        if (orgErr) console.error('Error saving organization:', orgErr);
+      }
+
+      await new Promise(r => setTimeout(r, 500));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+      setLastSaved(settings);
+    } catch (err) {
+      console.error('Error saving settings:', err);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleDiscard = () => {
