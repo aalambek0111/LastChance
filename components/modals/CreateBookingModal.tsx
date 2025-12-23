@@ -5,24 +5,13 @@ import { Booking, BookingStatus, PaymentStatus, Lead, Tour, TierSelection } from
 import { TOURS, RECENT_LEADS, UPCOMING_BOOKINGS } from '../../data/mockData';
 import { bookingService } from '../../services/bookingService';
 import { useTenant } from '../../context/TenantContext';
+import { TeamMember } from '../../types';
 
 // --- Types for Internal Details ---
 
-interface TeamUser {
-  id: string;
-  name: string;
-  role: string;
-  email: string;
-}
-
-const TEAM_USERS: TeamUser[] = [
-  { id: '1', name: 'Alex Walker', role: 'Owner', email: 'alex@wanderlust.com' },
-  { id: '2', name: 'Sarah Miller', role: 'Guide', email: 'sarah@wanderlust.com' },
-  { id: '3', name: 'Mike Johnson', role: 'Driver', email: 'mike@wanderlust.com' },
-  { id: '4', name: 'Emily Davis', role: 'Support', email: 'emily@wanderlust.com' },
-];
-
 const CURRENT_USER_NAME = 'Alex Walker';
+
+interface TeamUser extends TeamMember {}
 
 // --- Helper Components ---
 
@@ -138,7 +127,7 @@ const CreateBookingModal: React.FC<CreateBookingModalProps> = ({
   onBookingUpdated,
   initialTab = 'comments'
 }) => {
-  const { organizationId } = useTenant();
+  const { organizationId, teamMembers } = useTenant();
   const [isSaving, setIsSaving] = useState(false);
   const [formData, setFormData] = useState({
     tourName: '',
@@ -649,7 +638,7 @@ const CreateBookingModal: React.FC<CreateBookingModalProps> = ({
                     className="w-full p-2.5 border border-gray-300 dark:border-gray-600 rounded-xl dark:bg-gray-700/50 text-sm font-semibold"
                   >
                     <option value="">Unassigned</option>
-                    {TEAM_USERS.map(u => <option key={u.id} value={u.name}>{u.name} ({u.role})</option>)}
+                    {teamMembers.map(u => <option key={u.id} value={u.id}>{u.name} ({u.role})</option>)}
                   </select>
                 </div>
               </div>
