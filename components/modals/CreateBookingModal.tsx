@@ -1,13 +1,15 @@
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { 
-  X, Calendar, MapPin, Users, FileText, Flag, User, MessageSquare, Activity, 
-  ShieldCheck, Download, Trash2, Plus, PieChart, Percent, DollarSign, 
+import {
+  X, Calendar, MapPin, Users, FileText, Flag, User, MessageSquare, Activity,
+  ShieldCheck, Download, Trash2, Plus, PieChart, Percent, DollarSign,
   AlertTriangle, Save, CheckCircle2, RotateCcw, Info, File, UserPlus, Clock,
-  CreditCard, Wallet, Tag
+  CreditCard, Wallet, Tag, Loader2
 } from 'lucide-react';
 import { Booking, BookingStatus, PaymentStatus, Lead, Tour, TierSelection } from '../../types';
 import { TOURS, RECENT_LEADS, UPCOMING_BOOKINGS } from '../../data/mockData';
+import { bookingService } from '../../services/bookingService';
+import { useTenant } from '../../context/TenantContext';
 
 // --- Types for Internal Details ---
 
@@ -131,16 +133,18 @@ interface CreateBookingModalProps {
   initialTab?: 'comments' | 'activity' | 'documents';
 }
 
-const CreateBookingModal: React.FC<CreateBookingModalProps> = ({ 
-  isOpen, 
-  onClose, 
+const CreateBookingModal: React.FC<CreateBookingModalProps> = ({
+  isOpen,
+  onClose,
   lead,
-  leadName = '', 
+  leadName = '',
   onBookingCreated,
   bookingToEdit,
   onBookingUpdated,
   initialTab = 'comments'
 }) => {
+  const { organizationId } = useTenant();
+  const [isSaving, setIsSaving] = useState(false);
   const [formData, setFormData] = useState({
     tourName: '',
     clientName: '',
@@ -281,23 +285,111 @@ const CreateBookingModal: React.FC<CreateBookingModalProps> = ({
     setIsManualAmount(false); // Enable auto-calc
   };
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    const finalBooking: Booking = {
-      ...bookingToEdit,
-      id: bookingToEdit?.id || `B${Date.now()}`,
-      ...formData,
-      commissionRate: typeof formData.commissionRate === 'string' ? parseFloat(formData.commissionRate) || 0 : formData.commissionRate,
-      totalAmount: totals.total,
-      amountPaid: totals.paid,
-      amountDue: totals.due,
-      people: formData.pax,
-      tierSelections: tierSelections
-    } as any;
 
-    if (bookingToEdit) onBookingUpdated?.(finalBooking);
-    else onBookingCreated?.(finalBooking);
-    onClose();
+    if (!organizationId) {
+      alert('Organization not found. Please refresh and try again.');
+      return;
+    }
+
+    if (!formData.tourName) {
+      alert('Please select a tour.');
+      return;
+    }
+
+    setIsSaving(true);
+
+    try {
+      const tourId = TOURS.find(t => t.name === formData.tourName)?.id;
+      if (!tourId) {
+        alert('Selected tour not found.');
+        return;
+      }
+
+      if (bookingToEdit) {
+        await bookingService.updateBooking(bookingToEdit.id, {
+          client_name: formData.clientName,
+          email: formData.email,
+          phone: formData.phone,
+          people: formData.pax,
+          booking_date: formData.date,
+          start_time: formData.startTime,
+          end_time: formData.endTime,
+          status: formData.status as BookingStatus,
+          payment_status: formData.paymentStatus as PaymentStatus,
+          total_amount: totals.total,
+          amount_paid: totals.paid,
+          pickup_location: formData.pickupLocation,
+          notes: formData.notes,
+          assigned_to: formData.assignedTo
+        });
+
+        const finalBooking: Booking = {
+          ...bookingToEdit,
+          ...formData,
+          commissionRate: typeof formData.commissionRate === 'string' ? parseFloat(formData.commissionRate) || 0 : formData.commissionRate,
+          totalAmount: totals.total,
+          amountPaid: totals.paid,
+          amountDue: totals.due,
+          people: formData.pax,
+          tierSelections: tierSelections
+        } as any;
+
+        onBookingUpdated?.(finalBooking);
+      } else {
+        const newBooking = await bookingService.createBooking(organizationId, {
+          tour_id: tourId,
+          client_name: formData.clientName,
+          email: formData.email,
+          phone: formData.phone,
+          people: formData.pax,
+          booking_date: formData.date,
+          start_time: formData.startTime,
+          end_time: formData.endTime,
+          status: formData.status as BookingStatus,
+          payment_status: formData.paymentStatus as PaymentStatus,
+          total_amount: totals.total,
+          amount_paid: totals.paid,
+          pickup_location: formData.pickupLocation,
+          notes: formData.notes,
+          assigned_to: formData.assignedTo,
+          lead_id: lead?.id
+        });
+
+        if (tierSelections.length > 0 && newBooking?.id) {
+          for (const tier of tierSelections) {
+            await bookingService.createBookingTier({
+              booking_id: newBooking.id,
+              tier_name: tier.tierName,
+              quantity: tier.quantity,
+              price_per_unit: tier.pricePerUnit
+            });
+          }
+        }
+
+        const finalBooking: Booking = {
+          ...newBooking,
+          ...formData,
+          id: newBooking?.id || `B${Date.now()}`,
+          commissionRate: typeof formData.commissionRate === 'string' ? parseFloat(formData.commissionRate) || 0 : formData.commissionRate,
+          totalAmount: totals.total,
+          amountPaid: totals.paid,
+          amountDue: totals.due,
+          people: formData.pax,
+          tierSelections: tierSelections
+        } as any;
+
+        onBookingCreated?.(finalBooking);
+      }
+
+      onClose();
+    } catch (error: any) {
+      console.error(error);
+      alert(`Error saving booking: ${error.message}`);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   if (!isOpen) return null;
@@ -680,13 +772,23 @@ const CreateBookingModal: React.FC<CreateBookingModalProps> = ({
 
           {/* Footer Actions */}
           <div className="flex-none px-8 py-6 border-t border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800 flex justify-end gap-3 rounded-b-3xl">
-             <button type="button" onClick={onClose} className="px-6 py-2.5 text-sm font-bold text-gray-500 hover:text-gray-700 transition-colors">Cancel</button>
-             <button 
+             <button type="button" onClick={onClose} disabled={isSaving} className="px-6 py-2.5 text-sm font-bold text-gray-500 hover:text-gray-700 transition-colors disabled:opacity-50">Cancel</button>
+             <button
                 onClick={handleSave}
-                className="px-10 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl text-sm font-extrabold shadow-xl shadow-indigo-500/20 transition-all active:scale-95 flex items-center justify-center gap-2"
+                disabled={isSaving}
+                className="px-10 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl text-sm font-extrabold shadow-xl shadow-indigo-500/20 transition-all active:scale-95 flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
              >
-                {bookingToEdit ? <Save className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
-                {bookingToEdit ? 'Update Booking' : 'Confirm Reservation'}
+                {isSaving ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    {bookingToEdit ? <Save className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+                    {bookingToEdit ? 'Update Booking' : 'Confirm Reservation'}
+                  </>
+                )}
              </button>
           </div>
         </div>

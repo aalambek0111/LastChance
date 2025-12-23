@@ -133,28 +133,30 @@ const LeadsPage: React.FC<LeadsPageProps> = ({
       const { error } = await supabase.from('leads').insert({
         organization_id: organizationId,
         name: leadData.name,
-        email: leadData.email,
-        phone: leadData.phone,
-        status: leadData.status,
-        channel: leadData.channel,
-        notes: leadData.notes,
-        company: leadData.company,
-        value: leadData.value,
-        assigned_to: leadData.assignedTo
+        email: leadData.email || null,
+        phone: leadData.phone || null,
+        status: leadData.status || 'New',
+        channel: leadData.channel || 'Website',
+        notes: leadData.notes || null,
+        company: leadData.company || null,
+        value: leadData.value ? parseFloat(leadData.value) : null,
+        assigned_to: leadData.assignedTo || null,
+        created_at: new Date().toISOString()
       });
 
       if (error) throw error;
-      
-      fetchLeads(); // Refresh list
-      
+
+      fetchLeads();
+
       if (addNotification) {
         addNotification({
           title: 'New Lead Created',
-          description: `${leadData.name} has been added.`,
+          description: `${leadData.name} has been added to your organization.`,
           type: 'lead'
         });
       }
     } catch (err: any) {
+      console.error('Error creating lead:', err);
       alert(`Error creating lead: ${err.message}`);
     }
   };

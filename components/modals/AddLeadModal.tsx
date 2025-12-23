@@ -3,15 +3,18 @@ import { X, User, Mail, Phone, Tag, FileText, UserPlus, DollarSign, Building, Lo
 import { LeadStatus, NotificationType } from '../../types';
 import { MOCK_TEAM_MEMBERS } from '../../data/mockData';
 import { LayoutService, LayoutField } from '../../services/layoutService';
+import { leadService } from '../../services/leadService';
+import { useTenant } from '../../context/TenantContext';
 
 interface AddLeadModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave?: (data: any) => Promise<void>; // Make onSave async
+  onSave?: (data: any) => Promise<void>;
   addNotification?: (payload: { title: string; description?: string; type: NotificationType; actionLink?: string }) => void;
 }
 
 const AddLeadModal: React.FC<AddLeadModalProps> = ({ isOpen, onClose, addNotification, onSave }) => {
+  const { organizationId } = useTenant();
   const [layout, setLayout] = useState<LayoutField[]>([]);
   const [formData, setFormData] = useState<Record<string, any>>({
     status: 'New',
@@ -39,24 +42,40 @@ const AddLeadModal: React.FC<AddLeadModalProps> = ({ isOpen, onClose, addNotific
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSaving(true);
-    
+
     try {
+      if (!organizationId) {
+        alert('Organization not found. Please refresh and try again.');
+        return;
+      }
+
       if (onSave) {
         await onSave(formData);
       } else {
-        // Fallback or deprecated behavior if parent doesn't provide onSave
-        console.log('New Lead Submitted (Local):', formData);
+        await leadService.createLead(organizationId, {
+          name: formData.name,
+          email: formData.email,
+          phone: formData.phone,
+          channel: formData.channel || 'Website',
+          status: formData.status,
+          company: formData.company,
+          value: formData.value ? parseFloat(formData.value) : undefined,
+          notes: formData.notes,
+          assigned_to: formData.assignedTo
+        });
+
         if (addNotification) {
-            addNotification({
-                title: 'New Lead Inquired',
-                description: `${formData.name || 'New Lead'} reached out.`,
-                type: 'lead'
-            });
+          addNotification({
+            title: 'New Lead Created',
+            description: `${formData.name} has been added to your organization.`,
+            type: 'lead'
+          });
         }
       }
       onClose();
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
+      alert(`Error creating lead: ${error.message}`);
     } finally {
       setIsSaving(false);
     }
