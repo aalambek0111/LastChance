@@ -70,7 +70,7 @@ const BookingsPage: React.FC<BookingsPageProps> = ({
     bookingNo: row.booking_no,
     tourName: row.tour_name,
     clientName: row.client_name,
-    date: row.date,
+    date: row.booking_date,
     startTime: row.start_time,
     endTime: row.end_time,
     people: row.people,
@@ -93,7 +93,7 @@ const BookingsPage: React.FC<BookingsPageProps> = ({
         .from('bookings')
         .select('*')
         .eq('organization_id', organizationId)
-        .order('date', { ascending: false });
+        .order('booking_date', { ascending: false });
 
       if (error) throw error;
       setBookings(data.map(mapDbToBooking));
@@ -122,7 +122,7 @@ const BookingsPage: React.FC<BookingsPageProps> = ({
         booking_no: bookingNo,
         tour_name: newBooking.tourName,
         client_name: newBooking.clientName,
-        date: newBooking.date,
+        booking_date: newBooking.date,
         start_time: newBooking.startTime,
         end_time: newBooking.endTime,
         people: newBooking.people,
@@ -152,7 +152,7 @@ const BookingsPage: React.FC<BookingsPageProps> = ({
       const payload = {
         tour_name: updatedBooking.tourName,
         client_name: updatedBooking.clientName,
-        date: updatedBooking.date,
+        booking_date: updatedBooking.date,
         start_time: updatedBooking.startTime,
         end_time: updatedBooking.endTime,
         people: updatedBooking.people,
