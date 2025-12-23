@@ -1,11 +1,6 @@
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import {
-  X, Calendar, MapPin, Users, FileText, Flag, User, MessageSquare, Activity,
-  ShieldCheck, Download, Trash2, Plus, PieChart, Percent, DollarSign,
-  AlertTriangle, Save, CheckCircle2, RotateCcw, Info, File, UserPlus, Clock,
-  CreditCard, Wallet, Tag, Loader2
-} from 'lucide-react';
+import { X, Calendar, MapPin, Users, FileText, Flag, User, MessageSquare, Activity, ShieldCheck, Download, Trash2, Plus, ChartPie as PieChart, Percent, DollarSign, TriangleAlert as AlertTriangle, Save, CircleCheck as CheckCircle2, RotateCcw, Info, File, UserPlus, Clock, CreditCard, Wallet, Tag, Loader as Loader2 } from 'lucide-react';
 import { Booking, BookingStatus, PaymentStatus, Lead, Tour, TierSelection } from '../../types';
 import { TOURS, RECENT_LEADS, UPCOMING_BOOKINGS } from '../../data/mockData';
 import { bookingService } from '../../services/bookingService';

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, User, Mail, Phone, Tag, FileText, UserPlus, DollarSign, Building, Loader2 } from 'lucide-react';
+import { X, User, Mail, Phone, Tag, FileText, UserPlus, DollarSign, Building, Loader as Loader2 } from 'lucide-react';
 import { LeadStatus, NotificationType } from '../../types';
 import { MOCK_TEAM_MEMBERS } from '../../data/mockData';
 import { LayoutService, LayoutField } from '../../services/layoutService';
