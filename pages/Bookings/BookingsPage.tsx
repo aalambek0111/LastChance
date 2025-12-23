@@ -1,17 +1,17 @@
 import React, { useMemo, useState, useEffect, useCallback } from 'react';
-import { 
-  Users, 
-  Filter, 
-  Pencil, 
-  Download, 
-  User, 
-  ArrowUp, 
-  ArrowDown, 
-  ArrowUpDown, 
-  MoreHorizontal, 
-  Copy, 
-  XCircle, 
-  Trash2, 
+import {
+  Users,
+  Filter,
+  Pencil,
+  Download,
+  User,
+  ArrowUp,
+  ArrowDown,
+  ArrowUpDown,
+  MoreHorizontal,
+  Copy,
+  XCircle,
+  Trash2,
   LayoutGrid,
   List,
   Calendar,
@@ -25,6 +25,7 @@ import CreateBookingModal from '../../components/modals/CreateBookingModal';
 import { supabase } from '../../lib/supabase';
 import { useTenant } from '../../context/TenantContext';
 import StatusBadge from '../../components/common/StatusBadge';
+import { TOURS } from '../../data/mockData';
 
 interface BookingsPageProps {
   // Props are optional now as we fetch data internally
@@ -66,8 +67,9 @@ const BookingsPage: React.FC<BookingsPageProps> = ({
   // --- Supabase Integration ---
 
   const mapDbToBooking = (row: any): Booking => {
-    const tours = require('../../data/mockData').TOURS;
-    const tour = tours.find((t: any) => t.id === row.tour_id);
+    const tour = TOURS.find(t => t.id === row.tour_id);
+    const teamMember = row.team_members;
+    const assignedToName = teamMember?.name || row.assigned_to || undefined;
 
     return {
       id: row.id,
@@ -82,7 +84,7 @@ const BookingsPage: React.FC<BookingsPageProps> = ({
       paymentStatus: row.payment_status as PaymentStatus,
       pickupLocation: row.pickup_location,
       notes: row.notes,
-      assignedTo: row.assigned_to,
+      assignedTo: assignedToName,
       totalAmount: row.total_amount,
       amountPaid: row.amount_paid,
       commissionRate: row.commission_rate,
@@ -96,12 +98,12 @@ const BookingsPage: React.FC<BookingsPageProps> = ({
     try {
       const { data, error } = await supabase
         .from('bookings')
-        .select('*')
+        .select('*, team_members!bookings_assigned_to_fkey(name)')
         .eq('organization_id', organizationId)
         .order('booking_date', { ascending: false });
 
       if (error) throw error;
-      setBookings(data.map(mapDbToBooking));
+      setBookings(data.map((row: any) => mapDbToBooking(row)));
     } catch (err: any) {
       console.error('Error loading bookings:', err);
       setError('Failed to load bookings');
@@ -119,9 +121,7 @@ const BookingsPage: React.FC<BookingsPageProps> = ({
   const handleCreateBooking = async (newBooking: Booking) => {
     if (!organizationId) return;
     try {
-      const tours = require('../../data/mockData').TOURS;
-      const tour = tours.find((t: any) => t.name === newBooking.tourName);
-
+      const tour = TOURS.find(t => t.name === newBooking.tourName);
       const bookingNo = `BR-${Date.now().toString().slice(-6)}`;
 
       const payload = {
@@ -156,8 +156,7 @@ const BookingsPage: React.FC<BookingsPageProps> = ({
 
   const handleUpdateBooking = async (updatedBooking: Booking) => {
     try {
-      const tours = require('../../data/mockData').TOURS;
-      const tour = tours.find((t: any) => t.name === updatedBooking.tourName);
+      const tour = TOURS.find(t => t.name === updatedBooking.tourName);
 
       const payload = {
         tour_id: tour?.id,

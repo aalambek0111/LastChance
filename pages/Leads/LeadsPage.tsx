@@ -56,20 +56,25 @@ const LeadsPage: React.FC<LeadsPageProps> = ({
   ];
 
   // Helper to map DB row to Frontend type
-  const mapDbToLead = (row: any): Lead => ({
-    id: row.id,
-    leadNo: row.lead_no ? `LD-${String(row.lead_no).padStart(6, '0')}` : undefined,
-    name: row.name,
-    email: row.email,
-    phone: row.phone,
-    company: row.company,
-    status: row.status as LeadStatus,
-    channel: row.channel,
-    value: row.value,
-    notes: row.notes,
-    assignedTo: row.assigned_to,
-    lastMessageTime: row.last_interaction_at ? new Date(row.last_interaction_at).toLocaleString() : 'New',
-  });
+  const mapDbToLead = (row: any): Lead => {
+    const teamMember = row.team_members;
+    const assignedToName = teamMember?.name || row.assigned_to || undefined;
+
+    return {
+      id: row.id,
+      leadNo: row.lead_no ? `LD-${String(row.lead_no).padStart(6, '0')}` : undefined,
+      name: row.name,
+      email: row.email,
+      phone: row.phone,
+      company: row.company,
+      status: row.status as LeadStatus,
+      channel: row.channel,
+      value: row.value,
+      notes: row.notes,
+      assignedTo: assignedToName,
+      lastMessageTime: row.last_interaction_at ? new Date(row.last_interaction_at).toLocaleString() : 'New',
+    };
+  };
 
   const fetchLeads = useCallback(async () => {
     if (!organizationId) return;
@@ -78,7 +83,7 @@ const LeadsPage: React.FC<LeadsPageProps> = ({
     try {
       const { data, error } = await supabase
         .from('leads')
-        .select('*')
+        .select('*, team_members!leads_assigned_to_fkey(name)')
         .eq('organization_id', organizationId)
         .order('created_at', { ascending: false });
 
