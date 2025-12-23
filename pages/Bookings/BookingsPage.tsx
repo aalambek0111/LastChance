@@ -65,25 +65,30 @@ const BookingsPage: React.FC<BookingsPageProps> = ({
 
   // --- Supabase Integration ---
 
-  const mapDbToBooking = (row: any): Booking => ({
-    id: row.id,
-    bookingNo: row.booking_no,
-    tourName: row.tour_name,
-    clientName: row.client_name,
-    date: row.booking_date,
-    startTime: row.start_time,
-    endTime: row.end_time,
-    people: row.people,
-    status: row.status as BookingStatus,
-    paymentStatus: row.payment_status as PaymentStatus,
-    pickupLocation: row.pickup_location,
-    notes: row.notes,
-    assignedTo: row.assigned_to,
-    totalAmount: row.total_amount,
-    amountPaid: row.amount_paid,
-    commissionRate: row.commission_rate,
-    tierSelections: row.tier_selections
-  });
+  const mapDbToBooking = (row: any): Booking => {
+    const tours = require('../../data/mockData').TOURS;
+    const tour = tours.find((t: any) => t.id === row.tour_id);
+
+    return {
+      id: row.id,
+      bookingNo: row.booking_no,
+      tourName: tour?.name || '',
+      clientName: row.client_name,
+      date: row.booking_date,
+      startTime: row.start_time,
+      endTime: row.end_time,
+      people: row.people,
+      status: row.status as BookingStatus,
+      paymentStatus: row.payment_status as PaymentStatus,
+      pickupLocation: row.pickup_location,
+      notes: row.notes,
+      assignedTo: row.assigned_to,
+      totalAmount: row.total_amount,
+      amountPaid: row.amount_paid,
+      commissionRate: row.commission_rate,
+      tierSelections: row.tier_selections
+    };
+  };
 
   const fetchBookings = useCallback(async () => {
     if (!organizationId) return;
@@ -114,13 +119,15 @@ const BookingsPage: React.FC<BookingsPageProps> = ({
   const handleCreateBooking = async (newBooking: Booking) => {
     if (!organizationId) return;
     try {
-      // Generate a booking number if simple ID
+      const tours = require('../../data/mockData').TOURS;
+      const tour = tours.find((t: any) => t.name === newBooking.tourName);
+
       const bookingNo = `BR-${Date.now().toString().slice(-6)}`;
-      
+
       const payload = {
         organization_id: organizationId,
         booking_no: bookingNo,
-        tour_name: newBooking.tourName,
+        tour_id: tour?.id,
         client_name: newBooking.clientName,
         booking_date: newBooking.date,
         start_time: newBooking.startTime,
@@ -139,8 +146,8 @@ const BookingsPage: React.FC<BookingsPageProps> = ({
 
       const { error } = await supabase.from('bookings').insert(payload);
       if (error) throw error;
-      
-      fetchBookings(); // Refresh list
+
+      fetchBookings();
       setIsCreateOpen(false);
     } catch (err: any) {
       alert(`Error creating booking: ${err.message}`);
@@ -149,8 +156,11 @@ const BookingsPage: React.FC<BookingsPageProps> = ({
 
   const handleUpdateBooking = async (updatedBooking: Booking) => {
     try {
+      const tours = require('../../data/mockData').TOURS;
+      const tour = tours.find((t: any) => t.name === updatedBooking.tourName);
+
       const payload = {
-        tour_name: updatedBooking.tourName,
+        tour_id: tour?.id,
         client_name: updatedBooking.clientName,
         booking_date: updatedBooking.date,
         start_time: updatedBooking.startTime,
@@ -174,7 +184,6 @@ const BookingsPage: React.FC<BookingsPageProps> = ({
 
       if (error) throw error;
 
-      // Optimistic update
       setBookings(prev => prev.map(b => b.id === updatedBooking.id ? updatedBooking : b));
       setEditingBooking(null);
     } catch (err: any) {
