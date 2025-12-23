@@ -1,13 +1,11 @@
 import { GoogleGenAI } from '@google/genai';
 import { TOURS } from '../data/mockData';
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-
-const TOUR_CONTEXT = TOURS.map(t => 
+const TOUR_CONTEXT = TOURS.map(t =>
   `- ${t.name}: $${t.price}, Duration: ${t.duration}, Location: ${t.location}. Description: ${t.description}`
 ).join('\n');
 
-const SYSTEM_PROMPT = `You are an elite Tour Agency Operations Agent. 
+const SYSTEM_PROMPT = `You are an elite Tour Agency Operations Agent.
 You analyze customer messages and provide internal insights and suggested replies.
 
 Your Knowledge of our Tours:
@@ -26,10 +24,30 @@ Format your response strictly as a JSON object:
   "replies": ["Reply 1", "Reply 2", "Reply 3"]
 }`;
 
+let ai: GoogleGenAI | null = null;
+
+const getAIClient = () => {
+  if (!ai) {
+    const apiKey = import.meta.env.VITE_GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
+    if (!apiKey) {
+      console.warn('Gemini API key not configured. AI features will be disabled.');
+      return null;
+    }
+    ai = new GoogleGenAI({ apiKey });
+  }
+  return ai;
+};
+
 export const AIService = {
   analyzeConversation: async (history: { role: string; text: string }[]) => {
     try {
-      const model = ai.models.generateContent({
+      const client = getAIClient();
+      if (!client) {
+        console.warn('AI service not available');
+        return null;
+      }
+
+      const model = client.models.generateContent({
         model: 'gemini-3-flash-preview',
         contents: history.map(h => ({
           role: h.role === 'me' ? 'model' : 'user',
@@ -38,7 +56,7 @@ export const AIService = {
         config: {
           systemInstruction: SYSTEM_PROMPT,
           responseMimeType: "application/json",
-          temperature: 0.2, // Lower temperature for more consistent analysis
+          temperature: 0.2,
         }
       });
 
