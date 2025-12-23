@@ -17,22 +17,28 @@ export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [organizationId, setOrganizationId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [initialCheckDone, setInitialCheckDone] = useState(false);
 
   useEffect(() => {
     // Prevent network requests if env vars are missing
     if (!isSupabaseConfigured()) {
       console.warn('Supabase not configured. Skipping auth initialization.');
       setLoading(false);
+      setInitialCheckDone(true);
       return;
     }
 
     // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
-      if (!session) setLoading(false);
+      setInitialCheckDone(true);
+      if (!session) {
+        setLoading(false);
+      }
     }).catch(err => {
       console.error('Failed to get session:', err);
       setLoading(false);
+      setInitialCheckDone(true);
     });
 
     // Listen for changes
@@ -55,9 +61,15 @@ export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({ childr
    * might take a few hundred milliseconds to run after a new signup.
    */
   const fetchOrganization = async (retries = 3) => {
-    if (!session?.user) return;
-    if (!isSupabaseConfigured()) return;
-    
+    if (!session?.user) {
+      setLoading(false);
+      return;
+    }
+    if (!isSupabaseConfigured()) {
+      setLoading(false);
+      return;
+    }
+
     try {
       // Fetch the first active organization membership
       const { data, error } = await supabase
@@ -70,7 +82,7 @@ export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
       if (error) {
         // PGRST116: No rows found
-        if (error.code === 'PGRST116') { 
+        if (error.code === 'PGRST116') {
            if (retries > 0) {
              // Retry if it's a new account and trigger hasn't finished
              console.log(`Org not found, retrying... (${retries} attempts left)`);
@@ -78,36 +90,32 @@ export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({ childr
              return;
            } else {
              setOrganizationId(null);
+             setLoading(false);
            }
         } else {
            console.error('Error fetching org:', error);
            setOrganizationId(null);
+           setLoading(false);
         }
       } else if (data) {
         setOrganizationId(data.organization_id);
+        setLoading(false);
+      } else {
+        setOrganizationId(null);
+        setLoading(false);
       }
     } catch (err) {
       console.error('Unexpected error fetching org:', err);
       setError('Failed to load organization.');
-    } finally {
-      // Only stop loading if we are out of retries or found data
-      if (retries === 0 || organizationId) {
-        setLoading(false);
-      }
+      setLoading(false);
     }
   };
 
   useEffect(() => {
-    if (session) {
-      // Small initial delay to allow trigger to start
+    if (initialCheckDone && session) {
       fetchOrganization();
     }
-  }, [session]);
-
-  // Ensure loading is false if organizationId is set
-  useEffect(() => {
-    if (organizationId) setLoading(false);
-  }, [organizationId]);
+  }, [session, initialCheckDone]);
 
   if (!isSupabaseConfigured()) {
     return (
