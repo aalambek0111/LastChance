@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Mail, Lock, Building, Eye, EyeOff, Loader2, Globe, DollarSign, Check, AlertCircle } from 'lucide-react';
+import { Mail, Lock, Building, Eye, EyeOff, Loader2, Globe, DollarSign, Check, AlertCircle, User } from 'lucide-react';
 import AuthLayout from '../../components/auth/AuthLayout';
 import AuthInput from '../../components/auth/AuthInput';
 import { TIMEZONES, CURRENCIES } from '../../constants';
@@ -14,6 +14,7 @@ interface SignupPageProps {
 const SignupPage: React.FC<SignupPageProps> = ({ onSignupSuccess, onNavigate }) => {
   const { setLanguage } = useI18n();
   const [formData, setFormData] = useState({
+    fullName: '',
     workspaceName: '',
     email: '',
     password: '',
@@ -21,11 +22,11 @@ const SignupPage: React.FC<SignupPageProps> = ({ onSignupSuccess, onNavigate }) 
     timezone: 'UTC+00:00 (London, Dublin, Lisbon)',
     language: 'en' as 'en' | 'ru'
   });
-  
+
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [agreed, setAgreed] = useState(false);
-  const [errors, setErrors] = useState<{ workspaceName?: string; email?: string; password?: string; general?: string }>({});
+  const [errors, setErrors] = useState<{ fullName?: string; workspaceName?: string; email?: string; password?: string; general?: string }>({});
 
   const validateEmail = (email: string) => {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -41,15 +42,15 @@ const SignupPage: React.FC<SignupPageProps> = ({ onSignupSuccess, onNavigate }) 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrors({});
-    
-    // Simple client-side validation
+
     const newErrors: typeof errors = {};
+    if (!formData.fullName.trim()) newErrors.fullName = 'Full name is required';
     if (!formData.workspaceName.trim()) newErrors.workspaceName = 'Organization name is required';
     if (!formData.email) newErrors.email = 'Email address is required';
     else if (!validateEmail(formData.email)) newErrors.email = 'Invalid email format';
     if (!formData.password) newErrors.password = 'Password is required';
     else if (formData.password.length < 8) newErrors.password = 'Password must be at least 8 characters';
-    
+
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
       return;
@@ -61,18 +62,17 @@ const SignupPage: React.FC<SignupPageProps> = ({ onSignupSuccess, onNavigate }) 
       setErrors({ general: 'Supabase is not configured. Please add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to your .env file.' });
       return;
     }
-    
+
     setIsLoading(true);
 
     try {
-      // 1. Sign up user
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
         options: {
           data: {
             name: formData.workspaceName,
-            full_name: formData.workspaceName.split(' ')[0] + ' Admin',
+            full_name: formData.fullName,
           }
         }
       });
@@ -84,8 +84,6 @@ const SignupPage: React.FC<SignupPageProps> = ({ onSignupSuccess, onNavigate }) 
       }
 
       if (authData.user) {
-        // Success
-        console.log('User created:', authData.user);
         onSignupSuccess();
       }
     } catch (err: any) {
@@ -137,6 +135,23 @@ const SignupPage: React.FC<SignupPageProps> = ({ onSignupSuccess, onNavigate }) 
             <span className="text-sm text-red-700 dark:text-red-300">{errors.general}</span>
           </div>
         )}
+
+        {/* Full Name */}
+        <AuthInput
+          id="fullName"
+          type="text"
+          label="Full Name"
+          placeholder="Your name"
+          value={formData.fullName}
+          onChange={(e) => {
+            setFormData({...formData, fullName: e.target.value});
+            if (errors.fullName) setErrors({...errors, fullName: undefined});
+          }}
+          icon={<User className="w-5 h-5" />}
+          error={errors.fullName}
+          disabled={isLoading}
+          required
+        />
 
         {/* Organization Name */}
         <AuthInput

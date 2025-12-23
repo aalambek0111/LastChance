@@ -1,11 +1,11 @@
 
-import React from 'react';
-import { 
-  LayoutDashboard, 
-  Inbox, 
-  Users, 
-  CalendarCheck, 
-  Briefcase, 
+import React, { useEffect, useState } from 'react';
+import {
+  LayoutDashboard,
+  Inbox,
+  Users,
+  CalendarCheck,
+  Briefcase,
   Settings,
   LogOut,
   Map,
@@ -15,6 +15,8 @@ import {
   CalendarDays
 } from 'lucide-react';
 import { useI18n } from '../context/ThemeContext';
+import { useTenant } from '../context/TenantContext';
+import { supabase } from '../lib/supabase';
 
 interface SidebarProps {
   activePage: string;
@@ -24,6 +26,31 @@ interface SidebarProps {
 
 const Sidebar: React.FC<SidebarProps> = ({ activePage, onNavigate, onLogout }) => {
   const { t } = useI18n();
+  const { session, organizationId } = useTenant();
+  const [userData, setUserData] = useState({ name: 'Loading...', email: '', org: 'Loading...' });
+
+  useEffect(() => {
+    if (!session?.user || !organizationId) return;
+
+    const fetchUserData = async () => {
+      try {
+        const [profileRes, orgRes] = await Promise.all([
+          supabase.from('profiles').select('full_name, email').eq('id', session.user.id).single(),
+          supabase.from('organizations').select('name').eq('id', organizationId).single()
+        ]);
+
+        setUserData({
+          name: profileRes.data?.full_name || 'User',
+          email: profileRes.data?.email || '',
+          org: orgRes.data?.name || 'Organization'
+        });
+      } catch (err) {
+        console.error('Error fetching user data:', err);
+      }
+    };
+
+    fetchUserData();
+  }, [session?.user?.id, organizationId]);
 
   const mainNav = [
     { name: t('nav_dashboard'), icon: LayoutDashboard, id: 'dashboard' },
@@ -116,8 +143,8 @@ const Sidebar: React.FC<SidebarProps> = ({ activePage, onNavigate, onLogout }) =
             <span className="absolute bottom-0 right-0 block h-2.5 w-2.5 rounded-full ring-2 ring-white dark:ring-gray-900 bg-green-400"></span>
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">Alex Walker</p>
-            <p className="text-xs text-gray-500 dark:text-gray-400 truncate">Wanderlust Tours</p>
+            <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">{userData.name}</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{userData.org}</p>
           </div>
         </div>
         <button 
